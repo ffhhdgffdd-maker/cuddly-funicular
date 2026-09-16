@@ -19,6 +19,8 @@ check "$VIEW" "externalPasteButton" "زر اللصق خارج الخانة"
 check "$VIEW" "inlineCopyButton" "زر النسخ داخل خانة الكود"
 check "$VIEW" "self.codeField.rightView = inlineCopyButton" "ربط أيقونة النسخ داخل الحقل"
 check "$VIEW" "presentResultAlertForResult" "الإشعار المستقل للنتيجة"
+check "$VIEW" "self.card.alpha = 0.0" "إخفاء واجهة الإدخال أثناء إشعار النتيجة"
+check "$VIEW" "self.card.alpha = 1.0" "إعادة الواجهة بعد موافق عند الفشل"
 check "$CLIENT" "saveToKeychain:trimmed key:kCodeKey" "حفظ الكود في Keychain عند نجاح التفعيل"
 check "$CLIENT" "+ (NSString *)storedCode { return [self loadFromKeychain:kCodeKey]; }" "استعادة الكود المحفوظ من Keychain"
 

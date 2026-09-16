@@ -30,6 +30,8 @@
 typedef NS_ENUM(NSInteger, WFSaudiPlaceKind) {
     WFSaudiPlaceKindSchool = 1,
     WFSaudiPlaceKindMosque = 2,
+    WFSaudiPlaceKindHealthCenter = 3,
+    WFSaudiPlaceKindGovernmentHospital = 4,
 };
 
 @interface WFSaudiPlaceAnnotation : NSObject <MKAnnotation>
@@ -668,7 +670,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(8, 8, card.bounds.size.width - 16, 44)];
     self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"ابحث عن مدرسة، مسجد، مدينة أو عنوان";
+    self.searchBar.placeholder = @"ابحث عن مدرسة، مسجد، مركز صحي أو مستشفى";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
     self.searchBar.returnKeyType = UIReturnKeySearch;
@@ -687,14 +689,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     [card addSubview:legend];
     UILabel *legendTitle = [[UILabel alloc] initWithFrame:CGRectMake(10, 5, legend.bounds.size.width - 20, 25)];
     legendTitle.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    legendTitle.text = @"🏫 مدرسة حكومية أو أهلية   •   🕌 مسجد";
+    legendTitle.text = @"🏫 مدرسة  •  🕌 مسجد  •  🏥 مركز صحي  •  H مستشفى حكومي";
     legendTitle.textColor = [WolFoxProTheme textPrimary];
     legendTitle.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
     legendTitle.textAlignment = NSTextAlignmentCenter;
     [legend addSubview:legendTitle];
     _saudiPlacesStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(8, 31, legend.bounds.size.width - 16, 23)];
     _saudiPlacesStatusLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس، وقرّب أكثر لعرض المساجد";
+    _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس والمنشآت الصحية والمساجد";
     _saudiPlacesStatusLabel.textColor = [WolFoxProTheme textSecondary];
     _saudiPlacesStatusLabel.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightSemibold];
     _saudiPlacesStatusLabel.textAlignment = NSTextAlignmentCenter;
@@ -729,11 +731,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     double lonDelta = fabs(region.span.longitudeDelta);
     BOOL includeSchools = lonDelta <= 6.0;
     BOOL includeMosques = lonDelta <= 1.5;
+    BOOL includeHealthcare = lonDelta <= 4.0;
     NSPredicate *placesPredicate = [NSPredicate predicateWithBlock:^BOOL(id object, NSDictionary *bindings) {
         return [object isKindOfClass:WFSaudiPlaceAnnotation.class];
     }];
     if (!includeSchools) {
-        _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس، وقرّب أكثر لعرض المساجد";
+        _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس والمنشآت الصحية والمساجد";
         [self.mapView removeAnnotations:[self.mapView.annotations filteredArrayUsingPredicate:placesPredicate]];
         return;
     }
@@ -749,6 +752,11 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     NSString *bbox = [NSString stringWithFormat:@"%.5f,%.5f,%.5f,%.5f", south, west, north, east];
     NSMutableString *body = [NSMutableString stringWithFormat:@"node[\"amenity\"=\"school\"](%@);way[\"amenity\"=\"school\"](%@);relation[\"amenity\"=\"school\"](%@);", bbox, bbox, bbox];
+    if (includeHealthcare) {
+        [body appendFormat:@"node[\"amenity\"~\"clinic|doctors\"](%@);way[\"amenity\"~\"clinic|doctors\"](%@);relation[\"amenity\"~\"clinic|doctors\"](%@);", bbox, bbox, bbox];
+        [body appendFormat:@"node[\"healthcare\"~\"clinic|centre|health_centre\"](%@);way[\"healthcare\"~\"clinic|centre|health_centre\"](%@);relation[\"healthcare\"~\"clinic|centre|health_centre\"](%@);", bbox, bbox, bbox];
+        [body appendFormat:@"node[\"amenity\"=\"hospital\"](%@);way[\"amenity\"=\"hospital\"](%@);relation[\"amenity\"=\"hospital\"](%@);", bbox, bbox, bbox];
+    }
     if (includeMosques) {
         [body appendFormat:@"node[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);way[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);relation[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);", bbox, bbox, bbox];
     }
@@ -768,7 +776,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [request setValue:@"application/x-www-form-urlencoded; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
     [request setValue:@"WolFoxLite/2.0.0 (Saudi places map)" forHTTPHeaderField:@"User-Agent"];
     [_saudiPlacesTask cancel];
-    _saudiPlacesStatusLabel.text = includeMosques ? @"جارٍ تحميل المدارس والمساجد الظاهرة…" : @"جارٍ تحميل المدارس الظاهرة… قرّب أكثر للمساجد";
+    _saudiPlacesStatusLabel.text = includeMosques ? @"جارٍ تحميل المعالم الظاهرة…" : @"جارٍ تحميل المدارس والمنشآت الصحية… قرّب أكثر للمساجد";
     __weak typeof(self) weakSelf = self;
     _saudiPlacesTask = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSDictionary *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
@@ -784,13 +792,18 @@ static BOOL WFMasterProcessIsEligible(void) {
             NSString *identifier = [NSString stringWithFormat:@"%@/%@", element[@"type"] ?: @"poi", element[@"id"] ?: @0];
             if ([seen containsObject:identifier]) continue;
             [seen addObject:identifier];
-            BOOL mosque = [tags[@"amenity"] isEqual:@"place_of_worship"];
+            NSString *amenity = tags[@"amenity"] ?: @"";
+            NSString *healthcare = tags[@"healthcare"] ?: @"";
+            BOOL mosque = [amenity isEqual:@"place_of_worship"];
+            BOOL hospital = [amenity isEqual:@"hospital"] || [healthcare isEqual:@"hospital"];
+            BOOL healthCenter = !hospital && ([amenity isEqual:@"clinic"] || [amenity isEqual:@"doctors"] || [@[@"clinic", @"centre", @"health_centre"] containsObject:healthcare]);
             WFSaudiPlaceAnnotation *annotation = [WFSaudiPlaceAnnotation new];
             annotation.coordinate = CLLocationCoordinate2DMake(lat.doubleValue, lon.doubleValue);
-            annotation.kind = mosque ? WFSaudiPlaceKindMosque : WFSaudiPlaceKindSchool;
+            annotation.kind = hospital ? WFSaudiPlaceKindGovernmentHospital : (healthCenter ? WFSaudiPlaceKindHealthCenter : (mosque ? WFSaudiPlaceKindMosque : WFSaudiPlaceKindSchool));
             NSString *name = tags[@"name:ar"] ?: tags[@"name"];
-            annotation.title = name.length ? name : (mosque ? @"مسجد" : @"مدرسة");
-            annotation.subtitle = mosque ? @"هنا يوجد مسجد" : @"هنا توجد مدرسة";
+            NSString *fallbackName = hospital ? @"مستشفى" : (healthCenter ? @"مستوصف أو مركز صحي" : (mosque ? @"مسجد" : @"مدرسة"));
+            annotation.title = name.length ? name : fallbackName;
+            annotation.subtitle = hospital ? @"مستشفى حكومي أو عام" : (healthCenter ? @"مستوصف أو مركز صحي" : (mosque ? @"هنا يوجد مسجد" : @"هنا توجد مدرسة"));
             annotation.sourceIdentifier = identifier;
             [annotations addObject:annotation];
         }
@@ -805,11 +818,14 @@ static BOOL WFMasterProcessIsEligible(void) {
             NSArray *oldPlaces = [self.mapView.annotations filteredArrayUsingPredicate:placesPredicate];
             [self.mapView removeAnnotations:oldPlaces];
             [self.mapView addAnnotations:annotations];
-            NSUInteger schools = 0, mosques = 0;
+            NSUInteger schools = 0, mosques = 0, healthCenters = 0, hospitals = 0;
             for (WFSaudiPlaceAnnotation *place in annotations) {
-                if (place.kind == WFSaudiPlaceKindMosque) mosques++; else schools++;
+                if (place.kind == WFSaudiPlaceKindMosque) mosques++;
+                else if (place.kind == WFSaudiPlaceKindHealthCenter) healthCenters++;
+                else if (place.kind == WFSaudiPlaceKindGovernmentHospital) hospitals++;
+                else schools++;
             }
-            self->_saudiPlacesStatusLabel.text = [NSString stringWithFormat:@"المعروض: %lu مدرسة • %lu مسجد — البيانات: OpenStreetMap", (unsigned long)schools, (unsigned long)mosques];
+            self->_saudiPlacesStatusLabel.text = [NSString stringWithFormat:@"%lu مدرسة • %lu مسجد • %lu مركز صحي • %lu مستشفى", (unsigned long)schools, (unsigned long)mosques, (unsigned long)healthCenters, (unsigned long)hospitals];
         });
     }];
     [_saudiPlacesTask resume];
@@ -3860,16 +3876,18 @@ static BOOL WFMasterProcessIsEligible(void) {
     if ([annotation isKindOfClass:WFSaudiPlaceAnnotation.class]) {
         WFSaudiPlaceAnnotation *place = (WFSaudiPlaceAnnotation *)annotation;
         BOOL school = place.kind == WFSaudiPlaceKindSchool;
-        NSString *reuse = school ? @"saudi_school" : @"saudi_mosque";
+        BOOL mosque = place.kind == WFSaudiPlaceKindMosque;
+        BOOL healthCenter = place.kind == WFSaudiPlaceKindHealthCenter;
+        NSString *reuse = school ? @"saudi_school" : (mosque ? @"saudi_mosque" : (healthCenter ? @"saudi_health_center" : @"saudi_government_hospital"));
         MKMarkerAnnotationView *marker = (MKMarkerAnnotationView *)[mapView dequeueReusableAnnotationViewWithIdentifier:reuse];
         if (!marker) marker = [[MKMarkerAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:reuse];
         marker.annotation = annotation;
-        marker.markerTintColor = school ? [UIColor colorWithRed:0.08 green:0.55 blue:0.29 alpha:1.0] : [UIColor colorWithRed:0.05 green:0.43 blue:0.48 alpha:1.0];
-        marker.glyphText = school ? @"🏫" : @"🕌";
+        marker.markerTintColor = school ? [UIColor colorWithRed:0.08 green:0.55 blue:0.29 alpha:1.0] : (mosque ? [UIColor colorWithRed:0.05 green:0.43 blue:0.48 alpha:1.0] : [UIColor colorWithRed:0.82 green:0.16 blue:0.20 alpha:1.0]);
+        marker.glyphText = school ? @"🏫" : (mosque ? @"🕌" : (healthCenter ? @"🏥" : @"H"));
         marker.glyphTintColor = UIColor.whiteColor;
         marker.canShowCallout = YES;
         marker.displayPriority = school ? MKFeatureDisplayPriorityDefaultHigh : MKFeatureDisplayPriorityDefaultLow;
-        marker.clusteringIdentifier = school ? @"schools" : @"mosques";
+        marker.clusteringIdentifier = school ? @"schools" : (mosque ? @"mosques" : @"healthcare");
         marker.accessibilityLabel = [NSString stringWithFormat:@"%@، %@", place.title, place.subtitle];
         if (school && ![marker.layer animationForKey:@"wf_school_pulse"]) {
             CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];

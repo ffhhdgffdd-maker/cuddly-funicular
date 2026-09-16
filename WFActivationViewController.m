@@ -543,7 +543,7 @@
 - (NSString *)friendlyActivationMessage:(WFLicenseResult *)result {
     switch (result.status) {
         case WFLicenseStatusInvalid:
-            return @"الكود غير صحيح أو غير مسجل. راجع الأحرف وحاول مرة أخرى.";
+            return @"الكود غير صحيح. تحقق منه وحاول مرة أخرى.";
         case WFLicenseStatusDeviceRecovery:
             return @"هذا الكود مرتبط بجهاز آخر. استخدم كوداً مخصصاً لهذا الجهاز.";
         case WFLicenseStatusNetworkError:
@@ -638,9 +638,19 @@
     NSString *message = success ? [self successActivationMessage:result] : [self friendlyActivationMessage:result];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
+    // أخفِ واجهة الإدخال مؤقتاً حتى تكون نتيجة النجاح أو الفشل مستقلة وواضحة.
+    [UIView animateWithDuration:0.16 animations:^{ self.card.alpha = 0.0; }];
     [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (success && self) [self showToolPressed];
+        if (!self) return;
+        if (success) {
+            [self showToolPressed];
+        } else {
+            [UIView animateWithDuration:0.18 animations:^{ self.card.alpha = 1.0; } completion:^(__unused BOOL finished) {
+                self.codeField.enabled = YES;
+                [self.codeField becomeFirstResponder];
+            }];
+        }
     }]];
     [self presentViewController:alert animated:YES completion:nil];
 }
