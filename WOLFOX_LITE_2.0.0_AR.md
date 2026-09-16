@@ -22,7 +22,7 @@
 
 ## نواتج البناء
 
-ينتج مسار `Build WolFox Lite 2.0.0` ما يلي:
+ينتج مسار البناء الوحيد `Build WolFox 2.0.0 — Full and Lite` ما يلي:
 
 - `WolFoxGPSLite.dylib`
 - حزمة DEB Rootful وحزمة DEB Rootless بمعمارية arm64
