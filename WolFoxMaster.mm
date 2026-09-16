@@ -433,22 +433,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_tabsBar];
     
 #if WOLFOX_LITE
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 2.0, 4)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 4.0, 4)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [_tabsBar addSubview:indicator];
     
 #if WOLFOX_LITE
-    NSArray *icons = @[@"location.fill", @"map.fill", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الموقع والمفضلة", @"خريطة المدارس والمساجد", @"الإعدادات والإخفاء"];
-    NSArray *tabPages = @[@0, @5, @4];
+    NSArray *icons = @[@"location.fill", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"الإعدادات"];
+    NSArray *tabPages = @[@0, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الموقع GPS", @"معرف الجهاز", @"البلوتوث", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @1, @2, @4];
+    NSArray *icons = @[@"location.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"البلوتوث", @"الإعدادات"];
+    NSArray *tabPages = @[@0, @2, @4];
 #endif
     CGFloat tw = w / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -575,6 +575,18 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)showSaudiServicesOnMainMap {
+    _saudiPlacesPageActive = YES;
+    if (self.mapView.region.span.longitudeDelta > 6.0) {
+        CLLocationCoordinate2D center = CLLocationCoordinate2DMake(23.8859, 45.0792);
+        [self.mapView setRegion:MKCoordinateRegionMake(center, MKCoordinateSpanMake(5.0, 5.0)) animated:YES];
+    }
+    [self scheduleSaudiPlacesReload];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"خدمات الخريطة" message:@"تظهر المدارس والمساجد والمستوصفات والمراكز الصحية والمستشفيات تدريجياً عند تقريب الخريطة." preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)refreshSpoofHeaderStatus {
     WolFoxProStore *store = [WolFoxProStore shared];
 #if WOLFOX_LITE
@@ -623,7 +635,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 
     for (UIView *v in _scrollDashboard.subviews) [v removeFromSuperview];
-    _saudiPlacesPageActive = (page == 5);
+    _saudiPlacesPageActive = (page == 0 || page == 5);
     if (!_saudiPlacesPageActive) {
         [_saudiPlacesTask cancel];
         _saudiPlacesTask = nil;
@@ -1172,9 +1184,24 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupGPSPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
+
+    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 48)];
+    servicesCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.13];
+    servicesCard.layer.cornerRadius = 13;
+    servicesCard.layer.borderWidth = 1.0;
+    servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
+    [_scrollDashboard addSubview:servicesCard];
+    UIButton *servicesButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    servicesButton.frame = servicesCard.bounds;
+    [servicesButton setTitle:@"🏫 المدارس  •  🕌 المساجد  •  🏥 الخدمات الصحية" forState:UIControlStateNormal];
+    [servicesButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
+    servicesButton.titleLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
+    [servicesButton addTarget:self action:@selector(showSaudiServicesOnMainMap) forControlEvents:UIControlEventTouchUpInside];
+    servicesButton.accessibilityLabel = @"عرض المدارس والمساجد والمراكز الصحية على الخريطة";
+    [servicesCard addSubview:servicesButton];
     
     // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 260)];
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, 68, w - 30, 260)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     mapCard.layer.cornerRadius = 20; mapCard.clipsToBounds = YES;
@@ -1256,6 +1283,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     expandBtn.accessibilityLabel = @"توسيع الخريطة إلى ملء الشاشة";
     [expandBtn addTarget:self action:@selector(expandMap) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:expandBtn];
+
+    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:166 y:mapCard.bounds.size.height - 54];
+    searchButton.accessibilityLabel = @"تنفيذ البحث في الخريطة";
+    [searchButton addTarget:self action:@selector(searchFromKeyboard) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:searchButton];
     
     // Locate Me Button (Fake Pin)
     UIButton *locateBtn = [self mapCircleBtn:@"location.fill" x:mapCard.bounds.size.width - 54 y:mapCard.bounds.size.height - 54];
@@ -1275,7 +1307,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     else [self showRealLocation];
     
     // Real-location notice placed between the map and coordinate inputs.
-    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, 282, w - 30, 54)];
+    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, 340, w - 30, 54)];
     realNotice.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.12];
     realNotice.layer.cornerRadius = 12;
     realNotice.layer.borderWidth = 1.0;
@@ -1301,62 +1333,27 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realNotice addSubview:mapLegend];
 
     // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 348, w - 30, 270)];
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 406, w - 30, 160)];
     kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:kbCard];
     
-    CGFloat iw = (kbCard.bounds.size.width - 60) / 2.0;
-    _latInput = [self royalInput:@"24.713600" frame:CGRectMake(15, 15, iw, 45)];
-    _latInput.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
-    _latInput.returnKeyType = UIReturnKeyNext;
-    _latInput.accessibilityLabel = @"خط العرض";
-    [self configureKeyboardToolbarForTextField:_latInput searchMode:NO];
-    [kbCard addSubview:_latInput];
-    _lonInput = [self royalInput:@"46.675300" frame:CGRectMake(iw + 25, 15, iw - 45, 45)];
-    _lonInput.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
-    _lonInput.returnKeyType = UIReturnKeyDone;
-    _lonInput.accessibilityLabel = @"خط الطول";
-    [self configureKeyboardToolbarForTextField:_lonInput searchMode:NO];
-    [kbCard addSubview:_lonInput];
-    
-    // Paste Button
-    UIButton *pasteBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    pasteBtn.frame = CGRectMake(kbCard.bounds.size.width - 54, 15, 44, 45);
-    pasteBtn.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.1];
-    pasteBtn.layer.cornerRadius = 10;
-    if (@available(iOS 13.0, *)) [pasteBtn setImage:[UIImage systemImageNamed:@"doc.on.clipboard.fill"] forState:UIControlStateNormal];
-    pasteBtn.tintColor = [WolFoxProTheme accent];
-    [pasteBtn addTarget:self action:@selector(pasteCoordinates) forControlEvents:UIControlEventTouchUpInside];
-    pasteBtn.accessibilityLabel = @"لصق الإحداثيات من الحافظة";
-    [kbCard addSubview:pasteBtn];
-    
-    // Activate / Apply Button
-    UIButton *applyBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    applyBtn.frame = CGRectMake(15, 75, kbCard.bounds.size.width - 30, 44);
-    applyBtn.backgroundColor = [WolFoxProTheme accent]; applyBtn.layer.cornerRadius = 12;
-    [applyBtn setTitle:@"إضافة وتفعيل الإحداثيات" forState:UIControlStateNormal]; [applyBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    applyBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBlack];
-    [applyBtn addTarget:self action:@selector(applyManualCoords) forControlEvents:UIControlEventTouchUpInside];
-    applyBtn.accessibilityLabel = @"تطبيق الإحداثيات وتشغيل الموقع الوهمي";
-    [kbCard addSubview:applyBtn];
-
-    // GPS input and activation live in one card to reduce visual fragmentation.
+    // البحث عن الاسم أو الإحداثيات أو رابط المشاركة يتم من شريط الخريطة فقط.
     UIButton *moveFive = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveFive.frame = CGRectMake(15, 130, (kbCard.bounds.size.width - 45) / 2.0, 44);
+    moveFive.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 44);
     moveFive.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
     moveFive.layer.cornerRadius = 11;
     [moveFive setTitle:@"تحريك 5 أمتار" forState:UIControlStateNormal];
     [moveFive addTarget:self action:@selector(moveFakeLocationFiveMeters) forControlEvents:UIControlEventTouchUpInside];
     [kbCard addSubview:moveFive];
     UIButton *moveTen = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 130, moveFive.bounds.size.width, 44);
+    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 12, moveFive.bounds.size.width, 44);
     moveTen.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
     moveTen.layer.cornerRadius = 11;
     [moveTen setTitle:@"تحريك 10 أمتار" forState:UIControlStateNormal];
     [moveTen addTarget:self action:@selector(moveFakeLocationTenMeters) forControlEvents:UIControlEventTouchUpInside];
     [kbCard addSubview:moveTen];
 
-    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:190 action:^(UISwitch *s){
+    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:78 action:^(UISwitch *s){
         if (s.on) {
             [WolFoxProStore shared].spoofActive = YES;
             [[WolFoxProStore shared] saveSettings];
@@ -1372,7 +1369,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *savedLocations = [WolFoxProStore shared].locations;
     BOOL favoritesEmpty = savedLocations.count == 0;
     CGFloat favoritesHeight = favoritesEmpty ? 184.0 : 126.0;
-    CGFloat favoritesY = 348.0 + 270.0 + 15.0;
+    CGFloat favoritesY = 406.0 + 160.0 + 15.0;
     CGFloat cy = favoritesY + favoritesHeight + 15.0;
 
     // FIX: أنشئ favoritesCard أولاً حتى يصبح Z-order صحيحاً (routeCard فوقها)
