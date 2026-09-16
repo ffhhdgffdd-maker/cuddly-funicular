@@ -149,23 +149,27 @@
     self.codeField.adjustsFontSizeToFitWidth = YES;
     self.codeField.minimumFontSize = 11.0;
     self.codeField.delegate = self;
-    self.codeField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    self.codeField.clearButtonMode = UITextFieldViewModeNever;
     self.codeField.accessibilityLabel = @"كود تفعيل WolFox";
     self.codeField.accessibilityHint = @"اكتب الكود أو استخدم زر اللصق ثم اضغط تحقق وتفعيل";
     [self.codeField addTarget:self action:@selector(activationCodeEditingChanged:) forControlEvents:UIControlEventEditingChanged];
     self.codeField.text = [WFLicenseClient storedCode] ?: @"";
     self.codeField.leftView = nil;
-    self.codeField.rightView = nil;
-    [card addSubview:self.codeField];
 
-    UIButton *externalCopyButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    externalCopyButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [externalCopyButton setTitle:@"نسخ" forState:UIControlStateNormal];
-    [externalCopyButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    externalCopyButton.backgroundColor = [WolFoxProTheme accent];
-    externalCopyButton.layer.cornerRadius = 12.0;
-    [externalCopyButton addTarget:self action:@selector(copyActivationCode) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:externalCopyButton];
+    // زر النسخ داخل خانة الكود كما طلب المستخدم، ويبقى زر اللصق واضحاً خارجها.
+    UIButton *inlineCopyButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    inlineCopyButton.frame = CGRectMake(0, 0, 46, 44);
+    inlineCopyButton.tintColor = [WolFoxProTheme accent];
+    inlineCopyButton.accessibilityLabel = @"نسخ كود التفعيل";
+    if (@available(iOS 13.0, *)) {
+        [inlineCopyButton setImage:[UIImage systemImageNamed:@"doc.on.doc.fill"] forState:UIControlStateNormal];
+    } else {
+        [inlineCopyButton setTitle:@"نسخ" forState:UIControlStateNormal];
+    }
+    [inlineCopyButton addTarget:self action:@selector(copyActivationCode) forControlEvents:UIControlEventTouchUpInside];
+    self.codeField.rightView = inlineCopyButton;
+    self.codeField.rightViewMode = UITextFieldViewModeAlways;
+    [card addSubview:self.codeField];
 
     UIButton *externalPasteButton = [UIButton buttonWithType:UIButtonTypeSystem];
     externalPasteButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -308,12 +312,8 @@
         [desc.centerXAnchor constraintEqualToAnchor:card.centerXAnchor],
 
         [self.codeField.topAnchor constraintEqualToAnchor:desc.bottomAnchor constant:22],
-        [self.codeField.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:82],
+        [self.codeField.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24],
         [self.codeField.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-82],
-        [externalCopyButton.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24],
-        [externalCopyButton.centerYAnchor constraintEqualToAnchor:self.codeField.centerYAnchor],
-        [externalCopyButton.widthAnchor constraintEqualToConstant:48],
-        [externalCopyButton.heightAnchor constraintEqualToConstant:56],
         [externalPasteButton.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-24],
         [externalPasteButton.centerYAnchor constraintEqualToAnchor:self.codeField.centerYAnchor],
         [externalPasteButton.widthAnchor constraintEqualToConstant:48],
@@ -500,10 +500,11 @@
             self.statusLabel.backgroundColor = [UIColor colorWithRed:0.04 green:0.25 blue:0.14 alpha:0.82];
             self.statusLabel.layer.borderColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.78].CGColor;
             self.statusLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
-            self.statusLabel.text = [self successActivationMessage:result];
-            self.statusLabel.hidden = NO;
-            self.showToolButton.hidden = NO;
-            self.skipButton.hidden = NO;
+            // تفاصيل النجاح تعرض حصراً في الإشعار المستقل؛ لا نكررها داخل الصفحة.
+            self.statusLabel.text = @"";
+            self.statusLabel.hidden = YES;
+            self.showToolButton.hidden = YES;
+            self.skipButton.hidden = YES;
             self.activateButton.enabled = NO;
             [self.activateButton setTitle:@"✓ الكود صالح وتم التفعيل" forState:UIControlStateNormal];
             self.codeField.enabled = NO;

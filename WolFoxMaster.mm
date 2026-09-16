@@ -753,13 +753,20 @@ static BOOL WFMasterProcessIsEligible(void) {
         [body appendFormat:@"node[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);way[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);relation[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](%@);", bbox, bbox, bbox];
     }
     NSString *query = [NSString stringWithFormat:@"[out:json][timeout:20];(%@);out center tags;", body];
-    NSURL *url = [NSURL URLWithString:@"https://overpass-api.de/api/interpreter"];
+    // تدوير مزودي Overpass يقلل توقف الخريطة عند تعطل مزود واحد أو ازدحامه.
+    NSArray<NSString *> *overpassEndpoints = @[
+        @"https://overpass-api.de/api/interpreter",
+        @"https://overpass.kumi.systems/api/interpreter",
+        @"https://overpass.nchc.org.tw/api/interpreter"
+    ];
+    NSUInteger endpointIndex = (NSUInteger)(NSDate.date.timeIntervalSince1970 / 30.0) % overpassEndpoints.count;
+    NSURL *url = [NSURL URLWithString:overpassEndpoints[endpointIndex]];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:25.0];
     request.HTTPMethod = @"POST";
     NSCharacterSet *allowed = [NSCharacterSet URLQueryAllowedCharacterSet];
     request.HTTPBody = [[NSString stringWithFormat:@"data=%@", [query stringByAddingPercentEncodingWithAllowedCharacters:allowed]] dataUsingEncoding:NSUTF8StringEncoding];
     [request setValue:@"application/x-www-form-urlencoded; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
-    [request setValue:@"WolFoxLite/1.8.6 (Saudi places map)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"WolFoxLite/2.0.0 (Saudi places map)" forHTTPHeaderField:@"User-Agent"];
     [_saudiPlacesTask cancel];
     _saudiPlacesStatusLabel.text = includeMosques ? @"جارٍ تحميل المدارس والمساجد الظاهرة…" : @"جارٍ تحميل المدارس الظاهرة… قرّب أكثر للمساجد";
     __weak typeof(self) weakSelf = self;
@@ -2473,7 +2480,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *encoded = [combined stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
     NSString *urlString = [NSString stringWithFormat:@"https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=sa&accept-language=ar&q=%@", encoded ?: @""];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString] cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:15.0];
-    [request setValue:@"WolFoxLite/1.8.6 (Saudi map search)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"WolFoxLite/2.0.0 (Saudi map search)" forHTTPHeaderField:@"User-Agent"];
     __weak typeof(self) weakSelf = self;
     NSURLSessionDataTask *task = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSArray *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;

@@ -14,6 +14,8 @@ check "$MASTER" '@[@"الموقع والمفضلة", @"خريطة المدارس
 check "$MASTER" "if (candidate.tag == page)" "تنقل Lite الصحيح بين الأقسام الثلاثة"
 check "$MASTER" 'else if (page == 5) [self setupSaudiPlacesMapPage];' "قسم مستقل لخريطة المدارس والمساجد"
 check "$MASTER" 'https://overpass-api.de/api/interpreter' "مصدر OpenStreetMap للمعالم"
+check "$MASTER" 'https://overpass.kumi.systems/api/interpreter' "مزود احتياطي أول لمعالم الخريطة"
+check "$MASTER" 'https://overpass.nchc.org.tw/api/interpreter' "مزود احتياطي ثانٍ لمعالم الخريطة"
 check "$MASTER" 'https://nominatim.openstreetmap.org/search' "مصدر بحث احتياطي ثالث"
 check "$MASTER" 'school ? @"🏫" : @"🕌"' "رموز واضحة للمدارس والمساجد"
 check "$MASTER" 'marker.clusteringIdentifier' "تجميع المعالم للحفاظ على الأداء"
@@ -21,7 +23,7 @@ check "$MASTER" "BOOL active = store.spoofActive;" "حالة Lite تعتمد ع�
 check "$BUILD" 'COMMON_FLAGS+=(-DWOLFOX_LITE=1)' "علامة Lite تضاف أثناء الترجمة"
 check "$BUILD" 'PACKAGE_ID="com.wolfox.gpspro.lite"' "معرّف تثبيت مستقل لنسخة Lite"
 check "$BUILD" '#define WF_TWEAK_VERSION @"$(escape_objc_string "$VERSION")"' "حقن رقم الإصدار حسب عملية البناء"
-check "$LITE_BUILD" 'WOLFOX_VERSION="1.8.6-Lite"' "رقم Lite المستقل 1.8.6"
+check "$LITE_BUILD" 'WOLFOX_VERSION="2.0.0-Lite"' "رقم Lite المستقل 2.0.0"
 check "$LITE_BUILD" 'exec ./build_v1_deb.sh' "Lite تستخدم نفس مسار المصدر والبناء"
 
 echo "✅ اجتازت بنية WolFox Lite اختبارات الفصل الآمن."
