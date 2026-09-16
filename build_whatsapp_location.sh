@@ -116,8 +116,8 @@ POST
   dpkg-deb --root-owner-group -Zgzip -b "$pkg" "$output"
 }
 
-RF="$ROOT/WolFox-WhatsApp-Location-v${VERSION}-iOS15.8-26.5-Rootful.deb"
-RL="$ROOT/WolFox-WhatsApp-Location-v${VERSION}-iOS15.8-26.5-Rootless.deb"
+RF="$ROOT/WolFox-WhatsApp-Location-v${VERSION}-iOS15.8-27.0-Rootful.deb"
+RL="$ROOT/WolFox-WhatsApp-Location-v${VERSION}-iOS15.8-27.0-Rootless.deb"
 package_one rootful "" iphoneos-arm64 "$RF"
 package_one rootless "/var/jb" iphoneos-arm64 "$RL"
 

@@ -3437,30 +3437,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     // ════════════════════════════════════════════════════════
     
 
-// 6. الدعم والحساب
-    // ════════════════════════════════════════════════════════
-    secLabel(@"الدعم والحساب", cy);
-    cy += 24;
-    UIView *accountCard = newCard(cy, 70);
-
-    // زر Telegram
-    UIButton *tgBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    tgBtn.frame = CGRectMake(12, 8, accountCard.bounds.size.width - 24, 50);
-    tgBtn.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
-    tgBtn.layer.cornerRadius = 14;
-    tgBtn.layer.borderWidth = 1.5;
-    tgBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.45].CGColor;
-    [tgBtn setTitle:@"  قناة WolFox على Telegram" forState:UIControlStateNormal];
-    [tgBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    tgBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [tgBtn setImage:[UIImage systemImageNamed:@"paperplane.fill"] forState:UIControlStateNormal];
-    tgBtn.tintColor = [WolFoxProTheme accent];
-    tgBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [tgBtn addTarget:self action:@selector(openTelegram) forControlEvents:UIControlEventTouchUpInside];
-    tgBtn.accessibilityLabel = @"فتح قناة WolFox على Telegram";
-        [accountCard addSubview:tgBtn];
-    cy += 70 + 18;
-
 // 5. دليل الاستخدام السريع
     // ════════════════════════════════════════════════════════
     secLabel(@"دليل الاستخدام السريع", cy);
@@ -3664,9 +3640,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }]];
     [self presentViewController:ac animated:YES completion:nil];
 }
-
-
-- (void)openTelegram { [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://t.me/WolFoxGPS"] options:@{} completionHandler:nil]; }
 
 
 #pragma mark - Actions & Map

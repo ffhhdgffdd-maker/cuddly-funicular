@@ -22,6 +22,7 @@ concurrency:
 env:
   THEOS: ${{ github.workspace }}/.theos
   WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+  WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY }}
   WOLFOX_TARGET_BUNDLE_IDS: ${{ inputs.bundle_ids || 'sa.gov.moia.mosques-2' }}
 
 jobs:
@@ -67,12 +68,12 @@ jobs:
           set -euo pipefail
           mkdir -p release/Full
           test -s WolFox.dylib
-          test -s WolFox_v2.0.0_iOS15.8-26.5_Rootful.deb
-          test -s WolFox_v2.0.0_iOS15.8-26.5_Rootless.deb
+          test -s WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb
+          test -s WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb
           file WolFox.dylib | grep -F 'Mach-O 64-bit'
-          dpkg-deb --info WolFox_v2.0.0_iOS15.8-26.5_Rootful.deb >/dev/null
-          dpkg-deb --info WolFox_v2.0.0_iOS15.8-26.5_Rootless.deb >/dev/null
-          cp WolFox.dylib WolFox_v2.0.0_iOS15.8-26.5_Rootful.deb WolFox_v2.0.0_iOS15.8-26.5_Rootless.deb release/Full/
+          dpkg-deb --info WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb >/dev/null
+          dpkg-deb --info WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb >/dev/null
+          cp WolFox.dylib WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb release/Full/
 
       - name: Build Lite 2.0.0
         env:
@@ -86,14 +87,14 @@ jobs:
           set -euo pipefail
           mkdir -p release/Lite
           test -s WolFoxLite.dylib
-          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootful.deb
-          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootless.deb
+          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb
+          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb
           file WolFoxLite.dylib | grep -F 'Mach-O 64-bit'
-          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootful.deb >/dev/null
-          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootless.deb >/dev/null
+          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb >/dev/null
+          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb >/dev/null
           cp WolFoxLite.dylib release/Lite/WolFoxGPSLite.dylib
-          cp WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootful.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootful.deb
-          cp WolFoxLite_v2.0.0-Lite_iOS15.8-26.5_Rootless.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootless.deb
+          cp WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-27.0-Rootful.deb
+          cp WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-27.0-Rootless.deb
 
       - name: Create one verified delivery package
         shell: bash
@@ -103,7 +104,7 @@ jobs:
           PRODUCT=WolFox Full and Lite
           VERSION=2.0.0
           ARCHITECTURE=arm64
-          IOS_RANGE=15.8-26.5
+          IOS_RANGE=15.8-27.0
           COMMIT=${GITHUB_SHA}
           RUN_ID=${GITHUB_RUN_ID}
           RUN_NUMBER=${GITHUB_RUN_NUMBER}

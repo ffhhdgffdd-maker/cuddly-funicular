@@ -87,8 +87,8 @@ repack() {
   dpkg-deb --root-owner-group -Zgzip -b "$work" "$deb"
 }
 
-ROOTFUL="WolFox_v${VERSION}_iOS15.8-26.5_Rootful.deb"
-ROOTLESS="WolFox_v${VERSION}_iOS15.8-26.5_Rootless.deb"
+ROOTFUL="WolFox_v${VERSION}_iOS15.8-27.0_Rootful.deb"
+ROOTLESS="WolFox_v${VERSION}_iOS15.8-27.0_Rootless.deb"
 [ -s "$ROOTFUL" ] || { echo "missing base package: $ROOTFUL"; exit 1; }
 [ -s "$ROOTLESS" ] || { echo "missing base package: $ROOTLESS"; exit 1; }
 repack "$ROOTFUL" "$BUILD/rootful"

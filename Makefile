@@ -6,7 +6,7 @@ SDKROOT ?= $(THEOS)/sdks/iPhoneOS16.5.sdk
 TARGET := iphone:latest:15.0
 ARCHS := arm64
 WOLFOX_MIN_RUNTIME ?= 15.8
-WOLFOX_MAX_RUNTIME ?= 26.5
+WOLFOX_MAX_RUNTIME ?= 27.0
 WOLFOX_BUNDLE_ID ?= sa.gov.moia.mosques-2
 
 export THEOS SDKROOT

@@ -1,9 +1,9 @@
-# توافق Wolfox مع iOS 15.8–26.5
+# توافق WolFox مع iOS 15.8–27.0
 
 ## إعداد البناء
 
 - الحد الأدنى للتشغيل: iOS 15.8.
-- الحد الأعلى المستهدف في هذه النسخة: iOS 26.5.
+- الحد الأعلى المعلن في هذه النسخة: iOS 27.0 (توافق مستقبلي، ويحتاج التحقق الفعلي إلى جهاز وSDK متاحين لهذا الإصدار).
 - يتطلب البناء النهائي `iPhoneOS16.5.sdk` أو أحدث متوافق داخل Theos.
 - يرفض السكربت SDK القديم افتراضياً حتى لا تُنشر حزمة تحمل توافقاً غير متحقق.
 - لا تُستخدم API واجهة تتطلب إصداراً أعلى من الحد الأدنى بلا فحص `@available`.
@@ -12,8 +12,8 @@
 
 | بيئة الجيلبريك | الملف الناتج | مسار الحقن |
 |---|---|---|
-| Rootful | `WolFox_v1.6.1_iOS15.8-26.5_Rootful.deb` | `/Library/MobileSubstrate/DynamicLibraries` |
-| Rootless | `WolFox_v1.6.1_iOS15.8-26.5_Rootless.deb` | `/var/jb/Library/MobileSubstrate/DynamicLibraries` |
+| Rootful | `WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb` | `/Library/MobileSubstrate/DynamicLibraries` |
+| Rootless | `WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb` | `/var/jb/Library/MobileSubstrate/DynamicLibraries` |
 
 اختيار Rootful أو Rootless يعتمد على الجيلبريك نفسه، وليس رقم iOS وحده.
 

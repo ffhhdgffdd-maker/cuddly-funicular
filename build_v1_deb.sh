@@ -5,7 +5,7 @@ umask 077
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
-# Runtime target: iOS 15.8 through iOS 26.5
+# Runtime target: iOS 15.8 through iOS 27.0
 WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
 VERSION="${WOLFOX_VERSION:-2.0.0}"
 if [ "$WOLFOX_EDITION" = "Lite" ]; then
@@ -20,7 +20,7 @@ fi
 
 # Clang deployment target is 15.0; supported packaged runtime starts at 15.8.
 MIN_IOS="${MIN_IOS:-15.0}"
-MAX_TARGET_IOS="26.5"
+MAX_TARGET_IOS="27.0"
 REQUIRED_SDK_VERSION="${REQUIRED_SDK_VERSION:-16.5}"
 export THEOS="${THEOS:-/home/ubuntu/theos}"
 export PATH="$THEOS/bin:$PATH"
@@ -119,7 +119,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"
 escape_objc_string() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 PANEL_BASE_URL_VALUE="${WOLFOX_PANEL_BASE_URL:-https://gps.p3nd.fun/api/v1}"
-PROJECT_KEY_VALUE="${WOLFOX_PROJECT_KEY:-wfpk_5af5d8d4d9283f340af3eafa43fbdc4b}"
+PROJECT_KEY_VALUE="${WOLFOX_PROJECT_KEY:-}"
 PROJECT_BUNDLE_ID_VALUE="${WOLFOX_PROJECT_BUNDLE_ID:-com.wolfox.gpspro}"
 [[ "$PANEL_BASE_URL_VALUE" == https://* ]] || { echo "❌ رابط اللوحة يجب أن يكون HTTPS"; exit 1; }
 [ -n "$PROJECT_KEY_VALUE" ] || { echo "❌ WOLFOX_PROJECT_KEY مفقود"; exit 1; }
@@ -185,9 +185,9 @@ EOF
     find "$prefix/Library" -type d -exec chmod 0755 {} +
     local out
     if [ "$mode" = "rootless" ]; then
-        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-26.5_Rootless.deb"
+        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-27.0_Rootless.deb"
     else
-        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-26.5_Rootful.deb"
+        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-27.0_Rootful.deb"
     fi
     "$DPKG_DEB" "${DPKG_BUILD_FLAGS[@]}" --build "$root" "$out"
     echo "✅ $out"

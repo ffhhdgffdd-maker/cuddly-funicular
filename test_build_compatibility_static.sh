@@ -20,9 +20,9 @@ expect_pattern() {
     fi
 }
 
-expect_pattern "Runtime يبدأ من iOS 15.8" 'Runtime target: iOS 15[.]8 through iOS 26[.]5' build_v1_deb.sh
+expect_pattern "Runtime يبدأ من iOS 15.8" 'Runtime target: iOS 15[.]8 through iOS 27[.]0' build_v1_deb.sh
 expect_pattern "Deployment Target متوافق مع Clang (15.0)" 'MIN_IOS="\$\{MIN_IOS:-15[.]0\}"' build_v1_deb.sh
-expect_pattern "الحد الأعلى iOS 26.5" 'MAX_TARGET_IOS="26[.]5"' build_v1_deb.sh
+expect_pattern "الحد الأعلى iOS 27.0" 'MAX_TARGET_IOS="27[.]0"' build_v1_deb.sh
 expect_pattern "SDK النهائي المطلوب 16.5" 'REQUIRED_SDK_VERSION="\$\{REQUIRED_SDK_VERSION:-16[.]5\}"' build_v1_deb.sh
 expect_pattern "Makefile يحدد TARGET المتوافق مع Clang" '^TARGET := iphone:latest:15[.]0$' Makefile
 expect_pattern "Makefile يحدد arm64 فقط" '^ARCHS := arm64$' Makefile
@@ -36,8 +36,8 @@ expect_pattern "Deployment Target يمر إلى clang" 'miphoneos-version-min="\
 expect_pattern "توقيع dylib باستخدام ldid" '"\$LDID" -S "\$OUTPUT_DYLIB"' build_v1_deb.sh
 expect_pattern "ملكية DEB تفرض root:root" 'DPKG_BUILD_FLAGS[+]?=?.*--root-owner-group|DPKG_BUILD_FLAGS\+=[(]--root-owner-group[)]' build_v1_deb.sh
 expect_pattern "اعتماد firmware يبدأ من 15.8" 'Depends: firmware [(]>= 15[.]8[)]' build_v1_deb.sh
-expect_pattern "اسم Rootful يتضمن النطاق الجديد" 'iOS15[.]8-26[.]5_Rootful[.]deb' build_v1_deb.sh
-expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8-26[.]5_Rootless[.]deb' build_v1_deb.sh
+expect_pattern "اسم Rootful يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootful[.]deb' build_v1_deb.sh
+expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootless[.]deb' build_v1_deb.sh
 expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|WolFoxTargetBundles[.]txt' build_v1_deb.sh
 expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
 expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
