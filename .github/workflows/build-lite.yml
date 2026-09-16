@@ -68,8 +68,39 @@ jobs:
           sha256sum \
             WolFoxGPSLite.dylib \
             WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootful.deb \
-            WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootless.deb > SHA256SUMS-Lite.txt
-          cat SHA256SUMS-Lite.txt
+            WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootless.deb > SHA256SUMS.txt
+          cp SHA256SUMS.txt SHA256SUMS-Lite.txt
+          cat SHA256SUMS.txt
+
+      - name: Create reproducible Lite release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_DIR="WolFox-Lite-2.0.0"
+          mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/source"
+          cp WolFoxGPSLite.dylib "$RELEASE_DIR/bin/"
+          cp WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootful.deb "$RELEASE_DIR/bin/"
+          cp WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootless.deb "$RELEASE_DIR/bin/"
+          cp SHA256SUMS.txt "$RELEASE_DIR/"
+          cat > "$RELEASE_DIR/BUILD_INFO.txt" <<EOF
+          PRODUCT=WolFox Lite
+          VERSION=2.0.0
+          EDITION=Lite
+          ARCHITECTURE=arm64
+          IOS_RANGE=15.8-26.5
+          COMMIT=${GITHUB_SHA}
+          RUN_ID=${GITHUB_RUN_ID}
+          RUN_NUMBER=${GITHUB_RUN_NUMBER}
+          API_BASE_URL=https://gps.p3nd.fun/api/v1
+          PROJECT_KEY_SOURCE=GitHub Actions secret WOLFOX_PROJECT_KEY
+          EOF
+          git archive --format=tar.gz --prefix=WolFox-Lite-2.0.0-source/ \
+            --output "$RELEASE_DIR/source/WolFox-Lite-2.0.0-source-${GITHUB_SHA::12}.tar.gz" "$GITHUB_SHA"
+          (cd "$RELEASE_DIR" && sha256sum BUILD_INFO.txt source/*.tar.gz bin/* > RELEASE_SHA256SUMS.txt)
+          zip -q -r WolFox-Lite-2.0.0-Deploy.zip "$RELEASE_DIR"
+          test -s WolFox-Lite-2.0.0-Deploy.zip
+          test -s "$RELEASE_DIR/BUILD_INFO.txt"
+          test -s "$RELEASE_DIR/source/WolFox-Lite-2.0.0-source-${GITHUB_SHA::12}.tar.gz"
 
       - name: Upload Lite packages
         uses: actions/upload-artifact@v4
@@ -79,6 +110,11 @@ jobs:
             WolFoxGPSLite.dylib
             WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootful.deb
             WolFoxGPS-Lite-v2.0.0-iOS15.8-26.5-Rootless.deb
+            WolFox-Lite-2.0.0-Deploy.zip
+            WolFox-Lite-2.0.0/BUILD_INFO.txt
+            WolFox-Lite-2.0.0/RELEASE_SHA256SUMS.txt
+            WolFox-Lite-2.0.0/source/*.tar.gz
+            SHA256SUMS.txt
             SHA256SUMS-Lite.txt
           if-no-files-found: error
           retention-days: 14

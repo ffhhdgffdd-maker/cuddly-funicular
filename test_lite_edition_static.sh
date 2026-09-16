@@ -5,6 +5,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MASTER="$PROJECT_DIR/WolFoxMaster.mm"
 BUILD="$PROJECT_DIR/build_v1_deb.sh"
 LITE_BUILD="$PROJECT_DIR/build_lite_deb.sh"
+LITE_WORKFLOW="$PROJECT_DIR/.github/workflows/build-lite.yml"
 
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 
@@ -25,5 +26,10 @@ check "$BUILD" 'PACKAGE_ID="com.wolfox.gpspro.lite"' "معرّف تثبيت مس
 check "$BUILD" '#define WF_TWEAK_VERSION @"$(escape_objc_string "$VERSION")"' "حقن رقم الإصدار حسب عملية البناء"
 check "$LITE_BUILD" 'WOLFOX_VERSION="2.0.0-Lite"' "رقم Lite المستقل 2.0.0"
 check "$LITE_BUILD" 'exec ./build_v1_deb.sh' "Lite تستخدم نفس مسار المصدر والبناء"
+check "$LITE_WORKFLOW" 'WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY }}' "مفتاح المشروع يأتي من GitHub Secret"
+check "$LITE_WORKFLOW" 'WolFox-Lite-2.0.0-Deploy.zip' "إنشاء حزمة Deploy لنسخة Lite"
+check "$LITE_WORKFLOW" 'BUILD_INFO.txt' "إنشاء معلومات البناء المرجعية"
+check "$LITE_WORKFLOW" 'SHA256SUMS.txt' "إنشاء بصمات الإصدار النهائية"
+check "$LITE_WORKFLOW" 'git archive --format=tar.gz' "إرفاق السورس المطابق للبناء"
 
 echo "✅ اجتازت بنية WolFox Lite اختبارات الفصل الآمن."
