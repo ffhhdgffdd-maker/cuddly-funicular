@@ -9,11 +9,15 @@ CONFIG="$PROJECT_DIR/WFLicenseConfig.h"
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 reject() { if grep -Fq "$2" "$1"; then echo "❌ $3"; exit 1; fi; echo "✅ $3"; }
 
-check "$MASTER" '_titleLabel.text = @"WolFox Lite";' "اسم Lite معتمد في الواجهة الرئيسية"
-check "$MASTER" '_titleLabel.text = @"WolFox Full";' "اسم Full معتمد في الواجهة الرئيسية"
+check "$MASTER" '_titleLabel.text = @"WolFox GPS";' "اسم WolFox GPS موحد في النظامين"
+reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الكاميرا محذوف من الواجهة"
 check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX LITE";' "عداد الجولة يعرض Lite الصحيح"
 check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX FULL";' "عداد الجولة يعرض Full الصحيح"
 check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox %@ v%@"' "عرض الإصدار والنسخة ديناميكي"
+check "$MASTER" 'showLiveStatusPopup' "الحالة المباشرة تظهر من زر الرأس"
+check "$MASTER" 'coordinateFromSharedMapText' "البحث يدعم روابط مشاركة الخرائط"
+check "$MASTER" 'moveFakeLocationByMeters' "دعم حركة الموقع 5 و10 أمتار"
+reject "$MASTER" 'secLabel(@"تسجيل الخروج"' "زر تسجيل الخروج محذوف من الإعدادات"
 reject "$MASTER" 'Fake GPS Wolf' "لا يوجد اسم منتج قديم ظاهر للمستخدم"
 check "$ACTIVATION" 'showToolHeightConstraint.constant = 0.0;' "طي أزرار النجاح عند الفشل"
 check "$ACTIVATION" 'presentResultAlertForResult' "الإشعار المستقل لنتيجة التفعيل"

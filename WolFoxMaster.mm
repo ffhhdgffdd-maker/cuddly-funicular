@@ -309,11 +309,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     ];
     NSString *onboardingEdition = @"WOLFOX LITE";
 #else
-    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox Full", @"الخريطة", @"الكاميرا الافتراضية", @"المفضلة والجدولة", @"الإخفاء والواجهة العائمة", @"الإعدادات والاشتراك"];
+    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox GPS", @"الخريطة", @"المفضلة والجدولة", @"الإخفاء والواجهة العائمة", @"الإعدادات والاشتراك"];
     NSArray<NSString *> *messages = @[
         @"هذه جولة إرشادية قصيرة لشرح أهم وظائف النسخة الكاملة. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
-        @"اختر صورة واحدة من قسم الكاميرا، ثم شغّل أو أوقف البث واحفظ آخر صورة اختيارياً للاستخدام القادم.",
         @"احفظ المواقع واستخدم الجدولة لتحديد الأيام ووقت البداية والنهاية حسب إعداداتك.",
         @"بعد فتح كاميرا التطبيق اضغط مطولاً في منتصف الشاشة لإظهار الأيقونة؛ اسحبها لأكثر من ثانيتين للتبديل السريع.",
         @"من الإعدادات غيّر المظهر والألوان والتنبيهات، وراجع حالة الاشتراك وإصدار WolFox Full."
@@ -398,11 +397,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_header];
     
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, 135, 26)];
-#if WOLFOX_LITE
-    _titleLabel.text = @"WolFox Lite";
-#else
-    _titleLabel.text = @"WolFox Full";
-#endif
+    _titleLabel.text = @"WolFox GPS";
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
@@ -425,6 +420,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
 
+    UIButton *statusBtn = [self headerCircleBtn:@"waveform.path.ecg.rectangle.fill" color:[WolFoxProTheme success] x:w - 162];
+    [statusBtn addTarget:self action:@selector(showLiveStatusPopup) forControlEvents:UIControlEventTouchUpInside];
+    statusBtn.accessibilityLabel = @"عرض الحالة المباشرة";
+    [_header addSubview:statusBtn];
+
     // 2. Top Tabs Bar
     _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight, w, 58)];
     _tabsBar.backgroundColor = [WolFoxProTheme surfaceSecondary];
@@ -435,7 +435,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #if WOLFOX_LITE
     UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 5.0, 4)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 4.0, 4)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -446,9 +446,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *tabLabels = @[@"الموقع والمفضلة", @"خريطة المدارس والمساجد", @"الإعدادات والإخفاء"];
     NSArray *tabPages = @[@0, @5, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"camera.fill", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الموقع GPS", @"معرف الجهاز", @"البلوتوث", @"الكاميرا", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @1, @2, @3, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الموقع GPS", @"معرف الجهاز", @"البلوتوث", @"الإعدادات"];
+    NSArray *tabPages = @[@0, @1, @2, @4];
 #endif
     CGFloat tw = w / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -560,6 +560,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     intervalLabel.text = [NSString stringWithFormat:@"%.2f ث", WFClampGPSUpdateInterval(store.updateIntervalSeconds)];
     intervalLabel.textColor = [WolFoxProTheme gold];
     intervalDot.backgroundColor = [WolFoxProTheme gold];
+}
+
+- (void)showLiveStatusPopup {
+    WolFoxProStore *store = [WolFoxProStore shared];
+    BOOL licensed = [WFLicenseClient isRuntimeLicenseValid];
+    NSString *message = [NSString stringWithFormat:@"الترخيص: %@\nالتزييف: %@\nالحركة: %@\nالتحديث: %.2f ثانية",
+                         licensed ? @"مفعّل" : @"غير متاح",
+                         (store.spoofActive && licensed) ? @"يعمل" : @"متوقف",
+                         (store.routeActive && store.spoofActive) ? @"نشطة" : @"متوقفة",
+                         WFClampGPSUpdateInterval(store.updateIntervalSeconds)];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حالة WolFox GPS" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)refreshSpoofHeaderStatus {
@@ -1184,7 +1197,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     // Search Bar
     self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(10, 10, mapCard.bounds.size.width - 20, 44)];
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"إحداثيات أو عنوان / اسم مكان";
+    self.searchBar.placeholder = @"اسم مكان، إحداثيات أو رابط مشاركة";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchBar.barTintColor = [UIColor clearColor];
     self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
@@ -1205,6 +1218,26 @@ static BOOL WFMasterProcessIsEligible(void) {
             setDefaultTextAttributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textPrimary]}];
     }
     [mapCard addSubview:self.searchBar];
+
+    UIButton *quickSaveFavorite = [UIButton buttonWithType:UIButtonTypeSystem];
+    quickSaveFavorite.frame = CGRectMake(10, 58, (mapCard.bounds.size.width - 30) / 2.0, 34);
+    quickSaveFavorite.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.88];
+    quickSaveFavorite.layer.cornerRadius = 10;
+    [quickSaveFavorite setTitle:@"☆ حفظ في المفضلة" forState:UIControlStateNormal];
+    [quickSaveFavorite setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    quickSaveFavorite.titleLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
+    [quickSaveFavorite addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:quickSaveFavorite];
+
+    UIButton *quickShowFavorites = [UIButton buttonWithType:UIButtonTypeSystem];
+    quickShowFavorites.frame = CGRectMake(CGRectGetMaxX(quickSaveFavorite.frame) + 10, 58, quickSaveFavorite.bounds.size.width, 34);
+    quickShowFavorites.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.94];
+    quickShowFavorites.layer.cornerRadius = 10;
+    [quickShowFavorites setTitle:@"★ المواقع المحفوظة" forState:UIControlStateNormal];
+    [quickShowFavorites setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    quickShowFavorites.titleLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
+    [quickShowFavorites addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:quickShowFavorites];
     
     // Style Toggle Button
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
@@ -1267,24 +1300,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     mapLegend.textAlignment = NSTextAlignmentCenter;
     [realNotice addSubview:mapLegend];
 
-    // Live Status + Information Cards
-    UIView *liveSection = [[UIView alloc] initWithFrame:CGRectMake(15, 348, w - 30, 104)];
-    UILabel *liveTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, 0, liveSection.bounds.size.width - 36, 20)];
-    liveTitle.text = @"الحالة المباشرة";
-    liveTitle.textColor = [WolFoxProTheme textPrimary];
-    liveTitle.textAlignment = NSTextAlignmentRight;
-    liveTitle.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBlack];
-    [liveSection addSubview:liveTitle];
-    CGFloat liveCardW = (liveSection.bounds.size.width - 48) / 2.0;
-    [liveSection addSubview:[self liveStatusCardWithFrame:CGRectMake(18, 25, liveCardW, 36) title:@"الترخيص" labelKey:&kLiveLicenseValueKey dotKey:&kLiveLicenseDotKey]];
-    [liveSection addSubview:[self liveStatusCardWithFrame:CGRectMake(30 + liveCardW, 25, liveCardW, 36) title:@"التزييف" labelKey:&kLiveSpoofValueKey dotKey:&kLiveSpoofDotKey]];
-    [liveSection addSubview:[self liveStatusCardWithFrame:CGRectMake(18, 66, liveCardW, 36) title:@"المسار" labelKey:&kLiveRouteValueKey dotKey:&kLiveRouteDotKey]];
-    [liveSection addSubview:[self liveStatusCardWithFrame:CGRectMake(30 + liveCardW, 66, liveCardW, 36) title:@"التحديث" labelKey:&kLiveIntervalValueKey dotKey:&kLiveIntervalDotKey]];
-    [_scrollDashboard addSubview:liveSection];
-    [self refreshLiveStatusCards];
-
     // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 466, w - 30, 210)];
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 348, w - 30, 270)];
     kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:kbCard];
     
@@ -1324,7 +1341,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     [kbCard addSubview:applyBtn];
 
     // GPS input and activation live in one card to reduce visual fragmentation.
-    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:130 action:^(UISwitch *s){
+    UIButton *moveFive = [UIButton buttonWithType:UIButtonTypeSystem];
+    moveFive.frame = CGRectMake(15, 130, (kbCard.bounds.size.width - 45) / 2.0, 44);
+    moveFive.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
+    moveFive.layer.cornerRadius = 11;
+    [moveFive setTitle:@"تحريك 5 أمتار" forState:UIControlStateNormal];
+    [moveFive addTarget:self action:@selector(moveFakeLocationFiveMeters) forControlEvents:UIControlEventTouchUpInside];
+    [kbCard addSubview:moveFive];
+    UIButton *moveTen = [UIButton buttonWithType:UIButtonTypeSystem];
+    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 130, moveFive.bounds.size.width, 44);
+    moveTen.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
+    moveTen.layer.cornerRadius = 11;
+    [moveTen setTitle:@"تحريك 10 أمتار" forState:UIControlStateNormal];
+    [moveTen addTarget:self action:@selector(moveFakeLocationTenMeters) forControlEvents:UIControlEventTouchUpInside];
+    [kbCard addSubview:moveTen];
+
+    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:190 action:^(UISwitch *s){
         if (s.on) {
             [WolFoxProStore shared].spoofActive = YES;
             [[WolFoxProStore shared] saveSettings];
@@ -1340,8 +1372,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *savedLocations = [WolFoxProStore shared].locations;
     BOOL favoritesEmpty = savedLocations.count == 0;
     CGFloat favoritesHeight = favoritesEmpty ? 184.0 : 126.0;
-    // favoritesY محسوبة بناءً على kbCard (y=466, h=210) + 15 margin
-    CGFloat favoritesY = 466.0 + 210.0 + 15.0; // = 691.0 — ثابتة لمحاذاة المحتوى
+    CGFloat favoritesY = 348.0 + 270.0 + 15.0;
     CGFloat cy = favoritesY + favoritesHeight + 15.0;
 
     // FIX: أنشئ favoritesCard أولاً حتى يصبح Z-order صحيحاً (routeCard فوقها)
@@ -2421,6 +2452,44 @@ static BOOL WFMasterProcessIsEligible(void) {
     return YES;
 }
 
+- (BOOL)coordinateFromSharedMapText:(NSString *)text coordinate:(CLLocationCoordinate2D *)coordinate {
+    NSString *decoded = [text stringByRemovingPercentEncoding] ?: text;
+    NSError *error = nil;
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"(-?[0-9]{1,2}(?:\\.[0-9]+)?)[,/@\\s]+(-?[0-9]{1,3}(?:\\.[0-9]+)?)" options:0 error:&error];
+    NSTextCheckingResult *match = error ? nil : [regex firstMatchInString:decoded options:0 range:NSMakeRange(0, decoded.length)];
+    if (!match || match.numberOfRanges < 3) return NO;
+    double latitude = [[decoded substringWithRange:[match rangeAtIndex:1]] doubleValue];
+    double longitude = [[decoded substringWithRange:[match rangeAtIndex:2]] doubleValue];
+    CLLocationCoordinate2D parsed = CLLocationCoordinate2DMake(latitude, longitude);
+    if (!CLLocationCoordinate2DIsValid(parsed)) return NO;
+    if (coordinate) *coordinate = parsed;
+    return YES;
+}
+
+- (BOOL)resolveSharedMapURLIfNeeded:(NSString *)query searchBar:(UISearchBar *)searchBar {
+    NSURL *url = [NSURL URLWithString:query];
+    if (!url.scheme.length || !url.host.length) return NO;
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:12.0];
+    [request setValue:@"WolFoxGPS/2.0" forHTTPHeaderField:@"User-Agent"];
+    __weak typeof(self) weakSelf = self;
+    [[[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(__unused NSData *data, NSURLResponse *response, __unused NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            NSString *resolved = response.URL.absoluteString ?: query;
+            CLLocationCoordinate2D sharedCoordinate;
+            if ([self coordinateFromSharedMapText:resolved coordinate:&sharedCoordinate]) {
+                searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", sharedCoordinate.latitude, sharedCoordinate.longitude];
+                [self selectMapSearchCoordinate:sharedCoordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
+            } else {
+                [self showToast:@"تعذر قراءة الموقع من الرابط؛ الصق رابطاً يحتوي إحداثيات"];
+            }
+        });
+    }] resume];
+    [self showToast:@"جارٍ فتح رابط الخريطة…"];
+    return YES;
+}
+
 - (void)selectMapSearchCoordinate:(CLLocationCoordinate2D)coordinate title:(NSString *)title toast:(NSString *)toast {
     if (!CLLocationCoordinate2DIsValid(coordinate)) {
         [self showToast:@"الإحداثيات خارج النطاق المسموح ❌"];
@@ -2450,6 +2519,12 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self selectMapSearchCoordinate:coordinate title:@"إحداثيات محددة" toast:@"تم تحديد الإحداثيات على الخريطة ✅"];
         return;
     }
+    if ([self coordinateFromSharedMapText:query coordinate:&coordinate]) {
+        searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
+        [self selectMapSearchCoordinate:coordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
+        return;
+    }
+    if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
 
     [_activeMapSearch cancel];
     MKLocalSearchRequest *request = [MKLocalSearchRequest new];
@@ -3221,27 +3296,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }]];
     cy += 210 + 18;
 
-#ifndef WOLFOX_LITE
-    // تحكم سريع خاص بالتطبيق المستهدف: المعرّف الموحّد والكاميرا الافتراضية.
-    secLabel(@"إعدادات تطبيق مساجد", cy);
-    cy += 24;
-    UIView *mosquesCard = newCard(cy, 70);
-    UIButton *mosquesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    mosquesButton.frame = CGRectMake(12, 8, mosquesCard.bounds.size.width - 24, 50);
-    mosquesButton.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.14];
-    mosquesButton.layer.cornerRadius = 14;
-    [mosquesButton setTitle:@"  المعرّف والتصوير لتطبيق مساجد" forState:UIControlStateNormal];
-    [mosquesButton setTitleColor:[WolFoxProTheme success] forState:UIControlStateNormal];
-    mosquesButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [mosquesButton setImage:[UIImage systemImageNamed:@"switch.2"] forState:UIControlStateNormal];
-    mosquesButton.tintColor = [WolFoxProTheme success];
-    mosquesButton.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    mosquesButton.accessibilityLabel = @"فتح إعدادات المعرّف والتصوير لتطبيق مساجد";
-    [mosquesButton addTarget:self action:@selector(presentMosquesAppControls) forControlEvents:UIControlEventTouchUpInside];
-    [mosquesCard addSubview:mosquesButton];
-    cy += 70 + 18;
-#endif
-
 // 4. التنبيهات
     // ════════════════════════════════════════════════════════
     secLabel(@"التنبيهات", cy);
@@ -3442,27 +3496,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     cy += 162 + 18;
 
-        // ════════════════════════════════════════════════════════
-    // 7. تسجيل الخروج — في نهاية صفحة الإعدادات
-    // ════════════════════════════════════════════════════════
-    secLabel(@"تسجيل الخروج", cy);
-    cy += 24;
-    UIView *logoutCard = newCard(cy, 66);
-    UIButton *logoutBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    logoutBtn.frame = CGRectMake(12, 8, logoutCard.bounds.size.width - 24, 50);
-    logoutBtn.backgroundColor = [WolFoxProTheme danger];
-    logoutBtn.layer.cornerRadius = 14;
-    [logoutBtn setTitle:@"  تسجيل الخروج" forState:UIControlStateNormal];
-    [logoutBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    logoutBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [logoutBtn setImage:[UIImage systemImageNamed:@"rectangle.portrait.and.arrow.right"] forState:UIControlStateNormal];
-    logoutBtn.tintColor = [UIColor whiteColor];
-    logoutBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [logoutBtn addTarget:self action:@selector(logoutPressed) forControlEvents:UIControlEventTouchUpInside];
-    logoutBtn.accessibilityLabel = @"إيقاف الأداة مع الاحتفاظ بكود التفعيل";
-    [logoutCard addSubview:logoutBtn];
-    cy += 66 + 20;
-
     _scrollDashboard.contentSize = CGSizeMake(w, cy);
 }
 - (NSArray<UIColor *> *)markerPalette {
@@ -3587,13 +3620,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *status = info.success ? @"نشط وآمن ✓" : @"غير نشط";
     [self showPopupWithTitle:@"معلومات الاشتراك" icon:@"crown.fill" content:^{
         CGFloat contentWidth = MIN(330.0, self.view.bounds.size.width - 64.0);
-        UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, contentWidth, 436)];
+        UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, 0, contentWidth, 494)];
         [self addInfoRow:v t:@"الحالة" v:status y:0];
         [self addInfoRow:v t:@"الإصدار" v:displayVersion y:72];
         [self addInfoRow:v t:@"الباقة" v:info.planName ?: @"غير محددة" y:144];
         [self addInfoRow:v t:@"تاريخ الانتهاء" v:info.expiresAt ?: @"غير متوفر" y:216];
         [self addInfoRow:v t:@"كود التفعيل المحمي" v:maskedCode y:288];
         [self addInfoRow:v t:@"معرّف الجهاز" v:deviceShort y:360];
+        UIButton *copyCode = [UIButton buttonWithType:UIButtonTypeSystem];
+        copyCode.frame = CGRectMake(15, 438, contentWidth - 30, 46);
+        copyCode.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18];
+        copyCode.layer.cornerRadius = 12;
+        [copyCode setTitle:@"نسخ كود الاشتراك" forState:UIControlStateNormal];
+        [copyCode setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+        copyCode.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
+        [copyCode addTarget:self action:@selector(copyActivationCode) forControlEvents:UIControlEventTouchUpInside];
+        [v addSubview:copyCode];
         return v;
     } btnTitle:@"إغلاق" btnColor:[WolFoxProTheme accent]];
 }
@@ -3631,6 +3673,29 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 
 #pragma mark - Actions & Map
+
+- (void)moveFakeLocationByMeters:(double)meters {
+    WolFoxProStore *store = [WolFoxProStore shared];
+    CLLocationCoordinate2D current = store.currentFakeCoords;
+    if (!CLLocationCoordinate2DIsValid(current)) {
+        [self showToast:@"حدد موقعاً أولاً"];
+        return;
+    }
+    current.latitude += meters / 111320.0;
+    store.currentFakeCoords = current;
+    store.spoofActive = YES;
+    [store saveSettings];
+    [self updateMapPin:current];
+    [self.mapView setCenterCoordinate:current animated:YES];
+    [[WolFoxProHookManager shared] deliverFakeUpdate];
+    if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", current.latitude];
+    if (_lonInput) _lonInput.text = [NSString stringWithFormat:@"%.6f", current.longitude];
+    [self refreshSpoofHeaderStatus];
+    [self showToast:[NSString stringWithFormat:@"تم تحريك الموقع %.0f أمتار", meters]];
+}
+
+- (void)moveFakeLocationFiveMeters { [self moveFakeLocationByMeters:5.0]; }
+- (void)moveFakeLocationTenMeters { [self moveFakeLocationByMeters:10.0]; }
 
 - (void)applyManualCoords {
     NSString *input = [NSString stringWithFormat:@"%@,%@", _latInput.text ?: @"", _lonInput.text ?: @""];
