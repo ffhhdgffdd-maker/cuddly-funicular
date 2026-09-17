@@ -26,6 +26,7 @@ else
     echo "✅ أزرار الحفظ والمفضلة أزيلت من الخريطة ووُضعت قبل التشغيل"
 fi
 check "$MASTER" 'coordinateFromSharedMapText' "البحث يدعم روابط مشاركة الخرائط"
+reject "$MASTER" 'countrycodes=sa' "بحث العناوين يدعم المواقع خارج السعودية"
 check "$MASTER" 'moveFakeLocationByMeters' "دعم حركة الموقع 5 و10 أمتار"
 reject "$MASTER" 'secLabel(@"تسجيل الخروج"' "زر تسجيل الخروج محذوف من الإعدادات"
 reject "$MASTER" 'Fake GPS Wolf' "لا يوجد اسم منتج قديم ظاهر للمستخدم"

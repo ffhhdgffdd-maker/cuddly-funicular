@@ -2582,11 +2582,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar {
-    NSString *combined = [NSString stringWithFormat:@"%@، المملكة العربية السعودية", query];
-    NSString *encoded = [combined stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
-    NSString *urlString = [NSString stringWithFormat:@"https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=sa&accept-language=ar&q=%@", encoded ?: @""];
+    NSString *encoded = [query stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
+    NSString *urlString = [NSString stringWithFormat:@"https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ar&q=%@", encoded ?: @""];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString] cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:15.0];
-    [request setValue:@"WolFoxLite/2.0.0 (Saudi map search)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"WolFoxGPS/2.0.0 (global map search)" forHTTPHeaderField:@"User-Agent"];
     __weak typeof(self) weakSelf = self;
     NSURLSessionDataTask *task = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSArray *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;

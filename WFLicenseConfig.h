@@ -12,14 +12,10 @@
 #endif
 #define WF_PANEL_BASE_URL @"https://gps.p3nd.fun/api/v1"
 
-// Build scripts generate WOLFOX_LICENSE_PROJECT_KEY / BUNDLE_ID. Bridge those
-// generated values into the runtime client so every edition actually uses them.
+// The build injects an encoded byte array. The clear project key is never stored
+// as a contiguous string in the binary.
 #ifndef WF_PROJECT_KEY
-#ifdef WOLFOX_LICENSE_PROJECT_KEY
-#define WF_PROJECT_KEY WOLFOX_LICENSE_PROJECT_KEY
-#else
 #define WF_PROJECT_KEY @""
-#endif
 #endif
 
 #ifndef WF_PROJECT_BUNDLE_ID

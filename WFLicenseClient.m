@@ -4,6 +4,7 @@
 #import <Security/Security.h>
 #import <UIKit/UIKit.h>
 #import <stdatomic.h>
+#import <string.h>
 
 static NSString * const kKeychainService = @"fun.p3nd.wolfox.license";
 static NSString * const kCodeKey = @"wf_license_code";
@@ -13,7 +14,7 @@ static NSString * const kActivatedKey = @"wf_is_activated";
 static NSString * const kDeviceKey = @"wf_device_id";
 static NSString * const kSuspendedKey = @"wf_license_suspended_reason";
 static NSString *_baseURL = WF_PANEL_BASE_URL;
-static NSString *_projectKey = WF_PROJECT_KEY;
+static NSString *_projectKey = nil;
 static atomic_bool _runtimeLicenseValid = false;
 static WFLicenseResult *_lastResult = nil;
 static NSURLSession *_licenseSession = nil;
@@ -56,6 +57,23 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 @end
 
 @implementation WFLicenseClient
+
++ (void)initialize {
+    if (self != WFLicenseClient.class) return;
+#if defined(WOLFOX_LICENSE_PROJECT_KEY_BYTES) && defined(WOLFOX_LICENSE_PROJECT_KEY_LENGTH) && defined(WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK)
+    const unsigned char encoded[] = WOLFOX_LICENSE_PROJECT_KEY_BYTES;
+    const NSUInteger length = (NSUInteger)WOLFOX_LICENSE_PROJECT_KEY_LENGTH;
+    NSMutableData *decoded = [NSMutableData dataWithLength:length];
+    unsigned char *bytes = decoded.mutableBytes;
+    for (NSUInteger index = 0; index < length; index++) {
+        bytes[index] = encoded[index] ^ (unsigned char)WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK;
+    }
+    _projectKey = [[NSString alloc] initWithData:decoded encoding:NSUTF8StringEncoding] ?: @"";
+    if (length) memset(bytes, 0, length);
+#else
+    _projectKey = WF_PROJECT_KEY;
+#endif
+}
 
 + (NSString *)baseURL { return _baseURL; }
 + (void)setBaseURL:(NSString *)value {

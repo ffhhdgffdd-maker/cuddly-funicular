@@ -123,9 +123,20 @@ PROJECT_KEY_VALUE="${WOLFOX_PROJECT_KEY:-}"
 PROJECT_BUNDLE_ID_VALUE="${WOLFOX_PROJECT_BUNDLE_ID:-com.wolfox.gpspro}"
 [[ "$PANEL_BASE_URL_VALUE" == https://* ]] || { echo "❌ رابط اللوحة يجب أن يكون HTTPS"; exit 1; }
 [ -n "$PROJECT_KEY_VALUE" ] || { echo "❌ WOLFOX_PROJECT_KEY مفقود"; exit 1; }
+PROJECT_KEY_XOR_MASK=167
+PROJECT_KEY_HEX="$(printf '%s' "$PROJECT_KEY_VALUE" | od -An -v -tx1 | tr -d ' \n')"
+PROJECT_KEY_LENGTH=$((${#PROJECT_KEY_HEX} / 2))
+PROJECT_KEY_BYTES=""
+for ((offset=0; offset<${#PROJECT_KEY_HEX}; offset+=2)); do
+    byte=$((16#${PROJECT_KEY_HEX:offset:2} ^ PROJECT_KEY_XOR_MASK))
+    printf -v encoded_byte '0x%02X' "$byte"
+    PROJECT_KEY_BYTES+="${PROJECT_KEY_BYTES:+, }$encoded_byte"
+done
 cat > "$GENERATED_LICENSE_CONFIG" <<EOF
 #define WOLFOX_LICENSE_BASE_URL @"$(escape_objc_string "$PANEL_BASE_URL_VALUE")"
-#define WOLFOX_LICENSE_PROJECT_KEY @"$(escape_objc_string "$PROJECT_KEY_VALUE")"
+#define WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK $PROJECT_KEY_XOR_MASK
+#define WOLFOX_LICENSE_PROJECT_KEY_LENGTH $PROJECT_KEY_LENGTH
+#define WOLFOX_LICENSE_PROJECT_KEY_BYTES { $PROJECT_KEY_BYTES }
 #define WOLFOX_LICENSE_PROJECT_BUNDLE_ID @"$(escape_objc_string "$PROJECT_BUNDLE_ID_VALUE")"
 #define WF_TWEAK_VERSION @"$(escape_objc_string "$VERSION")"
 #define WOLFOX_LICENSE_APP_VERSION @"$(escape_objc_string "$VERSION")"

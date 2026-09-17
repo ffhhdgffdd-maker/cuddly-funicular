@@ -22,6 +22,13 @@ rg -q 'WOLFOX_PANEL_BASE_URL:-https://gps[.]p3nd[.]fun/api/v1' build_v1_deb.sh \
     || fail "سكربت البناء لا يستخدم عنوان API العام الصحيح"
 rg -Fq 'PROJECT_KEY_VALUE="${WOLFOX_PROJECT_KEY:-}"' build_v1_deb.sh \
     || fail "سكربت البناء يجب أن يطلب WOLFOX_PROJECT_KEY دون قيمة احتياطية"
+rg -q 'WOLFOX_LICENSE_PROJECT_KEY_BYTES' build_v1_deb.sh \
+    || fail "سكربت البناء لا يحوّل مفتاح المشروع إلى مصفوفة بايتات"
+rg -q 'WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK' WFLicenseClient.m \
+    || fail "عميل الترخيص لا يعيد تركيب المفتاح وقت التشغيل"
+if rg -q '#define WOLFOX_LICENSE_PROJECT_KEY @' build_v1_deb.sh; then
+    fail "يجب ألا يولّد البناء مفتاح المشروع كنص واضح داخل البايناري"
+fi
 
 if rg -qi 'WF_PROJECT[_]SECRET|WOLFOX_PROJECT[_]SECRET|X-Project-''Secret' \
     . --glob '!.wolfox-build/**'; then
