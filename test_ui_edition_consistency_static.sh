@@ -19,6 +19,7 @@ check "$MASTER" 'saveLocationButton' "زر حفظ الموقع موجود قبل
 check "$MASTER" 'favoritesButton' "زر المفضلة موجود قبل أدوات التشغيل"
 check "$MASTER" '[kbCard addSubview:saveLocationButton]' "زر الحفظ خارج مساحة الخريطة"
 check "$MASTER" '[kbCard addSubview:favoritesButton]' "زر المفضلة خارج مساحة الخريطة"
+reject "$MASTER" 'favoritesCard' "بطاقة المفضلة القديمة المكررة محذوفة"
 if rg -q '\[mapCard addSubview:(saveLocationButton|favoritesButton|quickSaveFavorite|quickShowFavorites)\]' "$MASTER"; then
     echo "❌ أزرار الحفظ أو المفضلة ما زالت داخل الخريطة"
     exit 1

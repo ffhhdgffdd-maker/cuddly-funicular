@@ -1384,17 +1384,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         }
     }]];
 
-    NSArray *savedLocations = [WolFoxProStore shared].locations;
-    BOOL favoritesEmpty = savedLocations.count == 0;
-    CGFloat favoritesHeight = favoritesEmpty ? 184.0 : 126.0;
-    CGFloat favoritesY = 406.0 + 190.0 + 15.0;
-    CGFloat cy = favoritesY + favoritesHeight + 15.0;
-
-    // FIX: أنشئ favoritesCard أولاً حتى يصبح Z-order صحيحاً (routeCard فوقها)
-    UIView *favoritesCard = [[UIView alloc] initWithFrame:CGRectMake(15, favoritesY, w - 30, favoritesHeight)];
-    favoritesCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    favoritesCard.layer.cornerRadius = 18;
-    [_scrollDashboard addSubview:favoritesCard];
+    CGFloat cy = 406.0 + 190.0 + 15.0;
 
     UIView *routeCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 276)];
     routeCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -1480,64 +1470,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     savedRoutesButton.accessibilityLabel = @"إدارة مسارات الحركة المحفوظة";
     [routeCard addSubview:savedRoutesButton];
     cy += 291;
-
-    UILabel *favoritesTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, 14, favoritesCard.bounds.size.width - 36, 24)];
-    favoritesTitle.text = @"المفضلة";
-    favoritesTitle.textAlignment = NSTextAlignmentRight;
-    favoritesTitle.textColor = [WolFoxProTheme textPrimary];
-    favoritesTitle.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
-    [favoritesCard addSubview:favoritesTitle];
-
-    UILabel *favoritesCount = [[UILabel alloc] initWithFrame:CGRectMake(18, 16, 150, 22)];
-    favoritesCount.text = favoritesEmpty ? @"لا توجد مواقع" : [NSString stringWithFormat:@"%lu مواقع محفوظة", (unsigned long)savedLocations.count];
-    favoritesCount.textAlignment = NSTextAlignmentLeft;
-    favoritesCount.textColor = [WolFoxProTheme accent];
-    favoritesCount.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
-    [favoritesCard addSubview:favoritesCount];
-
-    CGFloat actionW = (favoritesCard.bounds.size.width - 48) / 2.0;
-    CGFloat favoritesActionsY = favoritesEmpty ? 116.0 : 54.0;
-    if (favoritesEmpty) {
-        UIImageView *emptyIcon = [[UIImageView alloc] initWithFrame:CGRectMake((favoritesCard.bounds.size.width - 34) / 2.0, 48, 34, 34)];
-        if (@available(iOS 13.0, *)) emptyIcon.image = [UIImage systemImageNamed:@"star.slash"];
-        emptyIcon.tintColor = [WolFoxProTheme textSecondary];
-        emptyIcon.contentMode = UIViewContentModeScaleAspectFit;
-        emptyIcon.isAccessibilityElement = NO;
-        [favoritesCard addSubview:emptyIcon];
-        UILabel *emptyLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 84, favoritesCard.bounds.size.width - 40, 22)];
-        emptyLabel.text = @"احفظ موقعك الأول للوصول إليه سريعاً";
-        emptyLabel.textColor = [WolFoxProTheme textSecondary];
-        emptyLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
-        emptyLabel.textAlignment = NSTextAlignmentCenter;
-        [favoritesCard addSubview:emptyLabel];
-    }
-    UIButton *saveFav = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveFav.frame = favoritesEmpty ? CGRectMake(16, favoritesActionsY, favoritesCard.bounds.size.width - 32, 52) : CGRectMake(16, favoritesActionsY, actionW, 52);
-    saveFav.backgroundColor = [[WolFoxProTheme gold] colorWithAlphaComponent:0.12];
-    saveFav.layer.cornerRadius = 13;
-    [saveFav setTitle:@"حفظ الموقع" forState:UIControlStateNormal];
-    [saveFav setTitleColor:[WolFoxProTheme gold] forState:UIControlStateNormal];
-    saveFav.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [saveFav setImage:[UIImage systemImageNamed:@"star.fill"] forState:UIControlStateNormal];
-    saveFav.tintColor = [WolFoxProTheme gold];
-    [saveFav addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
-    saveFav.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
-    [favoritesCard addSubview:saveFav];
-
-    if (!favoritesEmpty) {
-        UIButton *showFav = [UIButton buttonWithType:UIButtonTypeSystem];
-        showFav.frame = CGRectMake(32 + actionW, favoritesActionsY, actionW, 52);
-        showFav.backgroundColor = [[WolFoxProTheme gold] colorWithAlphaComponent:0.12];
-        showFav.layer.cornerRadius = 13;
-        [showFav setTitle:@"عرض المفضلة" forState:UIControlStateNormal];
-        [showFav setTitleColor:[WolFoxProTheme gold] forState:UIControlStateNormal];
-        showFav.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-        if (@available(iOS 13.0, *)) [showFav setImage:[UIImage systemImageNamed:@"list.bullet"] forState:UIControlStateNormal];
-        showFav.tintColor = [WolFoxProTheme gold];
-        [showFav addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
-        showFav.accessibilityLabel = @"عرض المواقع المحفوظة";
-        [favoritesCard addSubview:showFav];
-    }
 
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
