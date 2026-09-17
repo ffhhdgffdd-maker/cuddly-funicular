@@ -91,6 +91,8 @@ char WFSpoofedLocationAssociationKey = 0;
     NSArray<CLLocation *> *_routeWaypoints;
     NSUInteger _waypointIndex;
     double _routeSpeedKmh;
+    CLLocationDistance _routeTotalDistanceMeters;
+    CLLocationDistance _routeTravelledMeters;
     NSTimer *_routeTimer;
     NSUInteger _routeGeneration;
 }
@@ -245,6 +247,11 @@ char WFSpoofedLocationAssociationKey = 0;
     }
     _routeWaypoints = [waypoints copy];
     _routeSpeedKmh  = speed > 0 ? speed : 5.0;
+    _routeTotalDistanceMeters = 0.0;
+    _routeTravelledMeters = 0.0;
+    for (NSUInteger index = 1; index < waypoints.count; index++) {
+        _routeTotalDistanceMeters += [waypoints[index - 1] distanceFromLocation:waypoints[index]];
+    }
     _waypointIndex  = 0;
     [WolFoxProStore shared].routeActive = YES;
     // Set starting position
@@ -288,6 +295,7 @@ char WFSpoofedLocationAssociationKey = 0;
     _routeGeneration++;
     [_routeTimer invalidate]; _routeTimer = nil;
     _routeWaypoints = nil; _waypointIndex = 0;
+    _routeTotalDistanceMeters = 0.0; _routeTravelledMeters = 0.0;
     WolFoxProStore *store = [WolFoxProStore shared];
     // FIXED: دائماً احفظ الإعدادات عند الإيقاف حتى تُحفظ إحداثية التوقف
     store.routeActive = NO;
@@ -339,11 +347,18 @@ char WFSpoofedLocationAssociationKey = 0;
 
     CLLocationDistance distanceMeters = [current distanceFromLocation:target];
     NSTimeInterval interval = WFClampGPSUpdateInterval(store.updateIntervalSeconds);
-    CLLocationDistance stepMeters = MAX(0.1, (_routeSpeedKmh / 3.6) * interval);
+    CLLocationDistance baseStepMeters = MAX(0.1, (_routeSpeedKmh / 3.6) * interval);
+    // تسارع وتباطؤ تدريجيان خلال أول وآخر 40 متراً بدلاً من القفز مباشرة إلى السرعة الكاملة.
+    CLLocationDistance remainingRouteMeters = MAX(0.0, _routeTotalDistanceMeters - _routeTravelledMeters);
+    double rampProgress = MIN(1.0, MIN(_routeTravelledMeters, remainingRouteMeters) / 40.0);
+    double smoothRamp = rampProgress * rampProgress * (3.0 - 2.0 * rampProgress);
+    double speedFactor = 0.25 + (0.75 * smoothRamp);
+    CLLocationDistance stepMeters = MAX(0.1, baseStepMeters * speedFactor);
 
     if (distanceMeters <= stepMeters || distanceMeters < 0.01) {
         // Reached this waypoint, move to next.
         store.currentFakeCoords = target.coordinate;
+        _routeTravelledMeters += distanceMeters;
         _waypointIndex++;
     } else {
         double fraction = MIN(1.0, stepMeters / distanceMeters);
@@ -351,6 +366,7 @@ char WFSpoofedLocationAssociationKey = 0;
         next.latitude = current.coordinate.latitude + (target.coordinate.latitude - current.coordinate.latitude) * fraction;
         next.longitude = current.coordinate.longitude + (target.coordinate.longitude - current.coordinate.longitude) * fraction;
         store.currentFakeCoords = next;
+        _routeTravelledMeters += stepMeters;
     }
 
     if (store.jitterActive) {

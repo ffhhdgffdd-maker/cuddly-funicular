@@ -38,6 +38,7 @@ assert_contains "$HOOKS" "stepMeters" "خطوة الحركة محسوبة بوح
 
 assert_not_contains "$MASTER" "[WFLicenseClient clearStoredLicense]" "إيقاف الأداة لا يمسح كود التفعيل"
 assert_contains "$MASTER" "مع الاحتفاظ بكود التفعيل" "واجهة الإيقاف توضح حفظ التفعيل"
+assert_contains "WolFoxProHookManager.m" "smoothRamp" "تسارع وتباطؤ واقعيان لمحاكاة المسار"
 
 assert_contains "$MASTER" "initWithUUIDString" "التحقق من UUID البلوتوث مفعّل"
 assert_contains "$MASTER" "صيغة UUID غير صحيحة" "رسالة واضحة لمعرّف البلوتوث غير الصالح"

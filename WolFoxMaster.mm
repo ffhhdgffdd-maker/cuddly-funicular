@@ -232,6 +232,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSTimer *_saudiPlacesReloadTimer;
     UILabel *_saudiPlacesStatusLabel;
     BOOL _saudiPlacesPageActive;
+    NSUInteger _saudiPlacesEndpointAttempt;
 }
 
 - (void)viewDidLoad {
@@ -747,6 +748,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)scheduleSaudiPlacesReload {
     if (!_saudiPlacesPageActive || !self.mapView) return;
     [_saudiPlacesReloadTimer invalidate];
+    _saudiPlacesEndpointAttempt = 0;
     _saudiPlacesReloadTimer = [NSTimer scheduledTimerWithTimeInterval:0.65 target:self selector:@selector(loadSaudiPlacesForVisibleRegion) userInfo:nil repeats:NO];
 }
 
@@ -792,9 +794,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"https://overpass.kumi.systems/api/interpreter",
         @"https://overpass.nchc.org.tw/api/interpreter"
     ];
-    NSUInteger endpointIndex = (NSUInteger)(NSDate.date.timeIntervalSince1970 / 30.0) % overpassEndpoints.count;
+    NSUInteger baseEndpointIndex = (NSUInteger)(NSDate.date.timeIntervalSince1970 / 30.0) % overpassEndpoints.count;
+    NSUInteger endpointIndex = (baseEndpointIndex + _saudiPlacesEndpointAttempt) % overpassEndpoints.count;
     NSURL *url = [NSURL URLWithString:overpassEndpoints[endpointIndex]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:25.0];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:5.0];
     request.HTTPMethod = @"POST";
     NSCharacterSet *allowed = [NSCharacterSet URLQueryAllowedCharacterSet];
     request.HTTPBody = [[NSString stringWithFormat:@"data=%@", [query stringByAddingPercentEncodingWithAllowedCharacters:allowed]] dataUsingEncoding:NSUTF8StringEncoding];
@@ -836,10 +839,24 @@ static BOOL WFMasterProcessIsEligible(void) {
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || !self->_saudiPlacesPageActive) return;
             self->_saudiPlacesTask = nil;
-            if (error || !elements) {
-                self->_saudiPlacesStatusLabel.text = @"تعذر تحميل المعالم الآن — حرّك الخريطة للمحاولة مجدداً";
+            NSHTTPURLResponse *httpResponse = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
+            BOOL validResponse = !error && httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 && elements != nil;
+            if (!validResponse && self->_saudiPlacesEndpointAttempt + 1 < overpassEndpoints.count) {
+                self->_saudiPlacesEndpointAttempt += 1;
+                self->_saudiPlacesStatusLabel.text = [NSString stringWithFormat:@"المزوّد غير متاح — المحاولة %lu من %lu…",
+                                                       (unsigned long)(self->_saudiPlacesEndpointAttempt + 1),
+                                                       (unsigned long)overpassEndpoints.count];
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    if (self->_saudiPlacesPageActive) [self loadSaudiPlacesForVisibleRegion];
+                });
                 return;
             }
+            if (!validResponse) {
+                self->_saudiPlacesEndpointAttempt = 0;
+                self->_saudiPlacesStatusLabel.text = @"تعذر تحميل المعالم من جميع المزوّدين — حرّك الخريطة للمحاولة مجدداً";
+                return;
+            }
+            self->_saudiPlacesEndpointAttempt = 0;
             NSArray *oldPlaces = [self.mapView.annotations filteredArrayUsingPredicate:placesPredicate];
             [self.mapView removeAnnotations:oldPlaces];
             [self.mapView addAnnotations:annotations];

@@ -17,6 +17,8 @@ check "$MASTER" 'showSaudiServicesOnMainMap' "دمج المدارس والمسا
 check "$MASTER" 'https://overpass-api.de/api/interpreter' "مصدر OpenStreetMap للمعالم"
 check "$MASTER" 'https://overpass.kumi.systems/api/interpreter' "مزود احتياطي أول لمعالم الخريطة"
 check "$MASTER" 'https://overpass.nchc.org.tw/api/interpreter' "مزود احتياطي ثانٍ لمعالم الخريطة"
+check "$MASTER" '_saudiPlacesEndpointAttempt' "انتقال تلقائي بين مزودي Overpass عند الفشل"
+check "$MASTER" 'timeoutInterval:5.0' "مهلة قصيرة لاستجابة مزود المعالم"
 check "$MASTER" 'https://nominatim.openstreetmap.org/search' "مصدر بحث احتياطي ثالث"
 check "$MASTER" 'school ? @"🏫" : (mosque ? @"🕌"' "رموز واضحة للمدارس والمساجد"
 check "$MASTER" 'WFSaudiPlaceKindHealthCenter' "دعم المستوصفات والمراكز الصحية"
