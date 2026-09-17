@@ -1246,26 +1246,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     [mapCard addSubview:self.searchBar];
 
-    UIButton *quickSaveFavorite = [UIButton buttonWithType:UIButtonTypeSystem];
-    quickSaveFavorite.frame = CGRectMake(10, 58, (mapCard.bounds.size.width - 30) / 2.0, 34);
-    quickSaveFavorite.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.88];
-    quickSaveFavorite.layer.cornerRadius = 10;
-    [quickSaveFavorite setTitle:@"☆ حفظ في المفضلة" forState:UIControlStateNormal];
-    [quickSaveFavorite setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    quickSaveFavorite.titleLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
-    [quickSaveFavorite addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:quickSaveFavorite];
-
-    UIButton *quickShowFavorites = [UIButton buttonWithType:UIButtonTypeSystem];
-    quickShowFavorites.frame = CGRectMake(CGRectGetMaxX(quickSaveFavorite.frame) + 10, 58, quickSaveFavorite.bounds.size.width, 34);
-    quickShowFavorites.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.94];
-    quickShowFavorites.layer.cornerRadius = 10;
-    [quickShowFavorites setTitle:@"★ المواقع المحفوظة" forState:UIControlStateNormal];
-    [quickShowFavorites setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    quickShowFavorites.titleLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
-    [quickShowFavorites addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:quickShowFavorites];
-    
     // Style Toggle Button
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
     styleBtn.accessibilityLabel = @"تغيير نمط الخريطة";
@@ -1333,27 +1313,48 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realNotice addSubview:mapLegend];
 
     // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 406, w - 30, 160)];
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 406, w - 30, 190)];
     kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:kbCard];
     
+    // الحفظ والمفضلة يظهران قبل أدوات التشغيل، وخارج مساحة الخريطة.
+    UIButton *saveLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    saveLocationButton.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 40);
+    saveLocationButton.backgroundColor = [[WolFoxProTheme gold] colorWithAlphaComponent:0.14];
+    saveLocationButton.layer.cornerRadius = 11;
+    [saveLocationButton setTitle:@"حفظ الموقع" forState:UIControlStateNormal];
+    [saveLocationButton setTitleColor:[WolFoxProTheme gold] forState:UIControlStateNormal];
+    [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
+    saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
+    [kbCard addSubview:saveLocationButton];
+
+    UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    favoritesButton.frame = CGRectMake(CGRectGetMaxX(saveLocationButton.frame) + 15, 12, saveLocationButton.bounds.size.width, 40);
+    favoritesButton.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
+    favoritesButton.layer.cornerRadius = 11;
+    [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
+    [favoritesButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
+    favoritesButton.accessibilityLabel = @"عرض المواقع المحفوظة";
+    [kbCard addSubview:favoritesButton];
+
     // البحث عن الاسم أو الإحداثيات أو رابط المشاركة يتم من شريط الخريطة فقط.
     UIButton *moveFive = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveFive.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 44);
+    moveFive.frame = CGRectMake(15, 62, (kbCard.bounds.size.width - 45) / 2.0, 42);
     moveFive.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
     moveFive.layer.cornerRadius = 11;
     [moveFive setTitle:@"تحريك 5 أمتار" forState:UIControlStateNormal];
     [moveFive addTarget:self action:@selector(moveFakeLocationFiveMeters) forControlEvents:UIControlEventTouchUpInside];
     [kbCard addSubview:moveFive];
     UIButton *moveTen = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 12, moveFive.bounds.size.width, 44);
+    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 62, moveFive.bounds.size.width, 42);
     moveTen.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
     moveTen.layer.cornerRadius = 11;
     [moveTen setTitle:@"تحريك 10 أمتار" forState:UIControlStateNormal];
     [moveTen addTarget:self action:@selector(moveFakeLocationTenMeters) forControlEvents:UIControlEventTouchUpInside];
     [kbCard addSubview:moveTen];
 
-    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:78 action:^(UISwitch *s){
+    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:122 action:^(UISwitch *s){
         if (s.on) {
             [WolFoxProStore shared].spoofActive = YES;
             [[WolFoxProStore shared] saveSettings];
@@ -1369,7 +1370,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *savedLocations = [WolFoxProStore shared].locations;
     BOOL favoritesEmpty = savedLocations.count == 0;
     CGFloat favoritesHeight = favoritesEmpty ? 184.0 : 126.0;
-    CGFloat favoritesY = 406.0 + 160.0 + 15.0;
+    CGFloat favoritesY = 406.0 + 190.0 + 15.0;
     CGFloat cy = favoritesY + favoritesHeight + 15.0;
 
     // FIX: أنشئ favoritesCard أولاً حتى يصبح Z-order صحيحاً (routeCard فوقها)

@@ -15,6 +15,16 @@ check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX LITE";' "عداد الج
 check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX FULL";' "عداد الجولة يعرض Full الصحيح"
 check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox %@ v%@"' "عرض الإصدار والنسخة ديناميكي"
 check "$MASTER" 'showLiveStatusPopup' "الحالة المباشرة تظهر من زر الرأس"
+check "$MASTER" 'saveLocationButton' "زر حفظ الموقع موجود قبل أدوات التشغيل"
+check "$MASTER" 'favoritesButton' "زر المفضلة موجود قبل أدوات التشغيل"
+check "$MASTER" '[kbCard addSubview:saveLocationButton]' "زر الحفظ خارج مساحة الخريطة"
+check "$MASTER" '[kbCard addSubview:favoritesButton]' "زر المفضلة خارج مساحة الخريطة"
+if rg -q '\[mapCard addSubview:(saveLocationButton|favoritesButton|quickSaveFavorite|quickShowFavorites)\]' "$MASTER"; then
+    echo "❌ أزرار الحفظ أو المفضلة ما زالت داخل الخريطة"
+    exit 1
+else
+    echo "✅ أزرار الحفظ والمفضلة أزيلت من الخريطة ووُضعت قبل التشغيل"
+fi
 check "$MASTER" 'coordinateFromSharedMapText' "البحث يدعم روابط مشاركة الخرائط"
 check "$MASTER" 'moveFakeLocationByMeters' "دعم حركة الموقع 5 و10 أمتار"
 reject "$MASTER" 'secLabel(@"تسجيل الخروج"' "زر تسجيل الخروج محذوف من الإعدادات"
