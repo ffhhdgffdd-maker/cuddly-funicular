@@ -5,6 +5,7 @@
 #import <sqlite3.h>
 
 NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidChangeNotification";
+static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
 
 @implementation WolFoxProLocation
 - (id)copyWithZone:(NSZone *)zone {
@@ -17,7 +18,7 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
 @implementation WolFoxProIdentifier
 - (id)copyWithZone:(NSZone *)zone {
     WolFoxProIdentifier *copy = [[WolFoxProIdentifier allocWithZone:zone] init];
-    copy.uuid = self.uuid; copy.name = self.name; copy.createdAt = self.createdAt;
+    copy.uuid = self.uuid; copy.name = self.name; copy.bundleID = self.bundleID; copy.createdAt = self.createdAt;
     return copy;
 }
 @end
@@ -257,12 +258,15 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
         if (!savedUUID) continue;
         WolFoxProIdentifier *i = [WolFoxProIdentifier new];
         i.uuid = savedUUID.UUIDString; i.name = d[@"name"];
+        i.bundleID = [d[@"bundleID"] isKindOfClass:[NSString class]] ? d[@"bundleID"] : WFDefaultIdentifierBundleID;
         NSString *dateStr = d[@"date"];
         i.createdAt = dateStr ? [NSDate dateWithTimeIntervalSince1970:[dateStr doubleValue]] : [NSDate date];
         [_mutableIdentifiers addObject:i];
     }
     NSUUID *activeUUID = [[NSUUID alloc] initWithUUIDString:[u stringForKey:@"WF_PRO_ACTIVE_ID"]];
     self.activeIdentifierUUID = activeUUID.UUIDString;
+    self.activeIdentifierBundleID = [u stringForKey:@"WF_PRO_ACTIVE_ID_BUNDLE"];
+    if (activeUUID && !self.activeIdentifierBundleID.length) self.activeIdentifierBundleID = WFDefaultIdentifierBundleID;
     if (!activeUUID) [u removeObjectForKey:@"WF_PRO_ACTIVE_ID"];
     
     self.bluetoothActive = [u boolForKey:@"WF_PRO_BT_ACT"];
@@ -317,11 +321,13 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
         NSMutableArray *ids = [NSMutableArray new];
         for (WolFoxProIdentifier *i in _mutableIdentifiers) {
             NSString *dateStr = i.createdAt ? [NSString stringWithFormat:@"%.0f", [(NSDate*)i.createdAt timeIntervalSince1970]] : [NSString stringWithFormat:@"%.0f", [[NSDate date] timeIntervalSince1970]];
-            [ids addObject:@{@"uuid": i.uuid ?: @"", @"name": i.name ?: @"", @"date": dateStr}];
+            [ids addObject:@{@"uuid": i.uuid ?: @"", @"name": i.name ?: @"", @"bundleID": i.bundleID ?: WFDefaultIdentifierBundleID, @"date": dateStr}];
         }
         [u setObject:ids forKey:@"WF_PRO_IDS"];
         if (self.activeIdentifierUUID) [u setObject:self.activeIdentifierUUID forKey:@"WF_PRO_ACTIVE_ID"];
         else [u removeObjectForKey:@"WF_PRO_ACTIVE_ID"];
+        if (self.activeIdentifierBundleID) [u setObject:self.activeIdentifierBundleID forKey:@"WF_PRO_ACTIVE_ID_BUNDLE"];
+        else [u removeObjectForKey:@"WF_PRO_ACTIVE_ID_BUNDLE"];
         
         [u setBool:self.bluetoothActive forKey:@"WF_PRO_BT_ACT"];
         if (self.activeBleProfileID) [u setObject:self.activeBleProfileID forKey:@"WF_PRO_BT_ACTIVE_ID"];
@@ -366,17 +372,36 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
 
 - (NSUUID *)validatedActiveIdentifier {
     NSString *value = self.activeIdentifierUUID;
-    return value.length ? [[NSUUID alloc] initWithUUIDString:value] : nil;
+    NSString *currentBundleID = NSBundle.mainBundle.bundleIdentifier.lowercaseString;
+    NSString *boundBundleID = self.activeIdentifierBundleID.lowercaseString;
+    if (!value.length || !currentBundleID.length || !boundBundleID.length ||
+        ![currentBundleID isEqualToString:boundBundleID]) return nil;
+    return [[NSUUID alloc] initWithUUIDString:value];
 }
 
 - (BOOL)activateIdentifierString:(NSString *)value {
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: WFDefaultIdentifierBundleID;
+    for (WolFoxProIdentifier *identifier in _mutableIdentifiers) {
+        if ([identifier.uuid caseInsensitiveCompare:value] == NSOrderedSame && identifier.bundleID.length) {
+            bundleID = identifier.bundleID;
+            break;
+        }
+    }
+    return [self activateIdentifierString:value forBundleID:bundleID];
+}
+
+- (BOOL)activateIdentifierString:(NSString *)value forBundleID:(NSString *)bundleID {
     NSString *trimmed = [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:trimmed];
+    NSString *normalizedBundleID = [bundleID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].lowercaseString;
     if (!uuid) return NO;
+    if (!normalizedBundleID.length) return NO;
     self.activeIdentifierUUID = uuid.UUIDString;
+    self.activeIdentifierBundleID = normalizedBundleID;
     BOOL alreadySaved = NO;
     for (WolFoxProIdentifier *identifier in _mutableIdentifiers) {
         if ([identifier.uuid isEqualToString:self.activeIdentifierUUID]) {
+            identifier.bundleID = normalizedBundleID;
             alreadySaved = YES;
             break;
         }
@@ -384,7 +409,8 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
     if (!alreadySaved) {
         WolFoxProIdentifier *identifier = [WolFoxProIdentifier new];
         identifier.uuid = self.activeIdentifierUUID;
-        identifier.name = @"هوية موحدة";
+        identifier.name = @"هوية تطبيق المساجد";
+        identifier.bundleID = normalizedBundleID;
         identifier.createdAt = [NSDate date];
         [_mutableIdentifiers addObject:identifier];
     }
@@ -395,6 +421,7 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
 
 - (void)deactivateIdentifier {
     self.activeIdentifierUUID = nil;
+    self.activeIdentifierBundleID = nil;
     [self saveSettings];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"WF_IDENTIFIER_CHANGED" object:nil];
 }
@@ -410,6 +437,7 @@ NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidCh
                          [self.activeIdentifierUUID caseInsensitiveCompare:uuid] == NSOrderedSame;
     if (removedActive) {
         self.activeIdentifierUUID = nil;
+        self.activeIdentifierBundleID = nil;
         [[NSNotificationCenter defaultCenter] postNotificationName:@"WF_IDENTIFIER_CHANGED" object:nil];
     }
     [self saveSettings];

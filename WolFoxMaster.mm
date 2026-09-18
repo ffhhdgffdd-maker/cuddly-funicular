@@ -2711,7 +2711,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard addSubview:idCard];
     
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 15, idCard.bounds.size.width, 30)];
-    title.text = @"الهوية الموحدة • IDFA • IDFV • Web"; title.textColor = [WolFoxProTheme textPrimary]; title.textAlignment = NSTextAlignmentCenter; title.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    title.text = @"UUID مستورد • IDFA • IDFV • Web"; title.textColor = [WolFoxProTheme textPrimary]; title.textAlignment = NSTextAlignmentCenter; title.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
     [idCard addSubview:title];
     
     UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 60, idCard.bounds.size.width - 30, 50)];
@@ -2904,10 +2904,11 @@ static BOOL WFMasterProcessIsEligible(void) {
         WolFoxProIdentifier *updated = [WolFoxProIdentifier new];
         updated.uuid = newUUID;
         updated.name = name.length ? name : @"هوية موحدة";
+        updated.bundleID = original.bundleID ?: @"sa.gov.moia.mosques-2";
         updated.createdAt = original.createdAt ?: [NSDate date];
         [[WolFoxProStore shared] deleteIdentifierUUID:oldUUID];
         [[WolFoxProStore shared] saveIdentifier:updated];
-        if (wasActive) [[WolFoxProStore shared] activateIdentifierString:newUUID];
+        if (wasActive) [[WolFoxProStore shared] activateIdentifierString:newUUID forBundleID:updated.bundleID];
         [self refreshSpoofHeaderStatus];
         [self showToast:@"تم تعديل المعرّف بنجاح"];
         [self switchPage:1];
@@ -2938,11 +2939,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     raw = [raw stringByReplacingOccurrencesOfString:@"{" withString:@""];
     raw = [raw stringByReplacingOccurrencesOfString:@"}" withString:@""];
     NSUUID *normalizedUUID = [[NSUUID alloc] initWithUUIDString:raw];
-    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString]) {
+    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:@"sa.gov.moia.mosques-2"]) {
         tf.text = [WolFoxProStore shared].activeIdentifierUUID;
         [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"حالة تزييف المعرّفات: مفعّل";
+        status.text = @"مرتبط ومفعّل: sa.gov.moia.mosques-2";
         status.textColor = [WolFoxProTheme success];
     } else {
         [self showToast:@"صيغة UUID غير صحيحة ❌"];
@@ -2952,8 +2953,13 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)importIDProPage {
     UIPasteboard *pb = [UIPasteboard generalPasteboard];
     if (pb.string.length > 0) {
+        NSString *raw = [pb.string stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        raw = [raw stringByReplacingOccurrencesOfString:@"urn:uuid:" withString:@"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, raw.length)];
+        raw = [[raw stringByReplacingOccurrencesOfString:@"{" withString:@""] stringByReplacingOccurrencesOfString:@"}" withString:@""];
+        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:raw];
+        if (!uuid) { [self showToast:@"صيغة UUID في الحافظة غير صحيحة ❌"]; return; }
         UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = pb.string; [self showToast:@"تم الاستيراد من الحافظة 📋"];
+        tf.text = uuid.UUIDString; [self showToast:@"تم استيراد UUID — اضغط حفظ وتفعيل 📋"];
     }
 }
 

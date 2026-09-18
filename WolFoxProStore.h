@@ -16,6 +16,7 @@ FOUNDATION_EXPORT NSNotificationName const WFSpoofStateDidChangeNotification;
 @interface WolFoxProIdentifier : NSObject <NSCopying>
 @property (nonatomic, copy) NSString *uuid;
 @property (nonatomic, copy) NSString *name;
+@property (nonatomic, copy) NSString *bundleID;
 @property (nonatomic, strong) NSDate *createdAt;
 @end
 
@@ -40,8 +41,10 @@ FOUNDATION_EXPORT NSNotificationName const WFSpoofStateDidChangeNotification;
 // Identifiers (Defaults based)
 @property (readonly, copy, nonatomic) NSArray<WolFoxProIdentifier *> *identifiers;
 @property (nonatomic, copy, nullable) NSString *activeIdentifierUUID;
+@property (nonatomic, copy, nullable) NSString *activeIdentifierBundleID;
 - (nullable NSUUID *)validatedActiveIdentifier;
 - (BOOL)activateIdentifierString:(NSString *)value;
+- (BOOL)activateIdentifierString:(NSString *)value forBundleID:(NSString *)bundleID;
 - (void)deactivateIdentifier;
 - (void)saveIdentifier:(WolFoxProIdentifier *)identifier;
 - (void)deleteIdentifierUUID:(NSString *)uuid;
