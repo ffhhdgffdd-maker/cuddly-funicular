@@ -434,22 +434,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_tabsBar];
     
 #if WOLFOX_LITE
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 2.0, 4)];
-#else
     UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
+#else
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 4.0, 4)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [_tabsBar addSubview:indicator];
     
 #if WOLFOX_LITE
-    NSArray *icons = @[@"location.fill", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الخريطة والبحث", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"الإعدادات"];
+    NSArray *tabPages = @[@0, @1, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الخريطة والبحث", @"البلوتوث", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @2, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"البلوتوث", @"الإعدادات"];
+    NSArray *tabPages = @[@0, @1, @2, @4];
 #endif
     CGFloat tw = w / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -2706,15 +2706,26 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupIDPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 500)];
+    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 530)];
     idCard.backgroundColor = [WolFoxProTheme surfacePrimary]; idCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:idCard];
     
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 15, idCard.bounds.size.width, 30)];
-    title.text = @"UUID مستورد • IDFA • IDFV • Web"; title.textColor = [WolFoxProTheme textPrimary]; title.textAlignment = NSTextAlignmentCenter; title.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    title.text = @"المعرّف وUDID • IDFA • IDFV • Web"; title.textColor = [WolFoxProTheme textPrimary]; title.textAlignment = NSTextAlignmentCenter; title.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
     [idCard addSubview:title];
+
+    UIButton *udidButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    udidButton.frame = CGRectMake(15, 48, idCard.bounds.size.width - 30, 30);
+    NSString *deviceUDID = [WFLicenseClient deviceIdentifier] ?: @"غير متوفر";
+    [udidButton setTitle:[NSString stringWithFormat:@"UDID الجهاز: %@  •  نسخ", deviceUDID] forState:UIControlStateNormal];
+    [udidButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    udidButton.titleLabel.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightBold];
+    udidButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    udidButton.accessibilityLabel = @"نسخ UDID الجهاز";
+    [udidButton addTarget:self action:@selector(copyDeviceUDID) forControlEvents:UIControlEventTouchUpInside];
+    [idCard addSubview:udidButton];
     
-    UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 60, idCard.bounds.size.width - 30, 50)];
+    UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 82, idCard.bounds.size.width - 30, 50)];
     tf.backgroundColor = [WolFoxProTheme surfaceSecondary]; tf.layer.cornerRadius = 12; tf.textColor = [WolFoxProTheme textPrimary]; tf.textAlignment = NSTextAlignmentCenter;
     tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
     tf.text = [WolFoxProStore shared].activeIdentifierUUID ?: [WFLicenseClient deviceIdentifier];
@@ -2722,7 +2733,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
     
-    UIView *layersCard = [[UIView alloc] initWithFrame:CGRectMake(15, 120, idCard.bounds.size.width - 30, 54)];
+    UIView *layersCard = [[UIView alloc] initWithFrame:CGRectMake(15, 142, idCard.bounds.size.width - 30, 54)];
     layersCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
     layersCard.layer.cornerRadius = 12;
     [idCard addSubview:layersCard];
@@ -2737,19 +2748,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     layersValue.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     [layersCard addSubview:layersValue];
 
-    UIButton *sav = [self royalBtnInside:idCard t:@"حفظ وتفعيل" i:@"checkmark" c:[WolFoxProTheme success] y:185];
+    UIButton *sav = [self royalBtnInside:idCard t:@"حفظ وتفعيل" i:@"checkmark" c:[WolFoxProTheme success] y:207];
     [sav addTarget:self action:@selector(saveIDProPage) forControlEvents:UIControlEventTouchUpInside];
     
-    UIButton *imp = [self royalBtnInside:idCard t:@"استيراد" i:@"arrow.down" c:[WolFoxProTheme accent] y:250];
+    UIButton *imp = [self royalBtnInside:idCard t:@"استيراد" i:@"arrow.down" c:[WolFoxProTheme accent] y:272];
     [imp addTarget:self action:@selector(importIDProPage) forControlEvents:UIControlEventTouchUpInside];
     
-    UIButton *exp = [self royalBtnInside:idCard t:@"تصدير" i:@"arrow.up" c:[WolFoxProTheme accent] y:315];
+    UIButton *exp = [self royalBtnInside:idCard t:@"تصدير" i:@"arrow.up" c:[WolFoxProTheme accent] y:337];
     [exp addTarget:self action:@selector(exportIDProPage) forControlEvents:UIControlEventTouchUpInside];
     
-    UIButton *res = [self royalBtnInside:idCard t:@"إعادة تعيين للأصلي" i:@"arrow.clockwise" c:[WolFoxProTheme danger] y:380];
+    UIButton *res = [self royalBtnInside:idCard t:@"إعادة تعيين للأصلي" i:@"arrow.clockwise" c:[WolFoxProTheme danger] y:402];
     [res addTarget:self action:@selector(resetIDProPage) forControlEvents:UIControlEventTouchUpInside];
 
-    UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(15, 440, idCard.bounds.size.width - 30, 28)];
+    UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(15, 462, idCard.bounds.size.width - 30, 40)];
     BOOL identifierActive = [WolFoxProStore shared].validatedActiveIdentifier != nil;
     idStatus.text = identifierActive ? @"حالة تزييف المعرّفات: مفعّل" : @"حالة تزييف المعرّفات: متوقف";
     idStatus.textColor = identifierActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
@@ -2762,7 +2773,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = 530;
+    CGFloat cy = 560;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -2961,6 +2972,13 @@ static BOOL WFMasterProcessIsEligible(void) {
         UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
         tf.text = uuid.UUIDString; [self showToast:@"تم استيراد UUID — اضغط حفظ وتفعيل 📋"];
     }
+}
+
+- (void)copyDeviceUDID {
+    NSString *deviceUDID = [WFLicenseClient deviceIdentifier];
+    if (!deviceUDID.length) { [self showToast:@"UDID غير متوفر ❌"]; return; }
+    [UIPasteboard generalPasteboard].string = deviceUDID;
+    [self showToast:@"تم نسخ UDID الجهاز 📋"];
 }
 
 - (void)exportIDProPage {

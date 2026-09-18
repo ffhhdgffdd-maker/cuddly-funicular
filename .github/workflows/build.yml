@@ -10,7 +10,7 @@ on:
       bundle_ids:
         description: "Bundle IDs مفصولة بفاصلة"
         required: false
-        default: "com.apple.SpringBoard"
+        default: "sa.gov.moia.mosques-2"
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ env:
   THEOS: ${{ github.workspace }}/.theos
   WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
   WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY }}
-  WOLFOX_TARGET_BUNDLE_IDS: ${{ inputs.bundle_ids || 'com.apple.SpringBoard' }}
+  WOLFOX_TARGET_BUNDLE_IDS: ${{ inputs.bundle_ids || 'sa.gov.moia.mosques-2' }}
 
 jobs:
   build:

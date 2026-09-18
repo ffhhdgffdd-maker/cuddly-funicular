@@ -17,7 +17,7 @@ SDK_RELEASE_TAG="master-146e41f"
 SDK_RELEASE_BASE="https://github.com/theos/sdks/releases/download/${SDK_RELEASE_TAG}"
 WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
 WOLFOX_VERSION="${WOLFOX_VERSION:-2.0.0-Full}"
-TARGET_BUNDLE_IDS="${WOLFOX_TARGET_BUNDLE_IDS:-com.apple.SpringBoard}"
+TARGET_BUNDLE_IDS="${WOLFOX_TARGET_BUNDLE_IDS:-sa.gov.moia.mosques-2}"
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 

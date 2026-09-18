@@ -34,6 +34,8 @@ expect_pattern "تطبيق UUID حسب Bundle ID" 'currentBundleID.*boundBundleI
 expect_pattern "واجهة التفعيل تستخدم الربط الصريح" 'activateIdentifierString:normalizedUUID[.]UUIDString forBundleID:' WolFoxMaster.mm
 expect_pattern "إيقاف الهوية الموحدة" 'deactivateIdentifier' WolFoxProStore.h WolFoxProStore.m WolFoxMaster.mm
 expect_pattern "واجهة توضح الأنواع المدمجة" 'IDFA • IDFV • Web' WolFoxMaster.mm
+expect_pattern "إظهار قسم المعرّف في Full وLite" 'person[.]text[.]rectangle[.]fill' WolFoxMaster.mm
+expect_pattern "إظهار ونسخ UDID الجهاز" 'copyDeviceUDID|UDID الجهاز' WolFoxMaster.mm
 
 echo "النتيجة: $PASS ناجح، $FAIL فاشل"
 if [ "$FAIL" -ne 0 ]; then
