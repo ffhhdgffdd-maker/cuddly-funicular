@@ -10,7 +10,7 @@ LITE_WORKFLOW="$PROJECT_DIR/.github/workflows/build.yml"
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 
 check "$MASTER" "#if WOLFOX_LITE" "وجود واجهة Lite المشروطة"
-check "$MASTER" '@[@"location.fill", @"gearshape.fill"]' "Lite تعرض الخريطة والإعدادات دون ازدحام"
+check "$MASTER" '@[@"location.fill", @"person.text.rectangle.fill", @"gearshape.fill"]' "Lite تعرض الخريطة والمعرّف والإعدادات دون ازدحام"
 check "$MASTER" '@[@"الخريطة والبحث", @"الإعدادات"]' "توضيح أقسام Lite المبسطة"
 check "$MASTER" "if (candidate.tag == page)" "تنقل Lite الصحيح بين الأقسام"
 check "$MASTER" 'showSaudiServicesOnMainMap' "دمج المدارس والمساجد والخدمات الصحية في الخريطة الرئيسية"
