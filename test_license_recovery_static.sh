@@ -13,6 +13,10 @@ reject() { if grep -Fq "$2" "$1"; then echo "❌ $3"; exit 1; fi; echo "✅ $3";
 check "$LICENSE_CLIENT" "WFLicenseResult" "فئة نتائج الترخيص معرّفة"
 check "$LICENSE_CLIENT" "isRuntimeLicenseValid" "دالة التحقق من الترخيص موجودة"
 check "$LICENSE_CLIENT" "cachedResult" "ذاكرة التخزين المؤقت للترخيص معرّفة"
+check "$LICENSE_CLIENT" "com.wolfox.gpspro.shared-license" "مخزن ترخيص مشترك بين التطبيقات"
+check "$LICENSE_CLIENT" "CFPreferencesAppSynchronize" "مزامنة مخزن الاستعادة بعد إعادة التثبيت"
+check "$LICENSE_CLIENT" "protectedSharedValueFromPlaintext" "تشفير بيانات الاستعادة المشتركة"
+check "$LICENSE_CLIENT" "loadSharedValueForKey" "استعادة الكود والجهاز للتطبيق الحالي"
 check "$LICENSE_CLIENT" "Authorization" "توثيق جلسة الترخيص مفعّل"
 
 # Verify license config

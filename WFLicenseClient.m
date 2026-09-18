@@ -2,6 +2,7 @@
 #import "WFLicenseClient.h"
 #import "WFLicenseConfig.h"
 #import <Security/Security.h>
+#import <CommonCrypto/CommonDigest.h>
 #import <UIKit/UIKit.h>
 #import <stdatomic.h>
 #import <string.h>
@@ -13,6 +14,7 @@ static NSString * const kCacheKey = @"wf_license_cache";
 static NSString * const kActivatedKey = @"wf_is_activated";
 static NSString * const kDeviceKey = @"wf_device_id";
 static NSString * const kSuspendedKey = @"wf_license_suspended_reason";
+static NSString * const kSharedLicenseDomain = @"com.wolfox.gpspro.shared-license";
 static NSString *_baseURL = WF_PANEL_BASE_URL;
 static NSString *_projectKey = nil;
 static atomic_bool _runtimeLicenseValid = false;
@@ -51,6 +53,12 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 + (BOOL)saveToKeychain:(NSString *)value key:(NSString *)key;
 + (NSString *)loadFromKeychain:(NSString *)key;
 + (void)deleteKeychainKey:(NSString *)key;
++ (BOOL)saveSharedValue:(NSString *)value key:(NSString *)key;
++ (NSString *)loadSharedValueForKey:(NSString *)key;
++ (void)deleteSharedValueForKey:(NSString *)key;
++ (NSData *)sharedProtectionKeyForAccount:(NSString *)key;
++ (NSString *)protectedSharedValueFromPlaintext:(NSString *)value key:(NSString *)key;
++ (NSString *)plaintextFromProtectedSharedValue:(NSString *)value key:(NSString *)key;
 @end
 
 @implementation WFLicenseResult
@@ -727,14 +735,19 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     NSData *valueData = [value dataUsingEncoding:NSUTF8StringEncoding];
     OSStatus updateStatus = SecItemUpdate((__bridge CFDictionaryRef)query,
                                           (__bridge CFDictionaryRef)@{(id)kSecValueData: valueData});
-    if (updateStatus == errSecSuccess) return YES;
+    if (updateStatus == errSecSuccess) {
+        [self saveSharedValue:value key:key];
+        return YES;
+    }
     if (updateStatus != errSecItemNotFound) return NO;
 
     // لا نحذف القيمة السابقة قبل تأكيد البديل؛ هذا يمنع فقدان الكود بسبب إخفاق عابر.
     NSMutableDictionary *item = [query mutableCopy];
     item[(id)kSecValueData] = valueData;
     item[(id)kSecAttrAccessible] = (id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly;
-    return SecItemAdd((__bridge CFDictionaryRef)item, NULL) == errSecSuccess;
+    BOOL saved = SecItemAdd((__bridge CFDictionaryRef)item, NULL) == errSecSuccess;
+    if (saved) [self saveSharedValue:value key:key];
+    return saved;
 }
 
 + (NSString *)loadFromKeychain:(NSString *)key {
@@ -749,6 +762,12 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     if (SecItemCopyMatching((__bridge CFDictionaryRef)query, &result) == errSecSuccess) {
         return [[NSString alloc] initWithData:(__bridge_transfer NSData *)result encoding:NSUTF8StringEncoding];
     }
+    NSString *shared = [self loadSharedValueForKey:key];
+    if (shared.length) {
+        // أعِد ملء Keychain الخاص بالتطبيق الحالي حتى تبقى القراءة التالية محلية وآمنة.
+        [self saveToKeychain:shared key:key];
+        return shared;
+    }
     return nil;
 }
 
@@ -760,6 +779,63 @@ static const NSUInteger kMaximumRequestAttempts = 2;
         (id)kSecAttrAccount: key
     };
     SecItemDelete((__bridge CFDictionaryRef)query);
+    [self deleteSharedValueForKey:key];
+}
+
++ (NSData *)sharedProtectionKeyForAccount:(NSString *)key {
+    NSString *seed = [NSString stringWithFormat:@"%@|%@|WolFox-Shared-License-v1", _projectKey ?: @"", key ?: @""];
+    NSData *seedData = [seed dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(seedData.bytes, (CC_LONG)seedData.length, digest);
+    return [NSData dataWithBytes:digest length:sizeof(digest)];
+}
+
++ (NSString *)protectedSharedValueFromPlaintext:(NSString *)value key:(NSString *)key {
+    NSData *plain = [value dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *protectionKey = [self sharedProtectionKeyForAccount:key];
+    if (!plain.length || !protectionKey.length) return nil;
+    NSMutableData *protected = [plain mutableCopy];
+    unsigned char *bytes = protected.mutableBytes;
+    const unsigned char *keyBytes = protectionKey.bytes;
+    for (NSUInteger index = 0; index < protected.length; index++) bytes[index] ^= keyBytes[index % protectionKey.length];
+    return [NSString stringWithFormat:@"v1:%@", [protected base64EncodedStringWithOptions:0]];
+}
+
++ (NSString *)plaintextFromProtectedSharedValue:(NSString *)value key:(NSString *)key {
+    if (![value hasPrefix:@"v1:"]) return nil;
+    NSData *encoded = [[NSData alloc] initWithBase64EncodedString:[value substringFromIndex:3] options:0];
+    NSData *protectionKey = [self sharedProtectionKeyForAccount:key];
+    if (!encoded.length || !protectionKey.length) return nil;
+    NSMutableData *plain = [encoded mutableCopy];
+    unsigned char *bytes = plain.mutableBytes;
+    const unsigned char *keyBytes = protectionKey.bytes;
+    for (NSUInteger index = 0; index < plain.length; index++) bytes[index] ^= keyBytes[index % protectionKey.length];
+    return [[NSString alloc] initWithData:plain encoding:NSUTF8StringEncoding];
+}
+
++ (BOOL)saveSharedValue:(NSString *)value key:(NSString *)key {
+    NSString *protected = [self protectedSharedValueFromPlaintext:value key:key];
+    if (!protected.length) return NO;
+    CFPreferencesSetAppValue((__bridge CFStringRef)key,
+                             (__bridge CFPropertyListRef)protected,
+                             (__bridge CFStringRef)kSharedLicenseDomain);
+    return CFPreferencesAppSynchronize((__bridge CFStringRef)kSharedLicenseDomain);
+}
+
++ (NSString *)loadSharedValueForKey:(NSString *)key {
+    CFPropertyListRef raw = CFPreferencesCopyAppValue((__bridge CFStringRef)key,
+                                                       (__bridge CFStringRef)kSharedLicenseDomain);
+    if (!raw) return nil;
+    id value = CFBridgingRelease(raw);
+    if (![value isKindOfClass:NSString.class]) return nil;
+    return [self plaintextFromProtectedSharedValue:value key:key];
+}
+
++ (void)deleteSharedValueForKey:(NSString *)key {
+    CFPreferencesSetAppValue((__bridge CFStringRef)key,
+                             NULL,
+                             (__bridge CFStringRef)kSharedLicenseDomain);
+    CFPreferencesAppSynchronize((__bridge CFStringRef)kSharedLicenseDomain);
 }
 
 + (void)clearStoredLicense {
