@@ -727,6 +727,10 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 
 + (BOOL)saveToKeychain:(NSString *)value key:(NSString *)key {
     if (!value.length || !key.length) return NO;
+
+    // اكتب نسخة الاستعادة المشفرة دائماً. بعض التطبيقات المحقونة تمنع Keychain
+    // مؤقتاً أو تختلف صلاحياته، ولا ينبغي أن يجبر ذلك العميل على إدخال الكود مجدداً.
+    BOOL sharedSaved = [self saveSharedValue:value key:key];
     NSDictionary *query = @{
         (id)kSecClass: (id)kSecClassGenericPassword,
         (id)kSecAttrService: kKeychainService,
@@ -735,19 +739,15 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     NSData *valueData = [value dataUsingEncoding:NSUTF8StringEncoding];
     OSStatus updateStatus = SecItemUpdate((__bridge CFDictionaryRef)query,
                                           (__bridge CFDictionaryRef)@{(id)kSecValueData: valueData});
-    if (updateStatus == errSecSuccess) {
-        [self saveSharedValue:value key:key];
-        return YES;
-    }
-    if (updateStatus != errSecItemNotFound) return NO;
+    if (updateStatus == errSecSuccess) return YES;
+    if (updateStatus != errSecItemNotFound) return sharedSaved;
 
     // لا نحذف القيمة السابقة قبل تأكيد البديل؛ هذا يمنع فقدان الكود بسبب إخفاق عابر.
     NSMutableDictionary *item = [query mutableCopy];
     item[(id)kSecValueData] = valueData;
-    item[(id)kSecAttrAccessible] = (id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly;
-    BOOL saved = SecItemAdd((__bridge CFDictionaryRef)item, NULL) == errSecSuccess;
-    if (saved) [self saveSharedValue:value key:key];
-    return saved;
+    item[(id)kSecAttrAccessible] = (id)kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly;
+    BOOL keychainSaved = SecItemAdd((__bridge CFDictionaryRef)item, NULL) == errSecSuccess;
+    return keychainSaved || sharedSaved;
 }
 
 + (NSString *)loadFromKeychain:(NSString *)key {
