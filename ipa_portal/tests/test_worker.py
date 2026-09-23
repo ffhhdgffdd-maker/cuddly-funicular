@@ -85,6 +85,30 @@ class WorkerTests(unittest.TestCase):
             with self.subTest(ip=ip), patch.object(socket, 'getaddrinfo', return_value=[(0, 0, 0, '', (ip, 443))]):
                 with self.assertRaises(worker.Invalid): worker.public_addresses('example.com')
 
+    def test_rejects_library_already_embedded_even_after_rename(self):
+        src = ipa(self.root/'a.ipa', extra=[('Payload/Demo.app/K7GPS.dylib', macho(kind=6))])
+        renamed = self.root/'Renamed.dylib'; renamed.write_bytes(macho(kind=6))
+        with self.assertRaisesRegex(worker.Invalid, 'موجودة أصلًا'):
+            worker.process(src, [renamed], self.root/'b.ipa')
+        same_name = self.root/'K7GPS.dylib'; same_name.write_bytes(macho(kind=6, subtype=2))
+        with self.assertRaisesRegex(worker.Invalid, 'موجودة أصلًا'):
+            worker.process(src, [same_name], self.root/'b.ipa')
+
+    def test_rejects_different_bytes_with_same_install_identity(self):
+        def identified(raw):
+            data = bytearray(raw)
+            path = b'/Library/MobileSubstrate/DynamicLibraries/Test.dylib\0'
+            size = (24 + len(path) + 7) & ~7
+            command = struct.pack('<6I', 0xD, size, 24, 0, 0x10000, 0x10000) + path
+            count, old = struct.unpack_from('<II', data, 16)
+            data[32+old:32+old+size] = command.ljust(size, b'\0')
+            struct.pack_into('<II', data, 16, count+1, old+size)
+            return bytes(data)
+        src = ipa(self.root/'a.ipa', extra=[('Payload/Demo.app/Old.dylib', identified(macho(kind=6)))])
+        lib = self.root/'New.dylib'; lib.write_bytes(identified(macho(kind=6, subtype=2)))
+        with self.assertRaisesRegex(worker.Invalid, 'موجودة أصلًا'):
+            worker.process(src, [lib], self.root/'b.ipa')
+
     def test_pinned_public_dns_and_redirect_to_private_blocked(self):
         with patch.object(socket, 'getaddrinfo', return_value=[(0, 0, 0, '', ('8.8.8.8', 443))]):
             self.assertEqual(worker.public_addresses('example.com'), ['8.8.8.8'])

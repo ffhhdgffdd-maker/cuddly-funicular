@@ -162,6 +162,19 @@ def inspect_binary(data, kind):
     return [inspect_slice(data[o:o+n], kind) for o, n in slices(data)]
 
 
+def install_names(inspected):
+    names = set()
+    for details in inspected:
+        for cmd, part in details[1]:
+            if cmd != 0xD:  # LC_ID_DYLIB
+                continue
+            require(len(part) >= 24, "هوية مكتبة Mach-O غير صالحة.")
+            offset = struct.unpack_from("<I", part, 8)[0]
+            require(24 <= offset < len(part) and b"\0" in part[offset:], "هوية مكتبة Mach-O غير صالحة.")
+            names.add(part[offset:].split(b"\0", 1)[0].decode("utf-8", "strict"))
+    return names
+
+
 def inject_binary(original, names):
     result = bytearray(original)
     for start, length in slices(original):
@@ -228,6 +241,17 @@ def process(ipa, libraries, output):
         if libraries:
             app_arches = {s[0] for s in inspect_binary(binary, 2)}
             known = {e.filename.casefold() for e in entries}
+            existing_names, existing_hashes, existing_ids = set(), set(), set()
+            for entry in entries:
+                if entry.filename.casefold().endswith('.dylib'):
+                    existing_names.add(PurePosixPath(entry.filename).name.casefold())
+                    with z.open(entry) as stream:
+                        existing_hashes.add(hashlib.file_digest(stream, 'sha256').hexdigest())
+                    if entry.file_size <= MAX_DYLIB:
+                        try:
+                            existing_ids.update(install_names(inspect_binary(z.read(entry), 6)))
+                        except (Invalid, UnicodeError, struct.error):
+                            pass  # Name and byte checks still cover unsupported existing libraries.
             names = set()
             for library in libraries:
                 require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\.dylib", library.name), "اسم المكتبة يجب أن يكون إنجليزيًا وينتهي بـ dylib.")
@@ -236,6 +260,14 @@ def process(ipa, libraries, output):
                 require(0 < library.stat().st_size <= MAX_DYLIB, "حجم المكتبة يتجاوز 32 ميجابايت.")
                 raw = library.read_bytes()
                 inspected = inspect_binary(raw, 6)
+                digest = hashlib.sha256(raw).hexdigest()
+                identities = install_names(inspected)
+                require(library.name.casefold() not in existing_names and digest not in existing_hashes
+                        and not (identities & existing_ids),
+                        "المكتبة موجودة أصلًا في IPA أو ضمن الملفات المختارة؛ لا يمكن حقنها مرتين، حتى عند تغيير اسمها.")
+                existing_names.add(library.name.casefold())
+                existing_hashes.add(digest)
+                existing_ids.update(identities)
                 arches = {s[0] for s in inspected}
                 require(app_arches <= arches or 0 in arches, "معمارية المكتبة لا تغطي معمارية التطبيق.")
                 dest = app + "/Frameworks/WolFoxInject/" + library.name
