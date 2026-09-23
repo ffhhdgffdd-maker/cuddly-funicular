@@ -217,9 +217,10 @@ EOF
             fi
         done
     fi
-    cat > "$root/DEBIAN/control" <<EOF
-Package: $PACKAGE_ID
-${conflicts:+Conflicts: $conflicts}
+    {
+        printf 'Package: %s\n' "$PACKAGE_ID"
+        if [ -n "$conflicts" ]; then printf 'Conflicts: %s\n' "$conflicts"; fi
+        cat <<EOF
 Name: $PACKAGE_TITLE
 Version: $VERSION
 Architecture: iphoneos-arm
@@ -229,6 +230,7 @@ Maintainer: WFX
 Author: WFX
 Section: Tweaks
 EOF
+    } > "$root/DEBIAN/control"
     cat > "$root/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
 if command -v sbreload >/dev/null 2>&1; then
