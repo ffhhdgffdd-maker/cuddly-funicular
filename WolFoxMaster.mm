@@ -47,6 +47,7 @@ typedef NS_ENUM(NSInteger, WFSaudiPlaceKind) {
 @end
 
 static NSString * const WFUIHiddenOnLaunchKey = @"WF_UI_HIDDEN_UNTIL_VOLUME_REQUEST";
+static NSString * const WFMenuVisibleOnLaunchKey = @"WF_MENU_VISIBLE_ON_LAUNCH";
 static char kLiveLicenseValueKey;
 static char kLiveLicenseDotKey;
 static char kLiveSpoofValueKey;
@@ -97,6 +98,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)toggleCameraIcon:(BOOL)show;
 - (void)handleVolumeGesturePulse;
 - (void)prepareHiddenVolumeListening;
+- (void)enableMenuRecoveryShortcut;
 - (void)recordVolumeButtonPress;
 - (void)showActivationScreen;
 - (void)showActivationScreenWithResult:(WFLicenseResult *)result;
@@ -115,6 +117,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)refreshSpoofQuickPanel;
 - (void)toggleSpoofFromQuickPanel:(nullable UIButton *)sender;
 - (void)openMapFromQuickPanel:(nullable UIButton *)sender;
+- (void)openMenuFromQuickPanel:(nullable UIButton *)sender;
 - (void)activateFavoriteFromQuickPanel:(nullable UIButton *)sender;
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture;
 - (void)closeFloatingControlPanel:(nullable UIButton *)sender;
@@ -3090,7 +3093,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (@available(iOS 13.0, *)) iv.image = [UIImage systemImageNamed:i];
     iv.tintColor = [WolFoxProTheme accent]; iv.contentMode = UIViewContentModeScaleAspectFit; [v addSubview:iv];
     UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(80, 0, v.bounds.size.width - 135, 65)];
-    l.text = t; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; [v addSubview:l];
+    l.text = t; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; l.numberOfLines = 2; [v addSubview:l];
     UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(15, 17, 50, 30)];
     sw.on = on; sw.onTintColor = [WolFoxProTheme accent];
     sw.accessibilityLabel = t;
@@ -3264,6 +3267,68 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = _scrollDashboard.bounds.size.width;
     CGFloat width = w - 30.0;
     CGFloat y = 12.0;
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    UIView *interfaceCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 482)];
+    interfaceCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    interfaceCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:interfaceCard];
+
+    UILabel *interfaceTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 12, width - 30, 28)];
+    interfaceTitle.text = @"الأيقونة العائمة والمنيو";
+    interfaceTitle.textColor = [WolFoxProTheme textPrimary];
+    interfaceTitle.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    interfaceTitle.textAlignment = NSTextAlignmentRight;
+    [interfaceCard addSubview:interfaceTitle];
+
+    BOOL floatingVisible = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
+                           [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
+    [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
+        t:@"إظهار الأيقونة العائمة" i:@"circle.grid.cross.fill"
+        isOn:floatingVisible y:48 action:^(UISwitch *toggle) {
+        [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
+        [self showToast:toggle.on ? @"تم إظهار الأيقونة العائمة" : @"تم إخفاء الأيقونة؛ اختصار الصوت يعيد المنيو"];
+    }]];
+    [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
+        t:@"إظهار المنيو عند فتح التطبيق" i:@"rectangle.on.rectangle"
+        isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:123 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
+        [defaults synchronize];
+        if (!toggle.on) [[WolFoxController shared] enableMenuRecoveryShortcut];
+        [self showToast:toggle.on ? @"ستظهر المنيو عند فتح التطبيق" : @"لن تظهر المنيو تلقائيًا عند فتح التطبيق"];
+    }]];
+
+    UILabel *recovery = [[UILabel alloc] initWithFrame:CGRectMake(15, 198, width - 30, 54)];
+    recovery.text = @"إظهار المنيو بعد الإخفاء: اضغط أحد زري الصوت بالعدد المحدد أدناه خلال ثانية ونصف.";
+    recovery.textColor = [WolFoxProTheme textSecondary];
+    recovery.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
+    recovery.textAlignment = NSTextAlignmentRight;
+    recovery.numberOfLines = 3;
+    [interfaceCard addSubview:recovery];
+
+    UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
+    pressCount.frame = CGRectMake(15, 260, width - 30, 36);
+    NSInteger savedCount = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
+    pressCount.selectedSegmentIndex = savedCount == 2 ? 0 : (savedCount == 5 ? 2 : 1);
+    pressCount.accessibilityLabel = @"عدد ضغطات الصوت لإظهار أو إخفاء المنيو";
+    if (@available(iOS 13.0, *)) pressCount.selectedSegmentTintColor = [WolFoxProTheme accent];
+    [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
+    [interfaceCard addSubview:pressCount];
+
+    UIButton *showMenu = [self royalBtnInside:interfaceCard t:@"إظهار المنيو الآن"
+        i:@"rectangle.stack.fill" c:[WolFoxProTheme accent] y:308];
+    [showMenu addTarget:[WolFoxController shared] action:@selector(showUI)
+        forControlEvents:UIControlEventTouchUpInside];
+    UIButton *hideMenu = [self royalBtnInside:interfaceCard t:@"إخفاء المنيو الآن"
+        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:364];
+    [hideMenu addTarget:[WolFoxController shared] action:@selector(dismissUI)
+        forControlEvents:UIControlEventTouchUpInside];
+    UIButton *resetIcon = [self royalBtnInside:interfaceCard t:@"إعادة الأيقونة إلى مكانها"
+        i:@"arrow.counterclockwise" c:[WolFoxProTheme success] y:420];
+    [resetIcon addTarget:self action:@selector(resetFloatingIconPosition)
+        forControlEvents:UIControlEventTouchUpInside];
+
+    y = CGRectGetMaxY(interfaceCard.frame) + 12.0;
 
     UIView *licenseCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
     licenseCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -4117,6 +4182,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 #ifdef DEBUG
         WFLog(@"[WolFox][UI] controller_init");
 #endif
+        // Migrate the old last-hidden state once; closing the menu must not rewrite launch preferences.
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if (![defaults objectForKey:WFMenuVisibleOnLaunchKey]) {
+            [defaults setBool:![defaults boolForKey:WFUIHiddenOnLaunchKey] forKey:WFMenuVisibleOnLaunchKey];
+        }
+        [defaults setBool:![defaults boolForKey:WFMenuVisibleOnLaunchKey] forKey:WFUIHiddenOnLaunchKey];
         [self setupUI];
         [self setupVolumeObserver];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(licenseStateChanged:) name:@"WF_LICENSE_STATE_CHANGED" object:nil];
@@ -4267,7 +4338,8 @@ static BOOL WFMasterProcessIsEligible(void) {
         strongSelf.mainVC.view.hidden = YES;
         strongSelf.mainVC.view.alpha = 0;
         if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey]) {
-            strongSelf.overlayWindow.hidden = YES;
+            [strongSelf closeSpoofQuickPanel:nil];
+            strongSelf.overlayWindow.hidden = strongSelf.floatingIcon.hidden;
             [strongSelf restoreHostKeyWindow];
             [strongSelf prepareHiddenVolumeListening];
 #ifdef DEBUG
@@ -4310,6 +4382,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 #ifdef DEBUG
     else WFLog(@"[WolFox][UI] hidden_volume_listener_activation_failed=%@", error.localizedDescription ?: @"unknown");
 #endif
+}
+
+- (void)enableMenuRecoveryShortcut {
+    [WolFoxProStore shared].volumeGestureEnabled = YES;
+    [[WolFoxProStore shared] saveSettings];
+    [self prepareHiddenVolumeListening];
 }
 
 - (void)applicationBecameActiveForVolume:(NSNotification *)notification {
@@ -4472,7 +4550,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                            forState:UIControlStateNormal];
     }
     self.floatingIcon.tintColor = UIColor.whiteColor;
-    self.floatingIcon.accessibilityHint = @"اضغط لفتح لوحة WolFox أو اسحب لتحريك العلامة";
+    self.floatingIcon.accessibilityHint = @"اضغط لفتح التحكم السريع وإظهار المنيو، أو اسحب لتحريك الأيقونة";
     [self.floatingIcon addTarget:self action:@selector(handleFloatingStatusTap:) forControlEvents:UIControlEventTouchUpInside];
     [self.floatingIcon addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusPan:)]];
     UILongPressGestureRecognizer *hidePress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusLongPress:)];
@@ -4510,8 +4588,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     BOOL explicitlyVisible = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
                              [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
-    BOOL hiddenByUser = [defaults boolForKey:WFUIHiddenOnLaunchKey];
-    if (!explicitlyVisible || hiddenByUser) {
+    if (!explicitlyVisible) {
+        [self enableMenuRecoveryShortcut];
         self.floatingIcon.hidden = YES;
         if (self.mainVC.view.hidden) self.overlayWindow.hidden = YES;
         return;
@@ -4521,8 +4599,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.floatingIcon.hidden = NO;
     [self refreshFloatingStatusIcon];
     [self.overlayWindow bringSubviewToFront:self.floatingIcon];
+    CGFloat preferredOpacity = self.floatingIcon.alpha;
     self.floatingIcon.alpha = 0.0;
-    [UIView animateWithDuration:0.20 animations:^{ self.floatingIcon.alpha = 0.92; }];
+    [UIView animateWithDuration:0.20 animations:^{ self.floatingIcon.alpha = preferredOpacity; }];
 }
 
 - (void)handleThreeSequentialTaps:(UITapGestureRecognizer *)gesture {
@@ -4594,10 +4673,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self showActivationScreen];
         return;
     }
-    // امسح الـ flag حتى يعود للوضع الطبيعي بعد الظهور الناجح.
-    // dismissUI يضعه من جديد عند إغلاق الواجهة، وإعداد "إخفاء عند الفتح" يتحكم فيه.
+    // This flag tracks current visibility only; the launch preference has its own key.
     [[NSUserDefaults standardUserDefaults] setBool:NO forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+    [self closeSpoofQuickPanel:nil];
     [self makeOverlayKey];
         [self.mainVC refreshSpoofHeaderStatus];
         self.mainVC.view.hidden = NO; 
@@ -4619,11 +4698,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.mainVC closeExpandedMapIfNeeded];
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedback impactOccurred];
-    [WolFoxProStore shared].volumeGestureEnabled = YES;
-    [[WolFoxProStore shared] saveSettings];
+    [self enableMenuRecoveryShortcut];
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [self prepareHiddenVolumeListening];
+    [self closeSpoofQuickPanel:nil];
     [self closeFloatingControlPanel:nil];
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0;
@@ -4645,9 +4724,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] setBool:visible forKey:@"WF_FLOATING_STATUS_VISIBLE"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     self.floatingIcon.hidden = !visible;
-    if (!visible) [self closeSpoofQuickPanel:nil];
+    if (!visible) {
+        [self closeSpoofQuickPanel:nil];
+        [self enableMenuRecoveryShortcut];
+    }
     if (visible) {
         self.overlayWindow.hidden = NO;
+        [self applyFloatingStatusPreferences];
         [self refreshFloatingStatusIcon];
         [self.overlayWindow bringSubviewToFront:self.floatingIcon];
     }
@@ -4712,7 +4795,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     if (!self.spoofQuickPanel) {
         CGFloat width = MIN(292.0, self.overlayWindow.bounds.size.width - 28.0);
-        self.spoofQuickPanel = [[UIView alloc] initWithFrame:CGRectMake(14, 120, width, 242)];
+        self.spoofQuickPanel = [[UIView alloc] initWithFrame:CGRectMake(14, 120, width, 294)];
         self.spoofQuickPanel.backgroundColor = [WolFoxProTheme surfacePrimary];
         self.spoofQuickPanel.layer.cornerRadius = 22.0;
         self.spoofQuickPanel.layer.borderWidth = 1.5;
@@ -4769,6 +4852,11 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self.spoofQuickFavoriteButton addTarget:self action:@selector(activateFavoriteFromQuickPanel:) forControlEvents:UIControlEventTouchUpInside];
         [self.spoofQuickPanel addSubview:self.spoofQuickFavoriteButton];
 
+        UIButton *menuButton = quickButton(@"إظهار المنيو الكامل", @"rectangle.stack.fill", 228);
+        menuButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.39 blue:0.82 alpha:1.0];
+        [menuButton addTarget:self action:@selector(openMenuFromQuickPanel:) forControlEvents:UIControlEventTouchUpInside];
+        [self.spoofQuickPanel addSubview:menuButton];
+
         [self.overlayWindow addSubview:self.spoofQuickPanel];
     }
 
@@ -4796,6 +4884,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     } completion:^(__unused BOOL finished) {
         self.spoofQuickPanel.hidden = YES;
     }];
+}
+
+- (void)openMenuFromQuickPanel:(__unused UIButton *)sender {
+    [self closeSpoofQuickPanel:nil];
+    [self showUI];
 }
 
 - (void)refreshSpoofQuickPanel {
@@ -5189,7 +5282,7 @@ static void __attribute__((constructor)) initialize() {
         WFLog(@"[WolFox][BOOT] startup_stored=%d verify_before_ui=1", [WFLicenseClient hasStoredLicense]);
 #endif
         [WFLicenseClient validateStrictlyWithCompletion:^(WFLicenseResult *result) {
-            BOOL stayHidden = [[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey];
+            BOOL stayHidden = ![[NSUserDefaults standardUserDefaults] boolForKey:WFMenuVisibleOnLaunchKey];
             if (!stayHidden) {
                 if (result.success) {
                     if ([WolFoxProStore shared].mediaUploadActive) [controller toggleCameraIcon:YES];
