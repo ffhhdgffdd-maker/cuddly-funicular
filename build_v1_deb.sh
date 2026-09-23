@@ -206,7 +206,16 @@ EOF
         else
             conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
         fi
-        conflicts="$(printf '%s' "$conflicts" | tr ',' '\\n' | sed "s/^[[:space:]]*//; /^$PACKAGE_ID$/d" | paste -sd, - | sed 's/,/, /g')"
+        local candidate
+        local -a conflict_items
+        IFS=',' read -r -a conflict_items <<< "$conflicts"
+        conflicts=""
+        for candidate in "${conflict_items[@]}"; do
+            candidate="${candidate#${candidate%%[![:space:]]*}}"
+            if [ "$candidate" != "$PACKAGE_ID" ]; then
+                conflicts="${conflicts:+$conflicts, }$candidate"
+            fi
+        done
     fi
     cat > "$root/DEBIAN/control" <<EOF
 Package: $PACKAGE_ID
