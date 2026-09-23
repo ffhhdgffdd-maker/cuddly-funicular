@@ -5,7 +5,10 @@
 #import <sqlite3.h>
 
 NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidChangeNotification";
-static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
+static NSString *WFDefaultIdentifierBundleID(void) {
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
+    return bundleID.length ? bundleID : @"";
+}
 
 @implementation WolFoxProLocation
 - (id)copyWithZone:(NSZone *)zone {
@@ -258,7 +261,7 @@ static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
         if (!savedUUID) continue;
         WolFoxProIdentifier *i = [WolFoxProIdentifier new];
         i.uuid = savedUUID.UUIDString; i.name = d[@"name"];
-        i.bundleID = [d[@"bundleID"] isKindOfClass:[NSString class]] ? d[@"bundleID"] : WFDefaultIdentifierBundleID;
+        i.bundleID = [d[@"bundleID"] isKindOfClass:[NSString class]] ? d[@"bundleID"] : WFDefaultIdentifierBundleID();
         NSString *dateStr = d[@"date"];
         i.createdAt = dateStr ? [NSDate dateWithTimeIntervalSince1970:[dateStr doubleValue]] : [NSDate date];
         [_mutableIdentifiers addObject:i];
@@ -266,7 +269,7 @@ static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
     NSUUID *activeUUID = [[NSUUID alloc] initWithUUIDString:[u stringForKey:@"WF_PRO_ACTIVE_ID"]];
     self.activeIdentifierUUID = activeUUID.UUIDString;
     self.activeIdentifierBundleID = [u stringForKey:@"WF_PRO_ACTIVE_ID_BUNDLE"];
-    if (activeUUID && !self.activeIdentifierBundleID.length) self.activeIdentifierBundleID = WFDefaultIdentifierBundleID;
+    if (activeUUID && !self.activeIdentifierBundleID.length) self.activeIdentifierBundleID = WFDefaultIdentifierBundleID();
     if (!activeUUID) [u removeObjectForKey:@"WF_PRO_ACTIVE_ID"];
     
     self.bluetoothActive = [u boolForKey:@"WF_PRO_BT_ACT"];
@@ -321,7 +324,7 @@ static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
         NSMutableArray *ids = [NSMutableArray new];
         for (WolFoxProIdentifier *i in _mutableIdentifiers) {
             NSString *dateStr = i.createdAt ? [NSString stringWithFormat:@"%.0f", [(NSDate*)i.createdAt timeIntervalSince1970]] : [NSString stringWithFormat:@"%.0f", [[NSDate date] timeIntervalSince1970]];
-            [ids addObject:@{@"uuid": i.uuid ?: @"", @"name": i.name ?: @"", @"bundleID": i.bundleID ?: WFDefaultIdentifierBundleID, @"date": dateStr}];
+            [ids addObject:@{@"uuid": i.uuid ?: @"", @"name": i.name ?: @"", @"bundleID": i.bundleID ?: WFDefaultIdentifierBundleID(), @"date": dateStr}];
         }
         [u setObject:ids forKey:@"WF_PRO_IDS"];
         if (self.activeIdentifierUUID) [u setObject:self.activeIdentifierUUID forKey:@"WF_PRO_ACTIVE_ID"];
@@ -380,7 +383,7 @@ static NSString * const WFDefaultIdentifierBundleID = @"sa.gov.moia.mosques-2";
 }
 
 - (BOOL)activateIdentifierString:(NSString *)value {
-    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: WFDefaultIdentifierBundleID;
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: WFDefaultIdentifierBundleID();
     for (WolFoxProIdentifier *identifier in _mutableIdentifiers) {
         if ([identifier.uuid caseInsensitiveCompare:value] == NSOrderedSame && identifier.bundleID.length) {
             bundleID = identifier.bundleID;
