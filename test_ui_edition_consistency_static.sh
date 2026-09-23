@@ -9,7 +9,7 @@ CONFIG="$PROJECT_DIR/WFLicenseConfig.h"
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 reject() { if grep -Fq "$2" "$1"; then echo "❌ $3"; exit 1; fi; echo "✅ $3"; }
 
-if grep -Fq '_titleLabel.text = @"WolFox GPS";' "$MASTER" || grep -Fq 'editionNames = @[@"WolFox GPS"' "$MASTER"; then
+if grep -Fq '_titleLabel.text = @"WolFox";' "$MASTER"; then
     echo "✅ اسم WolFox الأساسي متاح مع اسم الإصدار"
 else
     echo "❌ اسم WolFox الأساسي غير موجود"; exit 1
