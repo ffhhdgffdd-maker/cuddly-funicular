@@ -2448,8 +2448,11 @@ static BOOL WFMasterProcessIsEligible(void) {
             if ([self coordinateFromSharedMapText:resolved coordinate:&sharedCoordinate]) {
                 searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", sharedCoordinate.latitude, sharedCoordinate.longitude];
                 [self selectMapSearchCoordinate:sharedCoordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
+            } else if (![resolved isEqualToString:query]) {
+                searchBar.text = resolved;
+                [self searchBarSearchButtonClicked:searchBar];
             } else {
-                [self showToast:@"تعذر قراءة الموقع من الرابط؛ الصق رابطاً يحتوي إحداثيات"];
+                [self showToast:@"الرابط المختصر لم يحدد موقعاً؛ انسخ الرابط الكامل"];
             }
         });
     }] resume];
@@ -2500,26 +2503,31 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self selectMapSearchCoordinate:coordinate title:@"إحداثيات محددة" toast:@"تم تحديد الإحداثيات على الخريطة ✅"];
         return;
     }
-    if ([self coordinateFromSharedMapText:query coordinate:&coordinate]) {
+    if ((googleMaps || appleMaps || [mapLink.scheme.lowercaseString isEqualToString:@"geo"]) &&
+        [self coordinateFromSharedMapText:query coordinate:&coordinate]) {
         searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", coordinate.latitude, coordinate.longitude];
         [self selectMapSearchCoordinate:coordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
         return;
     }
-    if (googleMaps && [mapLink.path hasPrefix:@"/maps/place/"]) {
-        NSString *place = [[mapLink.path substringFromIndex:@"/maps/place/".length] componentsSeparatedByString:@"/"].firstObject;
-        NSString *decodedPlace = [place stringByRemovingPercentEncoding] ?: place;
-        place = [decodedPlace stringByReplacingOccurrencesOfString:@"+" withString:@" "];
-        if (place.length && ![place hasPrefix:@"@"]) query = place;
-    } else if (appleMaps) {
+    if (googleMaps || appleMaps) {
         NSString *name = nil;
         for (NSURLQueryItem *item in mapLink.queryItems) {
-            if ([item.name isEqualToString:@"q"] || [item.name isEqualToString:@"address"]) name = item.value;
+            NSString *key = item.name.lowercaseString;
+            if ([key isEqualToString:@"q"] || [key isEqualToString:@"query"] ||
+                [key isEqualToString:@"address"] || [key isEqualToString:@"destination"]) {
+                if (item.value.length) { name = item.value; break; }
+            }
         }
-        if (name.length) query = name;
-        else {
-            [self showToast:@"رابط Apple Maps يحتاج اسم مكان أو إحداثيات"];
+        if (!name.length && googleMaps && [mapLink.path hasPrefix:@"/maps/place/"]) {
+            NSString *place = [[mapLink.path substringFromIndex:@"/maps/place/".length] componentsSeparatedByString:@"/"].firstObject;
+            NSString *decodedPlace = [place stringByRemovingPercentEncoding] ?: place;
+            name = [decodedPlace stringByReplacingOccurrencesOfString:@"+" withString:@" "];
+        }
+        if (!name.length || [name hasPrefix:@"@"]) {
+            [self showToast:@"الرابط يحتاج اسم مكان أو إحداثيات"];
             return;
         }
+        query = [self normalizedMapSearchText:name];
     } else if ([mapLink.scheme.lowercaseString isEqualToString:@"https"] &&
                ([mapHost isEqualToString:@"maps.app.goo.gl"] || [mapHost isEqualToString:@"goo.gl"])) {
         if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
