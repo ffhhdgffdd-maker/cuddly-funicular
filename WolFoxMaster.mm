@@ -6,6 +6,7 @@
 // WolFoxMaster.mm - WolFox v1.8.2 Full "Dark Blue Panel UI"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <Security/Security.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UserNotifications/UserNotifications.h>
 #import <MapKit/MapKit.h>
@@ -2806,9 +2807,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     targetBundle.adjustsFontSizeToFitWidth = YES;
     [idCard addSubview:targetBundle];
 
+    // Read the mosque application's own flutter_udid Keychain item, without activating it.
+    BOOL mosqueApp = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"];
+    if (mosqueApp) {
+        UIButton *importMosque = [self royalBtnInside:_scrollDashboard
+            t:@"استيراد معرّف تطبيق المساجد" i:@"square.and.arrow.down"
+            c:[WolFoxProTheme accent] y:540];
+        [importMosque addTarget:self action:@selector(importMosquesIdentifier)
+              forControlEvents:UIControlEventTouchUpInside];
+    }
+
     // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = 560;
+    CGFloat cy = mosqueApp ? 615 : 560;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -2985,11 +2996,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     raw = [raw stringByReplacingOccurrencesOfString:@"{" withString:@""];
     raw = [raw stringByReplacingOccurrencesOfString:@"}" withString:@""];
     NSUUID *normalizedUUID = [[NSUUID alloc] initWithUUIDString:raw];
-    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:@"sa.gov.moia.mosques-2"]) {
+    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:NSBundle.mainBundle.bundleIdentifier]) {
         tf.text = [WolFoxProStore shared].activeIdentifierUUID;
         [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"مرتبط ومفعّل: sa.gov.moia.mosques-2";
+        status.text = [NSString stringWithFormat:@"مرتبط ومفعّل: %@", NSBundle.mainBundle.bundleIdentifier];
         status.textColor = [WolFoxProTheme success];
     } else {
         [self showToast:@"صيغة UUID غير صحيحة ❌"];
@@ -3007,6 +3018,35 @@ static BOOL WFMasterProcessIsEligible(void) {
         UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
         tf.text = uuid.UUIDString; [self showToast:@"تم استيراد UUID — اضغط حفظ وتفعيل 📋"];
     }
+}
+
+- (void)importMosquesIdentifier {
+    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"]) return;
+    NSDictionary *query = @{
+        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService: @"org.cocoapods.flutter-udid",
+        (__bridge id)kSecMatchLimit: (__bridge id)kSecMatchLimitAll,
+        (__bridge id)kSecReturnData: @YES
+    };
+    CFTypeRef result = NULL;
+    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+    NSArray *items = status == errSecSuccess ? CFBridgingRelease(result) : nil;
+    if (status != errSecSuccess && result) CFRelease(result);
+    if (![items isKindOfClass:[NSArray class]]) {
+        [self showToast:@"معرّف التطبيق غير متاح في Keychain"];
+        return;
+    }
+    for (id item in items) {
+        if (![item isKindOfClass:[NSData class]]) continue;
+        NSString *value = [[NSString alloc] initWithData:item encoding:NSUTF8StringEncoding];
+        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:value];
+        if (!uuid) continue;
+        UITextField *field = objc_getAssociatedObject(self, "_id_tf_page");
+        field.text = uuid.UUIDString;
+        [self showToast:@"تم استيراد معرّف المساجد؛ اضغط حفظ وتفعيل"];
+        return;
+    }
+    [self showToast:@"لا يوجد معرّف UUID صالح للتطبيق"];
 }
 
 - (void)copyDeviceUDID {
