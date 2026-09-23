@@ -31,6 +31,7 @@ expect_pattern "حفظ UUID النشط" 'WF_PRO_ACTIVE_ID' WolFoxProStore.m
 expect_pattern "حفظ ربط UUID بالتطبيق" 'WF_PRO_ACTIVE_ID_BUNDLE' WolFoxProStore.m
 expect_pattern "ربط الهوية بتطبيق المساجد" 'sa[.]gov[.]moia[.]mosques-2' WolFoxProStore.m WolFoxMaster.mm
 expect_pattern "تطبيق UUID حسب Bundle ID" 'currentBundleID.*boundBundleID|isEqualToString:boundBundleID' WolFoxProStore.m
+expect_pattern "شاشة منسوبي المساجد تربط المعرّف بالتطبيق المحدد" 'activateIdentifierString:uuid[.]UUIDString forBundleID:@"sa[.]gov[.]moia[.]mosques-2"' WolFoxMaster.mm
 expect_pattern "واجهة التفعيل تستخدم الربط الصريح" 'activateIdentifierString:normalizedUUID[.]UUIDString forBundleID:' WolFoxMaster.mm
 expect_pattern "إيقاف الهوية الموحدة" 'deactivateIdentifier' WolFoxProStore.h WolFoxProStore.m WolFoxMaster.mm
 expect_pattern "واجهة توضح الأنواع المدمجة" 'IDFA • IDFV • Web' WolFoxMaster.mm
