@@ -161,6 +161,7 @@ for ((offset=0; offset<${#PROJECT_KEY_HEX}; offset+=2)); do
     PROJECT_KEY_BYTES+="${PROJECT_KEY_BYTES:+, }$encoded_byte"
 done
 cat > "$GENERATED_LICENSE_CONFIG" <<EOF
+#define WOLFOX_BUILD_PROFILE @"$(escape_objc_string "${WOLFOX_PROFILE:-legacy}")"
 #define WOLFOX_LICENSE_BASE_URL @"$(escape_objc_string "$PANEL_BASE_URL_VALUE")"
 #define WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK $PROJECT_KEY_XOR_MASK
 #define WOLFOX_LICENSE_PROJECT_KEY_LENGTH $PROJECT_KEY_LENGTH
