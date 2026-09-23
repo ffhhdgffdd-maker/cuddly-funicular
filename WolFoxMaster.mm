@@ -314,7 +314,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"هذه جولة إرشادية قصيرة لشرح وظائف نسخة Lite. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"ابحث عن مكان أو إحداثيات أو رابط مشاركة من شريط البحث.",
-        @"من الإعدادات راجع حالة الاشتراك، تحكم في الإخفاء، وتحقق من إصدار WolFox Lite."
+        @"من الإعدادات تحكم في إظهار الأيقونة والمنيو واستعادتهما، وأدخل كود التفعيل. معلومات الاشتراك في زر التاج."
     ];
     NSString *onboardingEdition = @"WOLFOX LITE";
 #else
@@ -324,7 +324,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"احفظ المواقع واستخدم الجدولة لتحديد الأيام ووقت البداية والنهاية حسب إعداداتك.",
         @"بعد فتح كاميرا التطبيق اضغط مطولاً في منتصف الشاشة لإظهار الأيقونة؛ اسحبها لأكثر من ثانيتين للتبديل السريع.",
-        @"من الإعدادات غيّر المظهر والألوان والتنبيهات، وراجع حالة الاشتراك وإصدار WolFox Full."
+        @"من الإعدادات تحكم في إظهار الأيقونة والمنيو واستعادتهما، وأدخل كود التفعيل أو افتح إعدادات الكاميرا. معلومات الاشتراك في زر التاج."
     ];
     NSString *onboardingEdition = @"WOLFOX FULL";
 #endif
@@ -3255,14 +3255,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }];
 }
 
-- (void)openIdentifierSettings {
-    [self switchPage:1];
-}
-
-- (void)openBluetoothSettings {
-    [self switchPage:2];
-}
-
 - (void)openCameraSettings {
     [self switchPage:3];
 }
@@ -3273,7 +3265,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat y = 12.0;
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    UIView *interfaceCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 482)];
+    UIView *interfaceCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 426)];
     interfaceCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     interfaceCard.layer.cornerRadius = 16;
     [_scrollDashboard addSubview:interfaceCard];
@@ -3319,16 +3311,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
     [interfaceCard addSubview:pressCount];
 
-    UIButton *showMenu = [self royalBtnInside:interfaceCard t:@"إظهار المنيو الآن"
-        i:@"rectangle.stack.fill" c:[WolFoxProTheme accent] y:308];
-    [showMenu addTarget:[WolFoxController shared] action:@selector(showUI)
-        forControlEvents:UIControlEventTouchUpInside];
     UIButton *hideMenu = [self royalBtnInside:interfaceCard t:@"إخفاء المنيو الآن"
-        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:364];
+        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:308];
     [hideMenu addTarget:[WolFoxController shared] action:@selector(dismissUI)
         forControlEvents:UIControlEventTouchUpInside];
     UIButton *resetIcon = [self royalBtnInside:interfaceCard t:@"إعادة الأيقونة إلى مكانها"
-        i:@"arrow.counterclockwise" c:[WolFoxProTheme success] y:420];
+        i:@"arrow.counterclockwise" c:[WolFoxProTheme success] y:364];
     [resetIcon addTarget:self action:@selector(resetFloatingIconPosition)
         forControlEvents:UIControlEventTouchUpInside];
 
@@ -3338,67 +3326,26 @@ static BOOL WFMasterProcessIsEligible(void) {
     licenseCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     licenseCard.layer.cornerRadius = 16;
     [_scrollDashboard addSubview:licenseCard];
-    UIButton *activation = [self royalBtnInside:licenseCard t:@"تفعيل WolFox أو عرض الاشتراك"
+    UIButton *activation = [self royalBtnInside:licenseCard t:@"إدخال كود تفعيل WolFox"
         i:@"key.fill" c:[WolFoxProTheme accent] y:12];
     [activation addTarget:[WolFoxController shared] action:@selector(showActivationScreen)
          forControlEvents:UIControlEventTouchUpInside];
     activation.accessibilityLabel = @"إدخال كود تفعيل WolFox";
 
-    y += 88.0;
-    UIView *locationCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 70)];
-    locationCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    locationCard.layer.cornerRadius = 16;
-    [_scrollDashboard addSubview:locationCard];
-    [locationCard addSubview:[self royalSwitchInside:locationCard
-        t:@"تشغيل الموقع" i:@"location.fill"
-        isOn:[WolFoxProStore shared].spoofActive y:0 action:^(UISwitch *toggle) {
-        if (toggle.on) {
-            if (![WFLicenseClient isRuntimeLicenseValid]) {
-                [toggle setOn:NO animated:YES];
-                [[WolFoxController shared] showActivationScreen];
-                return;
-            }
-            [WolFoxProStore shared].spoofActive = YES;
-            [[WolFoxProStore shared] saveSettings];
-            [[WolFoxProHookManager shared] deliverFakeUpdate];
-            [self refreshSpoofHeaderStatus];
-        } else {
-            [self confirmDisableSpoofForSwitch:toggle];
-        }
-    }]];
-
-    y += 82.0;
-    UIView *identifierCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
-    identifierCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    identifierCard.layer.cornerRadius = 16;
-    [_scrollDashboard addSubview:identifierCard];
-    UIButton *identifier = [self royalBtnInside:identifierCard t:@"تفعيل معرّف التطبيق"
-        i:@"person.crop.square" c:[WolFoxProTheme accent] y:12];
-    [identifier addTarget:self action:@selector(openIdentifierSettings)
-        forControlEvents:UIControlEventTouchUpInside];
+    y = CGRectGetMaxY(licenseCard.frame) + 12.0;
 
 #if !WOLFOX_LITE
-    y += 88.0;
-    UIView *bluetoothCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
-    bluetoothCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    bluetoothCard.layer.cornerRadius = 16;
-    [_scrollDashboard addSubview:bluetoothCard];
-    UIButton *bluetooth = [self royalBtnInside:bluetoothCard t:@"تشغيل البلوتوث"
-        i:@"antenna.radiowaves.left.and.right" c:[WolFoxProTheme accent] y:12];
-    [bluetooth addTarget:self action:@selector(openBluetoothSettings)
-        forControlEvents:UIControlEventTouchUpInside];
-
-    y += 88.0;
     UIView *cameraCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
     cameraCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     cameraCard.layer.cornerRadius = 16;
     [_scrollDashboard addSubview:cameraCard];
-    UIButton *camera = [self royalBtnInside:cameraCard t:@"تشغيل الكاميرا"
+    UIButton *camera = [self royalBtnInside:cameraCard t:@"إعدادات الكاميرا"
         i:@"camera.fill" c:[WolFoxProTheme accent] y:12];
     [camera addTarget:self action:@selector(openCameraSettings)
         forControlEvents:UIControlEventTouchUpInside];
+    y = CGRectGetMaxY(cameraCard.frame) + 12.0;
 #endif
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 92.0);
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 8.0);
 }
 
 - (NSArray<UIColor *> *)markerPalette {
