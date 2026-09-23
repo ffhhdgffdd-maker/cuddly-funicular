@@ -1,12 +1,11 @@
-// WolFoxProTheme.m — v1.8.4 Fixed Dark Blue Panel UI
-// تصميم آمن: خلفيات زرقاء داكنة، أزرق ساطع للتفاعل، وألوان حالة دلالية واضحة.
-// فلسفة التصميم: تباين مرتفع، أسطح كحلية عميقة، وعدم استخدام البنفسجي أو الذهبي في الهوية.
+// WolFox 3.0.0 — violet night identity shared by all editions.
+// Keeps semantic success/danger colors and high contrast text.
 #import "WolFoxProTheme.h"
 #import "WolFoxProStore.h"
 
 @implementation WolFoxProTheme
 
-// الإصدار 1.8.4 يثبت الوضع الليلي لتوحيد التباين ومنع تبدل الألوان بين الصفحات.
+// الإصدار 3.0.0 يثبت الوضع الليلي لتوحيد التباين ومنع تبدل الألوان بين الصفحات.
 + (BOOL)isDark { return YES; }
 
 + (UIColor *)windowBackground { return [self royalBackground]; }
@@ -14,15 +13,15 @@
 // ── خلفيات البطاقات الزرقاء الداكنة ───────────────────────────
 + (UIColor *)surfacePrimary {
     return [self isDark]
-        // داكن: أزرق كحلي يفصل البطاقة عن الخلفية
-        ? [UIColor colorWithRed:0.035 green:0.075 blue:0.150 alpha:1.0]
+        // داكن: بنفسجي داكن يفصل البطاقة عن الخلفية
+        ? [UIColor colorWithRed:0.091 green:0.067 blue:0.161 alpha:1.0]
         // فاتح: أبيض نقي للوضوح الكامل
         : [UIColor colorWithRed:1.000 green:1.000 blue:1.000 alpha:1.0];
 }
 
 + (UIColor *)surfaceSecondary {
     return [self isDark]
-        ? [UIColor colorWithRed:0.055 green:0.115 blue:0.230 alpha:1.0]
+        ? [UIColor colorWithRed:0.137 green:0.103 blue:0.224 alpha:1.0]
         : [UIColor colorWithRed:0.930 green:0.940 blue:0.950 alpha:1.0];
 }
 
@@ -30,23 +29,23 @@
 + (UIColor *)textPrimary {
     return [self isDark]
         // أبيض بارد مريح للعين وواضح على الخلفية الداكنة
-        ? [UIColor colorWithRed:0.930 green:0.965 blue:1.000 alpha:1.0]
+        ? [UIColor colorWithRed:0.957 green:0.939 blue:1.000 alpha:1.0]
         // داكن جداً في الفاتح
         : [UIColor colorWithRed:0.080 green:0.100 blue:0.130 alpha:1.0];
 }
 
 + (UIColor *)textSecondary {
     return [self isDark]
-        ? [UIColor colorWithRed:0.620 green:0.735 blue:0.875 alpha:1.0]
+        ? [UIColor colorWithRed:0.730 green:0.680 blue:0.831 alpha:1.0]
         : [UIColor colorWithRed:0.380 green:0.430 blue:0.490 alpha:1.0];
 }
 
-// ── ألوان Dark Blue الأساسية عالية التباين ───────────────────
-// accent: أزرق واضح للأزرار والتبويب النشط
+// ── ألوان Violet Night الأساسية عالية التباين ───────────────────
+// accent: بنفسجي واضح للأزرار والتبويب النشط
 + (UIColor *)accent {
     return [self isDark]
-        ? [UIColor colorWithRed:0.120 green:0.475 blue:0.925 alpha:1.0]  // أزرق داكن واضح
-        : [UIColor colorWithRed:0.090 green:0.360 blue:0.760 alpha:1.0]; // أزرق للوضع الفاتح
+        ? [UIColor colorWithRed:0.655 green:0.410 blue:0.980 alpha:1.0]  // بنفسجي داكن واضح
+        : [UIColor colorWithRed:0.490 green:0.255 blue:0.790 alpha:1.0]; // بنفسجي للوضع الفاتح
 }
 
 // danger: أحمر وردي واضح للحالة الحرجة والتوقف
@@ -59,28 +58,28 @@
     return [UIColor colorWithRed:0.220 green:0.827 blue:0.624 alpha:1.0]; // #25BE74
 }
 
-// gold: alias أزرق فاتح للمفضلة والتمييز، مع إبقاء اسم API للتوافق
+// gold: alias لافندر للمفضلة والتمييز، مع إبقاء اسم API للتوافق
 + (UIColor *)gold {
-    return [UIColor colorWithRed:0.260 green:0.650 blue:1.000 alpha:1.0]; // أزرق فاتح
+    return [UIColor colorWithRed:0.805 green:0.620 blue:1.000 alpha:1.0]; // لافندر
 }
 
-// ── الخلفية الكحلية الداكنة ─────────────────────────────────
+// ── الخلفية البنفسجية الداكنة ─────────────────────────────────
 + (UIColor *)royalBackground {
     return [self isDark]
-        // داكن: كحلي عميق
-        ? [UIColor colorWithRed:0.018 green:0.040 blue:0.085 alpha:1.0]
+        // داكن: بنفسجي عميق
+        ? [UIColor colorWithRed:0.040 green:0.027 blue:0.081 alpha:1.0]
         // فاتح: رمادي ناعم جداً
         : [UIColor colorWithRed:0.950 green:0.955 blue:0.965 alpha:1.0];
 }
 
 + (UIColor *)royalCard {
-    // بطاقة داكنة: تعلو بوضوح فوق الخلفية الكحلية
-    return [UIColor colorWithRed:0.035 green:0.075 blue:0.150 alpha:1.0];
+    // بطاقة داكنة: تعلو بوضوح فوق الخلفية البنفسجية
+    return [UIColor colorWithRed:0.091 green:0.067 blue:0.161 alpha:1.0];
 }
 
 + (UIColor *)royalField {
-    // حقل إدخال: أزرق أعمق قليلاً من البطاقة
-    return [UIColor colorWithRed:0.045 green:0.100 blue:0.205 alpha:1.0];
+    // حقل إدخال: بنفسجي أعمق قليلاً من البطاقة
+    return [UIColor colorWithRed:0.116 green:0.081 blue:0.191 alpha:1.0];
 }
 
 + (UIColor *)royalBlue {
