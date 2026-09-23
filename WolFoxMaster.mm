@@ -402,7 +402,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     BOOL v3Build = ![v3Profile isEqualToString:@"legacy"];
     BOOL tahakomTarget = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tahakom.mytahakom"];
     _titleLabel.text = @"WolFox GPS";
-    if (v3Build) _titleLabel.text = tahakomTarget ? @"WolFox 3 · تحكم" : @"WolFox 3 · مساجد";
+    if (v3Build) {
+        if ([v3Profile hasPrefix:@"lite-"]) _titleLabel.text = @"WolFox 3 · Lite";
+        else if ([v3Profile hasPrefix:@"full-"]) _titleLabel.text = @"WolFox 3 · Full";
+        else _titleLabel.text = tahakomTarget ? @"WolFox 3 · تحكم" : @"WolFox 3 · مساجد";
+    }
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
