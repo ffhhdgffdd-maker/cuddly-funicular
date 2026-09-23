@@ -384,7 +384,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = self.view.bounds.size.width;
     CGFloat h = self.view.bounds.size.height;
     CGFloat safeTop = MAX(self.view.safeAreaInsets.top, 28.0);
-    CGFloat headerHeight = safeTop + 76.0;
+    CGFloat headerHeight = safeTop + 58.0;
     
     _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[WolFoxProTheme blurStyle]]];
     _blurView.frame = self.view.bounds;
@@ -397,22 +397,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     _header.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.28].CGColor;
     [self.view addSubview:_header];
     
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 9, MAX(108.0, w - 198.0), 28)];
-    NSString *v3Profile = WOLFOX_BUILD_PROFILE;
-    BOOL v3Build = ![v3Profile isEqualToString:@"legacy"];
-    BOOL tahakomTarget = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tahakom.mytahakom"];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, 135, 26)];
     _titleLabel.text = @"WolFox GPS";
-    if (v3Build) {
-        if ([v3Profile hasPrefix:@"lite-"]) _titleLabel.text = @"WolFox 3 · Lite";
-        else if ([v3Profile hasPrefix:@"full-"]) _titleLabel.text = @"WolFox 3 · Full";
-        else _titleLabel.text = tahakomTarget ? @"WolFox 3 · تحكم" : @"WolFox 3 · مساجد";
-    }
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
     [_header addSubview:_titleLabel];
 
-    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 46, MAX(140.0, w - 36.0), 17)];
+    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 34, 190, 16)];
     _spoofStatusLabel.textAlignment = NSTextAlignmentLeft;
     _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     _spoofStatusLabel.isAccessibilityElement = YES;
@@ -435,18 +427,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_header addSubview:statusBtn];
 
     // 2. Top Tabs Bar
-    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(12, headerHeight + 8, w - 24, 64)];
-    _tabsBar.layer.cornerRadius = 20.0;
-    _tabsBar.layer.masksToBounds = YES;
+    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight, w, 58)];
     _tabsBar.backgroundColor = [WolFoxProTheme surfaceSecondary];
     _tabsBar.layer.borderWidth = 1.0;
     _tabsBar.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18].CGColor;
     [self.view addSubview:_tabsBar];
     
 #if WOLFOX_LITE
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 61, (w - 24) / 3.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 61, (w - 24) / 4.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 4.0, 4)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -461,15 +451,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"البلوتوث", @"الإعدادات"];
     NSArray *tabPages = @[@0, @1, @2, @4];
 #endif
-    CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
+    CGFloat tw = w / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
     if (@available(iOS 13.0, *)) {
         tabConfig = [UIImageSymbolConfiguration configurationWithPointSize:21 weight:UIImageSymbolWeightSemibold];
     }
     for (NSUInteger i = 0; i < icons.count; i++) {
         UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
-        b.frame = CGRectMake(i * tw, 0, tw, 64);
-        b.contentEdgeInsets = UIEdgeInsetsMake(-10, 0, 10, 0);
+        b.frame = CGRectMake(i * tw, 0, tw, 58);
         if (@available(iOS 13.0, *)) {
             [b setImage:[UIImage systemImageNamed:icons[i] withConfiguration:tabConfig] forState:UIControlStateNormal];
         }
@@ -480,19 +469,11 @@ static BOOL WFMasterProcessIsEligible(void) {
         b.accessibilityHint = @"يفتح هذا القسم";
         [b addTarget:self action:@selector(tabBtnPressed:) forControlEvents:UIControlEventTouchUpInside];
         [_tabsBar addSubview:b];
-        UILabel *tabCaption = [[UILabel alloc] initWithFrame:CGRectMake(i * tw + 2, 40, tw - 4, 16)];
-        tabCaption.text = tabLabels[i];
-        tabCaption.textColor = [WolFoxProTheme textSecondary];
-        tabCaption.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightSemibold];
-        tabCaption.textAlignment = NSTextAlignmentCenter;
-        tabCaption.adjustsFontSizeToFitWidth = YES;
-        tabCaption.minimumScaleFactor = 0.8;
-        [_tabsBar addSubview:tabCaption];
         [_tabBtns addObject:b];
     }
     
     // 3. Dashboard (Main Content)
-    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight + 80, w, h - headerHeight - 80)];
+    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight + 58, w, h - headerHeight - 58)];
     _dashboard.backgroundColor = [WolFoxProTheme windowBackground];
     [self.view addSubview:_dashboard];
     
@@ -643,10 +624,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         UIButton *candidate = (UIButton *)_tabBtns[index];
         if (candidate.tag == page) { tabIndex = (NSInteger)index; break; }
     }
-    CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / tabCount;
+    CGFloat tw = w / tabCount;
     if (indicator) {
         [UIView performWithoutAnimation:^{
-            indicator.frame = CGRectMake(tabIndex * tw + tw * 0.15, 61, tw * 0.70, 3);
+            indicator.frame = CGRectMake(tabIndex * tw, 55, tw, 3);
         }];
     }
     for (UIButton *b in _tabBtns) {
