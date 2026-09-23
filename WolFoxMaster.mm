@@ -3070,7 +3070,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     sheet.preferredContentSize = CGSizeMake(360.0, 390.0);
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(24, 22, 312, 34)];
-    title.text = @"خاص لتطبيق مساجد";
+    title.text = @"منسوبي المساجد";
     title.textAlignment = NSTextAlignmentCenter;
     title.textColor = [WolFoxProTheme textPrimary];
     title.font = [WolFoxProTheme fontOfSize:19 weight:UIFontWeightBlack];
@@ -3162,7 +3162,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         raw = [raw stringByReplacingOccurrencesOfString:@"urn:uuid:" withString:@"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, raw.length)];
         raw = [[raw stringByReplacingOccurrencesOfString:@"{" withString:@""] stringByReplacingOccurrencesOfString:@"}" withString:@""];
         NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:raw];
-        if (!uuid || ![[WolFoxProStore shared] activateIdentifierString:uuid.UUIDString]) {
+        if (!uuid || ![[WolFoxProStore shared] activateIdentifierString:uuid.UUIDString forBundleID:@"sa.gov.moia.mosques-2"]) {
             [self showToast:@"صيغة UUID غير صحيحة ❌"];
             return;
         }

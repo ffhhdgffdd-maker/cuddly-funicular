@@ -84,6 +84,19 @@ static NSUUID *hook_identifierForVendor(UIDevice *self, SEL _cmd) {
     return ((NSUUID *(*)(id, SEL))orig_identifierForVendor)(self, _cmd);
 }
 
+// flutter_udid 3.0.1 reads its cached UUID through SAMKeychain. Keep the
+// plugin result aligned with IDFV for the explicitly bound target app only.
+static IMP orig_SAMKeychain_passwordForService;
+static NSString *hook_SAMKeychain_passwordForService(id self, SEL _cmd, NSString *service, NSString *account) {
+    NSUUID *uuid = WFActivePublicIdentifier();
+    if (uuid && [service isEqualToString:@"org.cocoapods.flutter-udid"]) {
+        return uuid.UUIDString;
+    }
+    return orig_SAMKeychain_passwordForService
+        ? ((NSString *(*)(id, SEL, id, id))orig_SAMKeychain_passwordForService)(self, _cmd, service, account)
+        : nil;
+}
+
 #pragma mark - Location hooks
 
 static IMP orig_CLLocation_coordinate;
@@ -528,6 +541,14 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                               @selector(identifierForVendor),
                               (IMP)hook_identifierForVendor,
                               &orig_identifierForVendor);
+
+        Class keychainClass = NSClassFromString(@"SAMKeychain");
+        if (keychainClass) {
+            WFInstallClassHook(keychainClass,
+                               NSSelectorFromString(@"passwordForService:account:"),
+                               (IMP)hook_SAMKeychain_passwordForService,
+                               &orig_SAMKeychain_passwordForService);
+        }
 
         WFInstallInstanceHook(AVCaptureSession.class,
                               @selector(startRunning),
