@@ -302,11 +302,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_onboardingOverlay];
 
 #if WOLFOX_LITE
-    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox Lite", @"الموقع والمفضلة", @"خريطة المدارس والمساجد", @"الإعدادات والإخفاء"];
+    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox Lite", @"الموقع والمفضلة", @"البحث في الخريطة", @"الإعدادات والإخفاء"];
     NSArray<NSString *> *messages = @[
         @"هذه جولة إرشادية قصيرة لشرح وظائف نسخة Lite. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
-        @"استكشف المدارس والمساجد في المملكة بعلامات واضحة، وقرّب الخريطة لعرض تفاصيل أكثر.",
+        @"ابحث عن مكان أو إحداثيات أو رابط مشاركة من شريط البحث.",
         @"من الإعدادات راجع حالة الاشتراك، تحكم في الإخفاء، وتحقق من إصدار WolFox Lite."
     ];
     NSString *onboardingEdition = @"WOLFOX LITE";
@@ -407,8 +407,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_header];
     
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, edition ? MAX(120.0, w - 190.0) : 135, 26)];
-    NSArray *editionNames = @[@"WolFox GPS", @"WolFox تحكم", @"WolFox مساجد", @"WolFox Lite", @"WolFox Full"];
-    _titleLabel.text = editionNames[edition];
+    _titleLabel.text = @"WolFox";
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
@@ -595,7 +594,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                          (store.spoofActive && licensed) ? @"يعمل" : @"متوقف",
                          (store.routeActive && store.spoofActive) ? @"نشطة" : @"متوقفة",
                          WFClampGPSUpdateInterval(store.updateIntervalSeconds)];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حالة WolFox GPS" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حالة WolFox" message:message preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -661,7 +660,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 
     for (UIView *v in _scrollDashboard.subviews) [v removeFromSuperview];
-    _saudiPlacesPageActive = (page == 0 || page == 5);
+    _saudiPlacesPageActive = NO;
     if (!_saudiPlacesPageActive) {
         [_saudiPlacesTask cancel];
         _saudiPlacesTask = nil;
@@ -698,7 +697,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     else if (page == 2) [self setupBluetoothPage];
     else if (page == 3) [self setupCameraPage];
     else if (page == 4) [self setupSettingsPage];
-    else if (page == 5) [self setupSaudiPlacesMapPage];
+    else if (page == 5) [self setupGPSPage];
 }
 
 #pragma mark - Saudi Schools & Mosques Map (Lite)
@@ -1255,7 +1254,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     
     // Search Bar
-    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(4, 2, servicesCard.bounds.size.width - 52, 44)];
+    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(4, 2, servicesCard.bounds.size.width - 8, 44)];
     self.searchBar.delegate = self;
     self.searchBar.placeholder = @"اسم مكان، إحداثيات أو رابط مشاركة";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
@@ -1279,14 +1278,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     [servicesCard addSubview:self.searchBar];
     objc_setAssociatedObject(self, "_map_search_host", servicesCard, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    UIButton *placesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    placesButton.frame = CGRectMake(servicesCard.bounds.size.width - 48, 2, 44, 44);
-    if (@available(iOS 13.0, *)) [placesButton setImage:[UIImage systemImageNamed:@"building.2.fill"] forState:UIControlStateNormal];
-    placesButton.tintColor = [UIColor colorWithRed:0.24 green:0.78 blue:0.67 alpha:1.0];
-    placesButton.accessibilityLabel = @"عرض المدارس والمساجد والخدمات الصحية";
-    [placesButton addTarget:self action:@selector(showSaudiServicesOnMainMap) forControlEvents:UIControlEventTouchUpInside];
-    [servicesCard addSubview:placesButton];
-
     // Style Toggle Button
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
     styleBtn.tintColor = [UIColor colorWithRed:0.35 green:0.74 blue:1.0 alpha:1.0];
@@ -2160,7 +2151,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.searchBar.tag = 0;
         UIView *searchHost = objc_getAssociatedObject(self, "_map_search_host");
         if (!searchHost) searchHost = _mapCard;
-        self.searchBar.frame = CGRectMake(4, 2, searchHost.bounds.size.width - 52, 44);
+        self.searchBar.frame = CGRectMake(4, 2, searchHost.bounds.size.width - 8, 44);
         [searchHost addSubview:self.searchBar];
     }
     [_expandedMapContainer removeFromSuperview];
