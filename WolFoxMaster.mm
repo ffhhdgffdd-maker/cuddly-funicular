@@ -2409,7 +2409,18 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (BOOL)coordinateFromSharedMapText:(NSString *)text coordinate:(CLLocationCoordinate2D *)coordinate {
-    NSString *decoded = [text stringByRemovingPercentEncoding] ?: text;
+    NSString *decoded = [self normalizedMapSearchText:([text stringByRemovingPercentEncoding] ?: text)];
+    // Google Maps data URLs can store a point as !3d<latitude>!4d<longitude>.
+    NSRegularExpression *googlePoint = [NSRegularExpression regularExpressionWithPattern:@"!3d(-?[0-9]{1,2}(?:\\.[0-9]+)?)!4d(-?[0-9]{1,3}(?:\\.[0-9]+)?)" options:0 error:nil];
+    NSTextCheckingResult *googleMatch = [googlePoint firstMatchInString:decoded options:0 range:NSMakeRange(0, decoded.length)];
+    if (googleMatch.numberOfRanges == 3) {
+        CLLocationCoordinate2D point = CLLocationCoordinate2DMake([[decoded substringWithRange:[googleMatch rangeAtIndex:1]] doubleValue],
+                                                                    [[decoded substringWithRange:[googleMatch rangeAtIndex:2]] doubleValue]);
+        if (CLLocationCoordinate2DIsValid(point)) {
+            if (coordinate) *coordinate = point;
+            return YES;
+        }
+    }
     NSError *error = nil;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"(-?[0-9]{1,2}(?:\\.[0-9]+)?)[,/@\\s]+(-?[0-9]{1,3}(?:\\.[0-9]+)?)" options:0 error:&error];
     NSTextCheckingResult *match = error ? nil : [regex firstMatchInString:decoded options:0 range:NSMakeRange(0, decoded.length)];
@@ -2435,7 +2446,7 @@ static BOOL WFMasterProcessIsEligible(void) {
             NSString *resolved = response.URL.absoluteString ?: query;
             CLLocationCoordinate2D sharedCoordinate;
             if ([self coordinateFromSharedMapText:resolved coordinate:&sharedCoordinate]) {
-                searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", sharedCoordinate.latitude, sharedCoordinate.longitude];
+                searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", sharedCoordinate.latitude, sharedCoordinate.longitude];
                 [self selectMapSearchCoordinate:sharedCoordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
             } else {
                 [self showToast:@"تعذر قراءة الموقع من الرابط؛ الصق رابطاً يحتوي إحداثيات"];
@@ -2469,18 +2480,52 @@ static BOOL WFMasterProcessIsEligible(void) {
         return;
     }
 
+    NSRegularExpression *activationCode = [NSRegularExpression regularExpressionWithPattern:@"^GPS-[A-Za-z0-9]+$" options:0 error:nil];
+    if ([activationCode firstMatchInString:query options:0 range:NSMakeRange(0, query.length)]) {
+        [self showToast:@"هذا كود تفعيل؛ أدخله في صفحة التفعيل"];
+        return;
+    }
+    NSURLComponents *mapLink = [NSURLComponents componentsWithString:query];
+    NSString *mapHost = mapLink.host.lowercaseString;
+    BOOL googleMaps = [mapHost isEqualToString:@"google.com"] || [mapHost hasSuffix:@".google.com"];
+    BOOL appleMaps = [mapHost isEqualToString:@"maps.apple.com"];
+    if (googleMaps && [mapLink.path isEqualToString:@"/maps/place/"] && !mapLink.query.length) {
+        [self showToast:@"رابط Google Maps غير مكتمل؛ انسخ رابط المكان كاملاً"];
+        return;
+    }
+
     CLLocationCoordinate2D coordinate;
     if ([self parseCoordinateSearchText:query coordinate:&coordinate]) {
-        searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
+        searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", coordinate.latitude, coordinate.longitude];
         [self selectMapSearchCoordinate:coordinate title:@"إحداثيات محددة" toast:@"تم تحديد الإحداثيات على الخريطة ✅"];
         return;
     }
     if ([self coordinateFromSharedMapText:query coordinate:&coordinate]) {
-        searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
+        searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", coordinate.latitude, coordinate.longitude];
         [self selectMapSearchCoordinate:coordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
         return;
     }
-    if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
+    if (googleMaps && [mapLink.path hasPrefix:@"/maps/place/"]) {
+        NSString *place = [[mapLink.path substringFromIndex:@"/maps/place/".length] componentsSeparatedByString:@"/"].firstObject;
+        place = [[place stringByRemovingPercentEncoding] ?: place stringByReplacingOccurrencesOfString:@"+" withString:@" "];
+        if (place.length && ![place hasPrefix:@"@"]) query = place;
+    } else if (appleMaps) {
+        NSString *name = nil;
+        for (NSURLQueryItem *item in mapLink.queryItems) {
+            if ([item.name isEqualToString:@"q"] || [item.name isEqualToString:@"address"]) name = item.value;
+        }
+        if (name.length) query = name;
+        else {
+            [self showToast:@"رابط Apple Maps يحتاج اسم مكان أو إحداثيات"];
+            return;
+        }
+    } else if ([mapLink.scheme.lowercaseString isEqualToString:@"https"] &&
+               ([mapHost isEqualToString:@"maps.app.goo.gl"] || [mapHost isEqualToString:@"goo.gl"])) {
+        if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
+    } else if (mapLink.scheme.length && mapLink.host.length) {
+        [self showToast:@"استخدم رابط خرائط Apple أو Google أو إحداثيات"];
+        return;
+    }
 
     [_activeMapSearch cancel];
     MKLocalSearchRequest *request = [MKLocalSearchRequest new];
