@@ -10,7 +10,7 @@
 
 اضبط مفتاح المشروع في GitHub عبر: **المستودع → Settings → Secrets and variables → Actions → Repository secrets → New repository secret**، بالاسم `WOLFOX_PROJECT_KEY`. المسار في السورس هو `.github/workflows/build.yml` حيث يُمرر السر إلى متغير البيئة، ثم يقرأه `build_v1_deb.sh` ويولّد الإعداد المؤقت داخل `.wolfox-build` أثناء البناء. لا تعرض قيمة المفتاح في السجلات أو التوثيق. عنوان اللوحة الافتراضي `https://gps.p3nd.fun/api/v1`.
 
-للبناء المحلي جهّز Theos وSDK و`ldid`، ثم شغّل `export WOLFOX_PROJECT_KEY='قيمة-مفتاح-المشروع'` يتبعه `bash build_v1_deb.sh`؛ استخدم إدخالًا آمنًا بدل تضمين القيمة في سجل أو ملف مشترك. في GitHub شغّل سير `Build WolFox 2.0.0 — Full and Lite` عبر Actions أو افتح طلب سحب إلى `main`. ينتج البناء ملفي DEB بصيغة Rootful وRootless وملف dylib لكل نسخة. لا تُدمج arm64e في النسخة الحالية لعدم توفر Toolchain واختبار فعلي معتمد لها.
+للبناء المحلي جهّز Theos وSDK و`ldid`، ثم أدخل المفتاح دون تسجيله في سجل أو ملف مشترك باستخدام `read -rs -p 'Project key: ' WOLFOX_PROJECT_KEY; echo; export WOLFOX_PROJECT_KEY`، ثم شغّل `bash build_v1_deb.sh`. في GitHub شغّل سير `Build WolFox 2.0.0 — Full and Lite` عبر Actions أو افتح طلب سحب إلى `main`. ينتج البناء ملفي DEB بصيغة Rootful وRootless وملف dylib لكل نسخة. لا تُدمج arm64e في النسخة الحالية لعدم توفر Toolchain واختبار فعلي معتمد لها.
 
 لا تضع سر توقيع اللوحة أو مفتاحًا خاصًا داخل السورس أو Dylib. قيمة `WF_PROJECT_KEY` معرف مشروع عام، ويجب ألا تمنح صلاحيات سرية. يجب إبقاء أسرار الخادم في الخادم فقط.
 
