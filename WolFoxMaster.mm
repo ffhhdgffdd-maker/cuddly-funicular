@@ -2731,7 +2731,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupIDPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 530)];
+    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 550)];
     idCard.backgroundColor = [WolFoxProTheme surfacePrimary]; idCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:idCard];
     
@@ -2754,8 +2754,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 82, idCard.bounds.size.width - 30, 50)];
     tf.backgroundColor = [WolFoxProTheme surfaceSecondary]; tf.layer.cornerRadius = 12; tf.textColor = [WolFoxProTheme textPrimary]; tf.textAlignment = NSTextAlignmentCenter;
     tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
-    NSString *activeUUID = [WolFoxProStore shared].activeIdentifierUUID;
-    tf.text = activeUUID.length ? activeUUID : [WFLicenseClient deviceIdentifier];
+    tf.text = @"";
+    tf.placeholder = @"أدخل كود المعرّف UUID هنا";
     tf.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
@@ -2789,8 +2789,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(15, 462, idCard.bounds.size.width - 30, 40)];
     BOOL identifierActive = [WolFoxProStore shared].validatedActiveIdentifier != nil;
-    idStatus.text = identifierActive ? @"حالة تزييف المعرّفات: مفعّل" : @"حالة تزييف المعرّفات: متوقف";
-    idStatus.textColor = identifierActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
+    idStatus.text = identifierActive ? @"🔵 المعرّف نشط" : @"أدخل المعرّف واضغط حفظ وتفعيل";
+    idStatus.textColor = identifierActive ? [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0] : [WolFoxProTheme textSecondary];
     idStatus.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
     idStatus.layer.cornerRadius = 10; idStatus.clipsToBounds = YES;
     idStatus.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
@@ -2798,9 +2798,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [idCard addSubview:idStatus];
     objc_setAssociatedObject(self, "_id_status_label", idStatus, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(15, 505, idCard.bounds.size.width - 30, 20)];
+    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(15, 502, idCard.bounds.size.width - 30, 38)];
     NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
-    targetBundle.text = [NSString stringWithFormat:@"التطبيق المرتبط: %@", bundleID.length ? bundleID : @"غير متوفر"];
+    NSString *savedSerial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
+    targetBundle.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", bundleID.length ? bundleID : @"غير متوفر", savedSerial.length ? savedSerial : @"لم يُضف بعد"];
+    targetBundle.numberOfLines = 2;
+    objc_setAssociatedObject(self, "_id_serial_label", targetBundle, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     targetBundle.textColor = [WolFoxProTheme textSecondary];
     targetBundle.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightMedium];
     targetBundle.textAlignment = NSTextAlignmentCenter;
@@ -2812,14 +2815,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (mosqueApp) {
         UIButton *importMosque = [self royalBtnInside:_scrollDashboard
             t:@"استيراد معرّف تطبيق المساجد" i:@"square.and.arrow.down"
-            c:[WolFoxProTheme accent] y:540];
+            c:[WolFoxProTheme accent] y:570];
         [importMosque addTarget:self action:@selector(importMosquesIdentifier)
               forControlEvents:UIControlEventTouchUpInside];
     }
 
     // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = mosqueApp ? 615 : 560;
+    CGFloat cy = mosqueApp ? 635 : 575;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -3000,8 +3003,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         tf.text = [WolFoxProStore shared].activeIdentifierUUID;
         [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = [NSString stringWithFormat:@"مرتبط ومفعّل: %@", NSBundle.mainBundle.bundleIdentifier];
-        status.textColor = [WolFoxProTheme success];
+        status.text = @"🔵 المعرّف نشط";
+        status.textColor = [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0];
+        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
+        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", NSBundle.mainBundle.bundleIdentifier, normalizedUUID.UUIDString];
     } else {
         [self showToast:@"صيغة UUID غير صحيحة ❌"];
     }
@@ -3059,18 +3064,22 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)exportIDProPage {
     UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
     UIPasteboard *pb = [UIPasteboard generalPasteboard];
-    pb.string = tf.text; [self showToast:@"تم النسخ للحافظة 📤"];
+    NSString *serial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
+    if (!serial.length) serial = [[NSUUID alloc] initWithUUIDString:tf.text].UUIDString;
+    if (!serial.length) { [self showToast:@"أدخل معرّف UUID صالحًا أولاً"]; return; }
+    pb.string = serial; [self showToast:@"تم تصدير السيريال إلى الحافظة 📤"];
 }
 
 - (void)resetIDProPage {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"إعادة المعرّف الأصلي؟" message:@"سيتم إيقاف المعرّف المخصص والعودة إلى معرّف الجهاز الأصلي." preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"إعادة الآن" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
-        NSString *orig = [WFLicenseClient deviceIdentifier];
         UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = orig; [[WolFoxProStore shared] deactivateIdentifier]; [self refreshSpoofHeaderStatus];
+        tf.text = @""; [[WolFoxProStore shared] deactivateIdentifier]; [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"حالة تزييف المعرّفات: متوقف";
+        status.text = @"أدخل المعرّف واضغط حفظ وتفعيل";
+        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
+        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: لم يُضف بعد", NSBundle.mainBundle.bundleIdentifier];
         status.textColor = [WolFoxProTheme textSecondary];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
