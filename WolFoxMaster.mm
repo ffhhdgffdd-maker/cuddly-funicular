@@ -6,6 +6,7 @@
 // WolFoxMaster.mm - WolFox v1.8.2 Full "Dark Blue Panel UI"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <Security/Security.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UserNotifications/UserNotifications.h>
 #import <MapKit/MapKit.h>
@@ -46,6 +47,7 @@ typedef NS_ENUM(NSInteger, WFSaudiPlaceKind) {
 @end
 
 static NSString * const WFUIHiddenOnLaunchKey = @"WF_UI_HIDDEN_UNTIL_VOLUME_REQUEST";
+static NSString * const WFMenuVisibleOnLaunchKey = @"WF_MENU_VISIBLE_ON_LAUNCH";
 static char kLiveLicenseValueKey;
 static char kLiveLicenseDotKey;
 static char kLiveSpoofValueKey;
@@ -76,6 +78,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, strong) UISwitch *floatingRememberSwitch;
 @property (nonatomic, strong) UIWindow *overlayWindow;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
+@property (nonatomic, strong) UITapGestureRecognizer *menuRecoveryTapGesture;
+@property (nonatomic, weak) UIWindow *menuRecoveryHostWindow;
 @property (nonatomic, strong) UILongPressGestureRecognizer *virtualCameraLongPressGesture;
 @property (nonatomic, weak) UIWindow *virtualCameraGestureHostWindow;
 @property (nonatomic, assign) CFTimeInterval cameraDragStartTime;
@@ -96,6 +100,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)toggleCameraIcon:(BOOL)show;
 - (void)handleVolumeGesturePulse;
 - (void)prepareHiddenVolumeListening;
+- (void)enableMenuRecoveryShortcut;
+- (void)prepareMenuRecoveryGesture;
+- (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture;
 - (void)recordVolumeButtonPress;
 - (void)showActivationScreen;
 - (void)showActivationScreenWithResult:(WFLicenseResult *)result;
@@ -114,6 +121,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)refreshSpoofQuickPanel;
 - (void)toggleSpoofFromQuickPanel:(nullable UIButton *)sender;
 - (void)openMapFromQuickPanel:(nullable UIButton *)sender;
+- (void)openMenuFromQuickPanel:(nullable UIButton *)sender;
 - (void)activateFavoriteFromQuickPanel:(nullable UIButton *)sender;
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture;
 - (void)closeFloatingControlPanel:(nullable UIButton *)sender;
@@ -301,12 +309,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_onboardingOverlay];
 
 #if WOLFOX_LITE
-    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox Lite", @"الموقع والمفضلة", @"خريطة المدارس والمساجد", @"الإعدادات والإخفاء"];
+    NSArray<NSString *> *titles = @[@"مرحباً بك في WolFox Lite", @"الموقع والمفضلة", @"البحث في الخريطة", @"الإعدادات والإخفاء"];
     NSArray<NSString *> *messages = @[
         @"هذه جولة إرشادية قصيرة لشرح وظائف نسخة Lite. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
-        @"استكشف المدارس والمساجد في المملكة بعلامات واضحة، وقرّب الخريطة لعرض تفاصيل أكثر.",
-        @"من الإعدادات راجع حالة الاشتراك، تحكم في الإخفاء، وتحقق من إصدار WolFox Lite."
+        @"ابحث عن مكان أو إحداثيات أو رابط مشاركة من شريط البحث.",
+        @"من الإعدادات تحكم في إظهار الأيقونة والمنيو واستعادتهما، وأدخل كود التفعيل. معلومات الاشتراك في زر التاج."
     ];
     NSString *onboardingEdition = @"WOLFOX LITE";
 #else
@@ -316,7 +324,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"احفظ المواقع واستخدم الجدولة لتحديد الأيام ووقت البداية والنهاية حسب إعداداتك.",
         @"بعد فتح كاميرا التطبيق اضغط مطولاً في منتصف الشاشة لإظهار الأيقونة؛ اسحبها لأكثر من ثانيتين للتبديل السريع.",
-        @"من الإعدادات غيّر المظهر والألوان والتنبيهات، وراجع حالة الاشتراك وإصدار WolFox Full."
+        @"من الإعدادات تحكم في إظهار الأيقونة والمنيو واستعادتهما، وأدخل كود التفعيل أو افتح إعدادات الكاميرا. معلومات الاشتراك في زر التاج."
     ];
     NSString *onboardingEdition = @"WOLFOX FULL";
 #endif
@@ -384,7 +392,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = self.view.bounds.size.width;
     CGFloat h = self.view.bounds.size.height;
     CGFloat safeTop = MAX(self.view.safeAreaInsets.top, 28.0);
-    CGFloat headerHeight = safeTop + 58.0;
+    NSString *profile = WOLFOX_BUILD_PROFILE;
+    NSInteger edition = [profile isEqualToString:@"control-full"] ? 1 :
+                        [profile isEqualToString:@"mosques-full"] ? 2 :
+                        [profile hasPrefix:@"lite-"] ? 3 :
+                        [profile hasPrefix:@"full-"] ? 4 : 0;
+    CGFloat headerHeight = safeTop + (edition ? 78.0 : 58.0);
+    CGFloat tabsHeight = edition == 3 ? 62.0 : (edition ? 70.0 : 58.0);
+    CGFloat tabsInset = edition ? 12.0 : 0.0;
+    CGFloat tabsGap = edition ? 9.0 : 0.0;
     
     _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[WolFoxProTheme blurStyle]]];
     _blurView.frame = self.view.bounds;
@@ -397,14 +413,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     _header.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.28].CGColor;
     [self.view addSubview:_header];
     
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, 135, 26)];
-    _titleLabel.text = @"WolFox GPS";
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, edition ? MAX(120.0, w - 190.0) : 135, 26)];
+    _titleLabel.text = @"WolFox";
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
     [_header addSubview:_titleLabel];
 
-    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 34, 190, 16)];
+    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + (edition ? 48 : 34), edition ? MAX(160.0, w - 36.0) : 190, 16)];
     _spoofStatusLabel.textAlignment = NSTextAlignmentLeft;
     _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     _spoofStatusLabel.isAccessibilityElement = YES;
@@ -427,16 +443,18 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_header addSubview:statusBtn];
 
     // 2. Top Tabs Bar
-    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight, w, 58)];
+    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
+    _tabsBar.layer.cornerRadius = edition == 1 ? 8.0 : edition == 2 ? 24.0 : edition == 3 ? 14.0 : edition == 4 ? 20.0 : 0.0;
+    _tabsBar.layer.masksToBounds = edition != 0;
     _tabsBar.backgroundColor = [WolFoxProTheme surfaceSecondary];
     _tabsBar.layer.borderWidth = 1.0;
     _tabsBar.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18].CGColor;
     [self.view addSubview:_tabsBar];
     
 #if WOLFOX_LITE
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 3.0, 4)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, 54, w / 4.0, 4)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 4.0, 3)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -451,14 +469,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"البلوتوث", @"الإعدادات"];
     NSArray *tabPages = @[@0, @1, @2, @4];
 #endif
-    CGFloat tw = w / icons.count;
+    CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
     if (@available(iOS 13.0, *)) {
         tabConfig = [UIImageSymbolConfiguration configurationWithPointSize:21 weight:UIImageSymbolWeightSemibold];
     }
     for (NSUInteger i = 0; i < icons.count; i++) {
         UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
-        b.frame = CGRectMake(i * tw, 0, tw, 58);
+        b.frame = CGRectMake(i * tw, 0, tw, tabsHeight);
+        if (edition) b.contentEdgeInsets = UIEdgeInsetsMake(-12, 0, 12, 0);
         if (@available(iOS 13.0, *)) {
             [b setImage:[UIImage systemImageNamed:icons[i] withConfiguration:tabConfig] forState:UIControlStateNormal];
         }
@@ -469,11 +488,22 @@ static BOOL WFMasterProcessIsEligible(void) {
         b.accessibilityHint = @"يفتح هذا القسم";
         [b addTarget:self action:@selector(tabBtnPressed:) forControlEvents:UIControlEventTouchUpInside];
         [_tabsBar addSubview:b];
+        if (edition) {
+            UILabel *caption = [[UILabel alloc] initWithFrame:CGRectMake(i * tw + 3, tabsHeight - 26, tw - 6, 17)];
+            caption.text = tabLabels[i];
+            caption.textAlignment = NSTextAlignmentCenter;
+            caption.textColor = [WolFoxProTheme textSecondary];
+            caption.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightSemibold];
+            caption.adjustsFontSizeToFitWidth = YES;
+            caption.minimumScaleFactor = 0.7;
+            [_tabsBar addSubview:caption];
+        }
         [_tabBtns addObject:b];
     }
     
     // 3. Dashboard (Main Content)
-    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, headerHeight + 58, w, h - headerHeight - 58)];
+    CGFloat contentTop = headerHeight + tabsGap + tabsHeight + (edition ? 9.0 : 0.0);
+    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, contentTop, w, MAX(0.0, h - contentTop))];
     _dashboard.backgroundColor = [WolFoxProTheme windowBackground];
     [self.view addSubview:_dashboard];
     
@@ -571,7 +601,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                          (store.spoofActive && licensed) ? @"يعمل" : @"متوقف",
                          (store.routeActive && store.spoofActive) ? @"نشطة" : @"متوقفة",
                          WFClampGPSUpdateInterval(store.updateIntervalSeconds)];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حالة WolFox GPS" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حالة WolFox" message:message preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -624,10 +654,11 @@ static BOOL WFMasterProcessIsEligible(void) {
         UIButton *candidate = (UIButton *)_tabBtns[index];
         if (candidate.tag == page) { tabIndex = (NSInteger)index; break; }
     }
-    CGFloat tw = w / tabCount;
+    CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / tabCount;
+    CGFloat indicatorY = CGRectGetHeight(_tabsBar.bounds) - 3.0;
     if (indicator) {
         [UIView performWithoutAnimation:^{
-            indicator.frame = CGRectMake(tabIndex * tw, 55, tw, 3);
+            indicator.frame = CGRectMake(tabIndex * tw, indicatorY, tw, 3);
         }];
     }
     for (UIButton *b in _tabBtns) {
@@ -636,7 +667,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 
     for (UIView *v in _scrollDashboard.subviews) [v removeFromSuperview];
-    _saudiPlacesPageActive = (page == 0 || page == 5);
+    _saudiPlacesPageActive = NO;
     if (!_saudiPlacesPageActive) {
         [_saudiPlacesTask cancel];
         _saudiPlacesTask = nil;
@@ -673,7 +704,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     else if (page == 2) [self setupBluetoothPage];
     else if (page == 3) [self setupCameraPage];
     else if (page == 4) [self setupSettingsPage];
-    else if (page == 5) [self setupSaudiPlacesMapPage];
+    else if (page == 5) [self setupGPSPage];
 }
 
 #pragma mark - Saudi Schools & Mosques Map (Lite)
@@ -1202,23 +1233,14 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupGPSPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
 
-    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 48)];
+    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(10, 10, w - 20, 64)];
     servicesCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.13];
     servicesCard.layer.cornerRadius = 13;
     servicesCard.layer.borderWidth = 1.0;
     servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
     [_scrollDashboard addSubview:servicesCard];
-    UIButton *servicesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    servicesButton.frame = servicesCard.bounds;
-    [servicesButton setTitle:@"🏫 المدارس  •  🕌 المساجد  •  🏥 الخدمات الصحية" forState:UIControlStateNormal];
-    [servicesButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
-    servicesButton.titleLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
-    [servicesButton addTarget:self action:@selector(showSaudiServicesOnMainMap) forControlEvents:UIControlEventTouchUpInside];
-    servicesButton.accessibilityLabel = @"عرض المدارس والمساجد والمراكز الصحية على الخريطة";
-    [servicesCard addSubview:servicesButton];
-    
     // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, 68, w - 30, 260)];
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 260)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     mapCard.layer.cornerRadius = 20; mapCard.clipsToBounds = YES;
@@ -1239,16 +1261,27 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     
     // Search Bar
-    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(10, 10, mapCard.bounds.size.width - 20, 44)];
+    self.searchBar = [[UISearchBar alloc] initWithFrame:servicesCard.bounds];
+    self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"اسم مكان، إحداثيات أو رابط مشاركة";
+    self.searchBar.placeholder = @"ابحث باسم المكان أو العنوان";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchBar.barTintColor = [UIColor clearColor];
     self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
     self.searchBar.returnKeyType = UIReturnKeySearch;
-    self.searchBar.accessibilityLabel = @"البحث بالإحداثيات أو العنوان";
+    self.searchBar.accessibilityLabel = @"البحث عن موقع";
+    self.searchBar.accessibilityHint = @"أدخل اسم مكان أو عنوانًا أو إحداثيات أو رابط خريطة";
     if (@available(iOS 13.0, *)) {
         UITextField *searchField = self.searchBar.searchTextField;
+        searchField.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightMedium];
+        searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.searchBar.placeholder
+            attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+        NSLayoutConstraint *searchHeight = [searchField.heightAnchor constraintEqualToConstant:48.0];
+        searchHeight.priority = UILayoutPriorityDefaultHigh;
+        searchHeight.active = YES;
+        UIImageSymbolConfiguration *searchSymbol = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightSemibold];
+        UIImage *searchImage = [[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:searchSymbol] imageWithTintColor:[WolFoxProTheme accent] renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [self.searchBar setImage:searchImage forSearchBarIcon:UISearchBarIconSearch state:UIControlStateNormal];
         searchField.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.92];
         searchField.textColor = [WolFoxProTheme textPrimary];
         searchField.tintColor = [WolFoxProTheme accent];
@@ -1261,33 +1294,47 @@ static BOOL WFMasterProcessIsEligible(void) {
         [[UITextField appearanceWhenContainedInInstancesOfClasses:@[UISearchBar.class]]
             setDefaultTextAttributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textPrimary]}];
     }
-    [mapCard addSubview:self.searchBar];
-
+    [servicesCard addSubview:self.searchBar];
+    objc_setAssociatedObject(self, "_map_search_host", servicesCard, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     // Style Toggle Button
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
+    styleBtn.tintColor = [UIColor colorWithRed:0.35 green:0.74 blue:1.0 alpha:1.0];
     styleBtn.accessibilityLabel = @"تغيير نمط الخريطة";
     [styleBtn addTarget:self action:@selector(toggleMapStyle) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:styleBtn];
     
     // Real Location Button
     UIButton *realLocBtn = [self mapCircleBtn:@"person.fill" x:62 y:mapCard.bounds.size.height - 54];
+    realLocBtn.tintColor = [UIColor colorWithRed:0.27 green:0.80 blue:0.65 alpha:1.0];
     realLocBtn.accessibilityLabel = @"عرض الموقع الحقيقي";
     [realLocBtn addTarget:self action:@selector(showRealLocation) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:realLocBtn];
 
-    // Expand Map Button
-    UIButton *expandBtn = [self mapCircleBtn:@"arrow.up.left.and.arrow.down.right" x:114 y:mapCard.bounds.size.height - 54];
+    // A full-width action keeps expansion discoverable on narrow screens.
+    UIButton *expandBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    expandBtn.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 48);
+    expandBtn.backgroundColor = [WolFoxProTheme surfacePrimary];
+    expandBtn.layer.cornerRadius = 12;
+    expandBtn.layer.borderWidth = 1.0;
+    expandBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
+    [expandBtn setTitle:@"  توسيع الخريطة" forState:UIControlStateNormal];
+    [expandBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    expandBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightSemibold];
+    if (@available(iOS 13.0, *)) [expandBtn setImage:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"] forState:UIControlStateNormal];
+    expandBtn.tintColor = [WolFoxProTheme accent];
     expandBtn.accessibilityLabel = @"توسيع الخريطة إلى ملء الشاشة";
     [expandBtn addTarget:self action:@selector(expandMap) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:expandBtn];
+    [_scrollDashboard addSubview:expandBtn];
 
-    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:166 y:mapCard.bounds.size.height - 54];
+    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:114 y:mapCard.bounds.size.height - 54];
+    searchButton.tintColor = [UIColor colorWithRed:1.0 green:0.75 blue:0.33 alpha:1.0];
     searchButton.accessibilityLabel = @"تنفيذ البحث في الخريطة";
     [searchButton addTarget:self action:@selector(searchFromKeyboard) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:searchButton];
     
     // Locate Me Button (Fake Pin)
     UIButton *locateBtn = [self mapCircleBtn:@"location.fill" x:mapCard.bounds.size.width - 54 y:mapCard.bounds.size.height - 54];
+    locateBtn.tintColor = [UIColor colorWithRed:1.0 green:0.52 blue:0.48 alpha:1.0];
     locateBtn.accessibilityLabel = @"التمركز على الموقع الوهمي";
     [locateBtn addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:locateBtn];
@@ -1304,7 +1351,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     else [self showRealLocation];
     
     // Real-location notice placed between the map and coordinate inputs.
-    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, 340, w - 30, 54)];
+    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(expandBtn.frame) + 12, w - 30, 54)];
     realNotice.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.12];
     realNotice.layer.cornerRadius = 12;
     realNotice.layer.borderWidth = 1.0;
@@ -1330,48 +1377,35 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realNotice addSubview:mapLegend];
 
     // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 406, w - 30, 190)];
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(realNotice.frame) + 12, w - 30, 140)];
     kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:kbCard];
     
     // الحفظ والمفضلة يظهران قبل أدوات التشغيل، وخارج مساحة الخريطة.
     UIButton *saveLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
     saveLocationButton.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 40);
-    saveLocationButton.backgroundColor = [[WolFoxProTheme gold] colorWithAlphaComponent:0.14];
+    UIColor *saveColor = [UIColor colorWithRed:0.24 green:0.78 blue:0.53 alpha:1.0];
+    saveLocationButton.backgroundColor = [saveColor colorWithAlphaComponent:0.17];
     saveLocationButton.layer.cornerRadius = 11;
     [saveLocationButton setTitle:@"حفظ الموقع" forState:UIControlStateNormal];
-    [saveLocationButton setTitleColor:[WolFoxProTheme gold] forState:UIControlStateNormal];
+    [saveLocationButton setTitleColor:saveColor forState:UIControlStateNormal];
     [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
     saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
     [kbCard addSubview:saveLocationButton];
 
     UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
     favoritesButton.frame = CGRectMake(CGRectGetMaxX(saveLocationButton.frame) + 15, 12, saveLocationButton.bounds.size.width, 40);
-    favoritesButton.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
+    UIColor *favoritesColor = [UIColor colorWithRed:1.0 green:0.70 blue:0.28 alpha:1.0];
+    favoritesButton.backgroundColor = [favoritesColor colorWithAlphaComponent:0.17];
     favoritesButton.layer.cornerRadius = 11;
     [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
-    [favoritesButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    [favoritesButton setTitleColor:favoritesColor forState:UIControlStateNormal];
     [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
     favoritesButton.accessibilityLabel = @"عرض المواقع المحفوظة";
     [kbCard addSubview:favoritesButton];
 
     // البحث عن الاسم أو الإحداثيات أو رابط المشاركة يتم من شريط الخريطة فقط.
-    UIButton *moveFive = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveFive.frame = CGRectMake(15, 62, (kbCard.bounds.size.width - 45) / 2.0, 42);
-    moveFive.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
-    moveFive.layer.cornerRadius = 11;
-    [moveFive setTitle:@"تحريك 5 أمتار" forState:UIControlStateNormal];
-    [moveFive addTarget:self action:@selector(moveFakeLocationFiveMeters) forControlEvents:UIControlEventTouchUpInside];
-    [kbCard addSubview:moveFive];
-    UIButton *moveTen = [UIButton buttonWithType:UIButtonTypeSystem];
-    moveTen.frame = CGRectMake(CGRectGetMaxX(moveFive.frame) + 15, 62, moveFive.bounds.size.width, 42);
-    moveTen.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
-    moveTen.layer.cornerRadius = 11;
-    [moveTen setTitle:@"تحريك 10 أمتار" forState:UIControlStateNormal];
-    [moveTen addTarget:self action:@selector(moveFakeLocationTenMeters) forControlEvents:UIControlEventTouchUpInside];
-    [kbCard addSubview:moveTen];
-
-    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:122 action:^(UISwitch *s){
+    [kbCard addSubview:[self royalSwitchInside:kbCard t:@"تفعيل الموقع الوهمي" i:@"location.fill" isOn:[WolFoxProStore shared].spoofActive y:70 action:^(UISwitch *s){
         if (s.on) {
             [WolFoxProStore shared].spoofActive = YES;
             [[WolFoxProStore shared] saveSettings];
@@ -1384,92 +1418,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         }
     }]];
 
-    CGFloat cy = 406.0 + 190.0 + 15.0;
-
-    UIView *routeCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 276)];
-    routeCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    routeCard.layer.cornerRadius = 18;
-    [_scrollDashboard addSubview:routeCard];
-
-    UILabel *speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 12, routeCard.bounds.size.width - 36, 24)];
-    speedLabel.text = [NSString stringWithFormat:@"السرعة: %.0f كم/س", [WolFoxProStore shared].simSpeed];
-    speedLabel.textColor = [WolFoxProTheme textPrimary];
-    speedLabel.textAlignment = NSTextAlignmentRight;
-    speedLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    [routeCard addSubview:speedLabel];
-    objc_setAssociatedObject(self, "_speed_label", speedLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UISlider *speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(18, 38, routeCard.bounds.size.width - 36, 30)];
-    speedSlider.minimumValue = 1;
-    speedSlider.maximumValue = 120;
-    speedSlider.value = MAX(1, [WolFoxProStore shared].simSpeed);
-    speedSlider.minimumTrackTintColor = [WolFoxProTheme accent];
-    [speedSlider addTarget:self action:@selector(speedChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:speedSlider];
-
-    UILabel *intervalLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 68, routeCard.bounds.size.width - 36, 22)];
-    intervalLabel.text = [NSString stringWithFormat:@"معدل التحديث: %.2f ث", [WolFoxProStore shared].updateIntervalSeconds];
-    intervalLabel.textColor = [WolFoxProTheme textPrimary];
-    intervalLabel.textAlignment = NSTextAlignmentRight;
-    intervalLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [routeCard addSubview:intervalLabel];
-    objc_setAssociatedObject(self, "_interval_label", intervalLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UISlider *intervalSlider = [[UISlider alloc] initWithFrame:CGRectMake(18, 88, routeCard.bounds.size.width - 36, 26)];
-    intervalSlider.minimumValue = WFMinimumGPSUpdateIntervalSeconds;
-    intervalSlider.maximumValue = WFMaximumGPSUpdateIntervalSeconds;
-    intervalSlider.value = WFClampGPSUpdateInterval([WolFoxProStore shared].updateIntervalSeconds);
-    intervalSlider.minimumTrackTintColor = [WolFoxProTheme gold];
-    intervalSlider.accessibilityLabel = @"معدل تحديث المسار بالثواني";
-    [intervalSlider addTarget:self action:@selector(updateIntervalChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:intervalSlider];
-
-    UILabel *jitterLabel = [[UILabel alloc] initWithFrame:CGRectMake(80, 116, routeCard.bounds.size.width - 98, 32)];
-    jitterLabel.text = @"حركة طبيعية بسيطة";
-    jitterLabel.textColor = [WolFoxProTheme textSecondary];
-    jitterLabel.textAlignment = NSTextAlignmentRight;
-    jitterLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightSemibold];
-    [routeCard addSubview:jitterLabel];
-    UISwitch *jitterSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(18, 116, 50, 30)];
-    jitterSwitch.on = [WolFoxProStore shared].jitterActive;
-    jitterSwitch.onTintColor = [WolFoxProTheme accent];
-    [jitterSwitch addTarget:self action:@selector(jitterChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:jitterSwitch];
-
-    UIButton *routeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    routeButton.frame = CGRectMake(18, 156, routeCard.bounds.size.width - 36, 42);
-    routeButton.backgroundColor = [WolFoxProStore shared].routeActive ? [WolFoxProTheme danger] : [WolFoxProTheme accent];
-    routeButton.layer.cornerRadius = 12;
-    [routeButton setTitle:[WolFoxProStore shared].routeActive ? @"إيقاف المحاكاة" : @"بدء محاكاة المسار" forState:UIControlStateNormal];
-    [routeButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    routeButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBlack];
-    [routeButton addTarget:self action:@selector(toggleRouteSimulation) forControlEvents:UIControlEventTouchUpInside];
-    routeButton.accessibilityLabel = [WolFoxProStore shared].routeActive ? @"إيقاف محاكاة المسار" : @"بدء محاكاة المسار";
-    [routeCard addSubview:routeButton];
-    objc_setAssociatedObject(self, "_route_btn", routeButton, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UIButton *saveRouteButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveRouteButton.frame = CGRectMake(18, 208, (routeCard.bounds.size.width - 48) / 2.0, 48);
-    saveRouteButton.backgroundColor = [WolFoxProTheme accentSoft];
-    saveRouteButton.layer.cornerRadius = 12;
-    [saveRouteButton setTitle:@"حفظ المسار" forState:UIControlStateNormal];
-    [saveRouteButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    saveRouteButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [saveRouteButton addTarget:self action:@selector(saveCurrentRoute) forControlEvents:UIControlEventTouchUpInside];
-    saveRouteButton.accessibilityLabel = @"حفظ مسار الحركة الحالي";
-    [routeCard addSubview:saveRouteButton];
-
-    UIButton *savedRoutesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    savedRoutesButton.frame = CGRectMake(30 + (routeCard.bounds.size.width - 48) / 2.0, 208, (routeCard.bounds.size.width - 48) / 2.0, 48);
-    savedRoutesButton.backgroundColor = [WolFoxProTheme accentSoft];
-    savedRoutesButton.layer.cornerRadius = 12;
-    [savedRoutesButton setTitle:@"المسارات المحفوظة" forState:UIControlStateNormal];
-    [savedRoutesButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    savedRoutesButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [savedRoutesButton addTarget:self action:@selector(showSavedRoutes) forControlEvents:UIControlEventTouchUpInside];
-    savedRoutesButton.accessibilityLabel = @"إدارة مسارات الحركة المحفوظة";
-    [routeCard addSubview:savedRoutesButton];
-    cy += 291;
+    CGFloat cy = CGRectGetMaxY(kbCard.frame) + 15.0;
 
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -2118,8 +2067,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat safeBottom = MAX(self.view.safeAreaInsets.bottom, 12.0);
     _expandedMapContainer.frame = self.view.bounds;
     self.mapView.frame = _expandedMapContainer.bounds;
-    self.searchBar.frame = CGRectMake(10, safeTop + 4, MAX(120, width - 78), 48);
-    _expandedMapCloseButton.frame = CGRectMake(width - 56, safeTop + 6, 44, 44);
+    self.searchBar.frame = CGRectMake(10, safeTop + 4, MAX(120, width - 78), 64);
+    _expandedMapCloseButton.frame = CGRectMake(width - 56, safeTop + 14, 44, 44);
     CGFloat controlsY = height - safeBottom - 50;
     [_expandedMapContainer viewWithTag:6203].frame = CGRectMake(12, controlsY, 44, 44);
     [_expandedMapContainer viewWithTag:6204].frame = CGRectMake(64, controlsY, 44, 44);
@@ -2142,8 +2091,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.mapView.frame = _mapCard.bounds;
         [_mapCard insertSubview:self.mapView atIndex:0];
         self.searchBar.tag = 0;
-        self.searchBar.frame = CGRectMake(10, 10, _mapCard.bounds.size.width - 20, 44);
-        [_mapCard addSubview:self.searchBar];
+        UIView *searchHost = objc_getAssociatedObject(self, "_map_search_host");
+        if (!searchHost) searchHost = _mapCard;
+        self.searchBar.frame = searchHost.bounds;
+        [searchHost addSubview:self.searchBar];
     }
     [_expandedMapContainer removeFromSuperview];
     _expandedMapContainer = nil;
@@ -2400,7 +2351,18 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (BOOL)coordinateFromSharedMapText:(NSString *)text coordinate:(CLLocationCoordinate2D *)coordinate {
-    NSString *decoded = [text stringByRemovingPercentEncoding] ?: text;
+    NSString *decoded = [self normalizedMapSearchText:([text stringByRemovingPercentEncoding] ?: text)];
+    // Google Maps data URLs can store a point as !3d<latitude>!4d<longitude>.
+    NSRegularExpression *googlePoint = [NSRegularExpression regularExpressionWithPattern:@"!3d(-?[0-9]{1,2}(?:\\.[0-9]+)?)!4d(-?[0-9]{1,3}(?:\\.[0-9]+)?)" options:0 error:nil];
+    NSTextCheckingResult *googleMatch = [googlePoint firstMatchInString:decoded options:0 range:NSMakeRange(0, decoded.length)];
+    if (googleMatch.numberOfRanges == 3) {
+        CLLocationCoordinate2D point = CLLocationCoordinate2DMake([[decoded substringWithRange:[googleMatch rangeAtIndex:1]] doubleValue],
+                                                                    [[decoded substringWithRange:[googleMatch rangeAtIndex:2]] doubleValue]);
+        if (CLLocationCoordinate2DIsValid(point)) {
+            if (coordinate) *coordinate = point;
+            return YES;
+        }
+    }
     NSError *error = nil;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"(-?[0-9]{1,2}(?:\\.[0-9]+)?)[,/@\\s]+(-?[0-9]{1,3}(?:\\.[0-9]+)?)" options:0 error:&error];
     NSTextCheckingResult *match = error ? nil : [regex firstMatchInString:decoded options:0 range:NSMakeRange(0, decoded.length)];
@@ -2426,10 +2388,13 @@ static BOOL WFMasterProcessIsEligible(void) {
             NSString *resolved = response.URL.absoluteString ?: query;
             CLLocationCoordinate2D sharedCoordinate;
             if ([self coordinateFromSharedMapText:resolved coordinate:&sharedCoordinate]) {
-                searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", sharedCoordinate.latitude, sharedCoordinate.longitude];
+                searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", sharedCoordinate.latitude, sharedCoordinate.longitude];
                 [self selectMapSearchCoordinate:sharedCoordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
+            } else if (![resolved isEqualToString:query]) {
+                searchBar.text = resolved;
+                [self searchBarSearchButtonClicked:searchBar];
             } else {
-                [self showToast:@"تعذر قراءة الموقع من الرابط؛ الصق رابطاً يحتوي إحداثيات"];
+                [self showToast:@"الرابط المختصر لم يحدد موقعاً؛ انسخ الرابط الكامل"];
             }
         });
     }] resume];
@@ -2460,18 +2425,58 @@ static BOOL WFMasterProcessIsEligible(void) {
         return;
     }
 
+    NSRegularExpression *activationCode = [NSRegularExpression regularExpressionWithPattern:@"^GPS-[A-Za-z0-9]+$" options:0 error:nil];
+    if ([activationCode firstMatchInString:query options:0 range:NSMakeRange(0, query.length)]) {
+        [self showToast:@"هذا كود تفعيل؛ أدخله في صفحة التفعيل"];
+        return;
+    }
+    NSURLComponents *mapLink = [NSURLComponents componentsWithString:query];
+    NSString *mapHost = mapLink.host.lowercaseString;
+    BOOL googleMaps = [mapHost isEqualToString:@"google.com"] || [mapHost hasSuffix:@".google.com"];
+    BOOL appleMaps = [mapHost isEqualToString:@"maps.apple.com"];
+    if (googleMaps && [mapLink.path isEqualToString:@"/maps/place/"] && !mapLink.query.length) {
+        [self showToast:@"رابط Google Maps غير مكتمل؛ انسخ رابط المكان كاملاً"];
+        return;
+    }
+
     CLLocationCoordinate2D coordinate;
     if ([self parseCoordinateSearchText:query coordinate:&coordinate]) {
-        searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
+        searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", coordinate.latitude, coordinate.longitude];
         [self selectMapSearchCoordinate:coordinate title:@"إحداثيات محددة" toast:@"تم تحديد الإحداثيات على الخريطة ✅"];
         return;
     }
-    if ([self coordinateFromSharedMapText:query coordinate:&coordinate]) {
-        searchBar.text = [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
+    if ((googleMaps || appleMaps || [mapLink.scheme.lowercaseString isEqualToString:@"geo"]) &&
+        [self coordinateFromSharedMapText:query coordinate:&coordinate]) {
+        searchBar.text = [NSString stringWithFormat:@"%.7f, %.7f", coordinate.latitude, coordinate.longitude];
         [self selectMapSearchCoordinate:coordinate title:@"موقع من رابط مشاركة" toast:@"تم تثبيت موقع الرابط على الخريطة"];
         return;
     }
-    if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
+    if (googleMaps || appleMaps) {
+        NSString *name = nil;
+        for (NSURLQueryItem *item in mapLink.queryItems) {
+            NSString *key = item.name.lowercaseString;
+            if ([key isEqualToString:@"q"] || [key isEqualToString:@"query"] ||
+                [key isEqualToString:@"address"] || [key isEqualToString:@"destination"]) {
+                if (item.value.length) { name = item.value; break; }
+            }
+        }
+        if (!name.length && googleMaps && [mapLink.path hasPrefix:@"/maps/place/"]) {
+            NSString *place = [[mapLink.path substringFromIndex:@"/maps/place/".length] componentsSeparatedByString:@"/"].firstObject;
+            NSString *decodedPlace = [place stringByRemovingPercentEncoding] ?: place;
+            name = [decodedPlace stringByReplacingOccurrencesOfString:@"+" withString:@" "];
+        }
+        if (!name.length || [name hasPrefix:@"@"]) {
+            [self showToast:@"الرابط يحتاج اسم مكان أو إحداثيات"];
+            return;
+        }
+        query = [self normalizedMapSearchText:name];
+    } else if ([mapLink.scheme.lowercaseString isEqualToString:@"https"] &&
+               ([mapHost isEqualToString:@"maps.app.goo.gl"] || [mapHost isEqualToString:@"goo.gl"])) {
+        if ([self resolveSharedMapURLIfNeeded:query searchBar:searchBar]) return;
+    } else if (mapLink.scheme.length && mapLink.host.length) {
+        [self showToast:@"استخدم رابط خرائط Apple أو Google أو إحداثيات"];
+        return;
+    }
 
     [_activeMapSearch cancel];
     MKLocalSearchRequest *request = [MKLocalSearchRequest new];
@@ -2548,6 +2553,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     tf.textAlignment = NSTextAlignmentCenter;
     tf.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
     tf.placeholder = p;
+    tf.attributedPlaceholder = [[NSAttributedString alloc] initWithString:p ?: @"" attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+    tf.accessibilityLabel = p;
     tf.layer.borderWidth = 1.0;
     tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor;
     tf.tintColor = [WolFoxProTheme accent];
@@ -2706,7 +2713,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupIDPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 530)];
+    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 550)];
     idCard.backgroundColor = [WolFoxProTheme surfacePrimary]; idCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:idCard];
     
@@ -2716,7 +2723,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     UIButton *udidButton = [UIButton buttonWithType:UIButtonTypeSystem];
     udidButton.frame = CGRectMake(15, 48, idCard.bounds.size.width - 30, 30);
-    NSString *deviceUDID = [WFLicenseClient deviceIdentifier] ?: @"غير متوفر";
+    NSString *deviceUDID = [WFLicenseClient deviceIdentifier];
+    if (!deviceUDID.length) deviceUDID = @"غير متوفر";
     [udidButton setTitle:[NSString stringWithFormat:@"UDID الجهاز: %@  •  نسخ", deviceUDID] forState:UIControlStateNormal];
     [udidButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
     udidButton.titleLabel.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightBold];
@@ -2728,7 +2736,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 82, idCard.bounds.size.width - 30, 50)];
     tf.backgroundColor = [WolFoxProTheme surfaceSecondary]; tf.layer.cornerRadius = 12; tf.textColor = [WolFoxProTheme textPrimary]; tf.textAlignment = NSTextAlignmentCenter;
     tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
-    tf.text = [WolFoxProStore shared].activeIdentifierUUID ?: [WFLicenseClient deviceIdentifier];
+    tf.text = @"";
+    tf.placeholder = @"أدخل كود المعرّف UUID هنا";
+    tf.attributedPlaceholder = [[NSAttributedString alloc] initWithString:tf.placeholder attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+    tf.accessibilityLabel = @"كود معرّف التطبيق UUID";
     tf.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
@@ -2762,8 +2773,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(15, 462, idCard.bounds.size.width - 30, 40)];
     BOOL identifierActive = [WolFoxProStore shared].validatedActiveIdentifier != nil;
-    idStatus.text = identifierActive ? @"حالة تزييف المعرّفات: مفعّل" : @"حالة تزييف المعرّفات: متوقف";
-    idStatus.textColor = identifierActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
+    idStatus.text = identifierActive ? @"🔵 المعرّف نشط" : @"أدخل المعرّف واضغط حفظ وتفعيل";
+    idStatus.textColor = identifierActive ? [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0] : [WolFoxProTheme textSecondary];
     idStatus.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
     idStatus.layer.cornerRadius = 10; idStatus.clipsToBounds = YES;
     idStatus.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
@@ -2771,9 +2782,31 @@ static BOOL WFMasterProcessIsEligible(void) {
     [idCard addSubview:idStatus];
     objc_setAssociatedObject(self, "_id_status_label", idStatus, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
+    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(15, 502, idCard.bounds.size.width - 30, 38)];
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
+    NSString *savedSerial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
+    targetBundle.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", bundleID.length ? bundleID : @"غير متوفر", savedSerial.length ? savedSerial : @"لم يُضف بعد"];
+    targetBundle.numberOfLines = 2;
+    objc_setAssociatedObject(self, "_id_serial_label", targetBundle, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    targetBundle.textColor = [WolFoxProTheme textSecondary];
+    targetBundle.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightMedium];
+    targetBundle.textAlignment = NSTextAlignmentCenter;
+    targetBundle.adjustsFontSizeToFitWidth = YES;
+    [idCard addSubview:targetBundle];
+
+    // Read the mosque application's own flutter_udid Keychain item, without activating it.
+    BOOL mosqueApp = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"];
+    if (mosqueApp) {
+        UIButton *importMosque = [self royalBtnInside:_scrollDashboard
+            t:@"استيراد معرّف تطبيق المساجد" i:@"square.and.arrow.down"
+            c:[WolFoxProTheme accent] y:570];
+        [importMosque addTarget:self action:@selector(importMosquesIdentifier)
+              forControlEvents:UIControlEventTouchUpInside];
+    }
+
     // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = 560;
+    CGFloat cy = mosqueApp ? 635 : 575;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -2950,12 +2983,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     raw = [raw stringByReplacingOccurrencesOfString:@"{" withString:@""];
     raw = [raw stringByReplacingOccurrencesOfString:@"}" withString:@""];
     NSUUID *normalizedUUID = [[NSUUID alloc] initWithUUIDString:raw];
-    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:@"sa.gov.moia.mosques-2"]) {
+    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:NSBundle.mainBundle.bundleIdentifier]) {
         tf.text = [WolFoxProStore shared].activeIdentifierUUID;
         [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"مرتبط ومفعّل: sa.gov.moia.mosques-2";
-        status.textColor = [WolFoxProTheme success];
+        status.text = @"🔵 المعرّف نشط";
+        status.textColor = [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0];
+        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
+        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", NSBundle.mainBundle.bundleIdentifier, normalizedUUID.UUIDString];
     } else {
         [self showToast:@"صيغة UUID غير صحيحة ❌"];
     }
@@ -2974,6 +3009,35 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 }
 
+- (void)importMosquesIdentifier {
+    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"]) return;
+    NSDictionary *query = @{
+        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService: @"org.cocoapods.flutter-udid",
+        (__bridge id)kSecMatchLimit: (__bridge id)kSecMatchLimitAll,
+        (__bridge id)kSecReturnData: @YES
+    };
+    CFTypeRef result = NULL;
+    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+    NSArray *items = status == errSecSuccess ? CFBridgingRelease(result) : nil;
+    if (status != errSecSuccess && result) CFRelease(result);
+    if (![items isKindOfClass:[NSArray class]]) {
+        [self showToast:@"معرّف التطبيق غير متاح في Keychain"];
+        return;
+    }
+    for (id item in items) {
+        if (![item isKindOfClass:[NSData class]]) continue;
+        NSString *value = [[NSString alloc] initWithData:item encoding:NSUTF8StringEncoding];
+        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:value];
+        if (!uuid) continue;
+        UITextField *field = objc_getAssociatedObject(self, "_id_tf_page");
+        field.text = uuid.UUIDString;
+        [self showToast:@"تم استيراد معرّف المساجد؛ اضغط حفظ وتفعيل"];
+        return;
+    }
+    [self showToast:@"لا يوجد معرّف UUID صالح للتطبيق"];
+}
+
 - (void)copyDeviceUDID {
     NSString *deviceUDID = [WFLicenseClient deviceIdentifier];
     if (!deviceUDID.length) { [self showToast:@"UDID غير متوفر ❌"]; return; }
@@ -2984,18 +3048,22 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)exportIDProPage {
     UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
     UIPasteboard *pb = [UIPasteboard generalPasteboard];
-    pb.string = tf.text; [self showToast:@"تم النسخ للحافظة 📤"];
+    NSString *serial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
+    if (!serial.length) serial = [[NSUUID alloc] initWithUUIDString:tf.text].UUIDString;
+    if (!serial.length) { [self showToast:@"أدخل معرّف UUID صالحًا أولاً"]; return; }
+    pb.string = serial; [self showToast:@"تم تصدير السيريال إلى الحافظة 📤"];
 }
 
 - (void)resetIDProPage {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"إعادة المعرّف الأصلي؟" message:@"سيتم إيقاف المعرّف المخصص والعودة إلى معرّف الجهاز الأصلي." preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"إعادة الآن" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
-        NSString *orig = [WFLicenseClient deviceIdentifier];
         UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = orig; [[WolFoxProStore shared] deactivateIdentifier]; [self refreshSpoofHeaderStatus];
+        tf.text = @""; [[WolFoxProStore shared] deactivateIdentifier]; [self refreshSpoofHeaderStatus];
         UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"حالة تزييف المعرّفات: متوقف";
+        status.text = @"أدخل المعرّف واضغط حفظ وتفعيل";
+        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
+        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: لم يُضف بعد", NSBundle.mainBundle.bundleIdentifier];
         status.textColor = [WolFoxProTheme textSecondary];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -3029,7 +3097,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (@available(iOS 13.0, *)) iv.image = [UIImage systemImageNamed:i];
     iv.tintColor = [WolFoxProTheme accent]; iv.contentMode = UIViewContentModeScaleAspectFit; [v addSubview:iv];
     UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(80, 0, v.bounds.size.width - 135, 65)];
-    l.text = t; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; [v addSubview:l];
+    l.text = t; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; l.numberOfLines = 2; [v addSubview:l];
     UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(15, 17, 50, 30)];
     sw.on = on; sw.onTintColor = [WolFoxProTheme accent];
     sw.accessibilityLabel = t;
@@ -3100,7 +3168,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UITextField *identifierField = [[UITextField alloc] initWithFrame:CGRectMake(24, 132, 312, 48)];
     identifierField.tag = 7301;
     identifierField.text = [WolFoxProStore shared].activeIdentifierUUID ?: [WFLicenseClient deviceIdentifier];
-    identifierField.placeholder = @"UUID";
+    identifierField.placeholder = @"أدخل معرّف التطبيق UUID";
+    identifierField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:identifierField.placeholder attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
     identifierField.backgroundColor = [WolFoxProTheme surfaceSecondary];
     identifierField.textColor = [WolFoxProTheme textPrimary];
     identifierField.tintColor = [WolFoxProTheme accent];
@@ -3186,264 +3255,99 @@ static BOOL WFMasterProcessIsEligible(void) {
     }];
 }
 
+- (void)openCameraSettings {
+    [self switchPage:3];
+}
+
 - (void)setupSettingsPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    CGFloat cy = 10;
-    CGFloat cardW = w - 30;
+    CGFloat width = w - 30.0;
+    CGFloat y = 12.0;
 
-    // ── عنوان قسم ────────────────────────────────────────────
-    void (^secLabel)(NSString *, CGFloat) = ^(NSString *text, CGFloat y) {
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(20, y, cardW - 10, 18)];
-        label.text = [text uppercaseString];
-        label.textAlignment = NSTextAlignmentRight;
-        label.textColor = [WolFoxProTheme accent];
-        label.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
-        label.alpha = 0.85;
-        [_scrollDashboard addSubview:label];
-    };
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    UIView *interfaceCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 426)];
+    interfaceCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    interfaceCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:interfaceCard];
 
-    // ── بطاقة قسم ────────────────────────────────────────────
-    UIView * __block (^newCard)(CGFloat, CGFloat) = ^UIView *(CGFloat y, CGFloat h) {
-        UIView *c = [[UIView alloc] initWithFrame:CGRectMake(15, y, cardW, h)];
-        c.backgroundColor = [WolFoxProTheme surfacePrimary];
-        c.layer.cornerRadius = 18;
-        c.layer.borderWidth  = 1.0;
-        c.layer.borderColor  = [[WolFoxProTheme accent] colorWithAlphaComponent:0.12].CGColor;
-        [_scrollDashboard addSubview:c];
-        return c;
-    };
+    UILabel *interfaceTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 12, width - 30, 28)];
+    interfaceTitle.text = @"الأيقونة العائمة والمنيو";
+    interfaceTitle.textColor = [WolFoxProTheme textPrimary];
+    interfaceTitle.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    interfaceTitle.textAlignment = NSTextAlignmentRight;
+    [interfaceCard addSubview:interfaceTitle];
 
-    // ════════════════════════════════════════════════════════
-    // 1. الظهور والإخفاء
-    // ════════════════════════════════════════════════════════
-    secLabel(@"الظهور والإخفاء", cy);
-    cy += 24;
-    UIView *visCard = newCard(cy, 210);
-    NSInteger requiredPresses = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_VOLUME_PRESS_COUNT"];
-    if (requiredPresses != 2 && requiredPresses != 3 && requiredPresses != 5) requiredPresses = 3;
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:[NSString stringWithFormat:@"إظهار الواجهة بـ %ld ضغطات على الصوت", (long)requiredPresses]
-        i:@"speaker.wave.2.fill"
-        isOn:[WolFoxProStore shared].volumeGestureEnabled
-        y:0
-        action:^(UISwitch *s){
-            [WolFoxProStore shared].volumeGestureEnabled = s.on;
-            [[WolFoxProStore shared] saveSettings];
-            [self showToast:s.on
-                ? [NSString stringWithFormat:@"اضغط زر الصوت %ld مرات سريعاً لإظهار الواجهة", (long)requiredPresses]
-                : @"تم إيقاف زر الصوت"];
+    BOOL floatingVisible = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
+                           [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
+    [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
+        t:@"إظهار الأيقونة العائمة" i:@"circle.grid.cross.fill"
+        isOn:floatingVisible y:48 action:^(UISwitch *toggle) {
+        [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
+        [self showToast:toggle.on ? @"تم إظهار الأيقونة العائمة" : @"تم إخفاء الأيقونة؛ اختصار الصوت يعيد المنيو"];
     }]];
-    BOOL hiddenOnLaunch = [[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey];
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:@"إخفاء الواجهة عند فتح التطبيق"
-        i:@"eye.slash.fill"
-        isOn:hiddenOnLaunch
-        y:70
-        action:^(UISwitch *s){
-            [[NSUserDefaults standardUserDefaults] setBool:s.on forKey:WFUIHiddenOnLaunchKey];
-            [[NSUserDefaults standardUserDefaults] synchronize];
-            [self showToast:s.on
-                ? @"ستختفي الواجهة — افتحها بزر الصوت"
-                : @"الواجهة ستظهر عند كل فتح"];
+    [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
+        t:@"إظهار المنيو عند فتح التطبيق" i:@"rectangle.on.rectangle"
+        isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:123 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
+        [defaults synchronize];
+        if (!toggle.on) [[WolFoxController shared] enableMenuRecoveryShortcut];
+        [self showToast:toggle.on ? @"ستظهر المنيو عند فتح التطبيق" : @"لن تظهر المنيو تلقائيًا عند فتح التطبيق"];
     }]];
-    BOOL iconVisible = ![[NSUserDefaults standardUserDefaults] objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
-                       [[NSUserDefaults standardUserDefaults] boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:@"إظهار العلامة العائمة للحالة"
-        i:@"location.circle.fill"
-        isOn:iconVisible
-        y:140
-        action:^(UISwitch *s){
-            if (!s.on && ![WolFoxProStore shared].volumeGestureEnabled) {
-                [WolFoxProStore shared].volumeGestureEnabled = YES;
-                [[WolFoxProStore shared] saveSettings];
-                [self showToast:@"تم تفعيل اختصار الصوت لاستعادة العلامة"];
-            }
-            [[WolFoxController shared] setFloatingStatusIconVisible:s.on];
-            [self showToast:s.on
-                ? @"العلامة العائمة ظاهرة الآن"
-                : [NSString stringWithFormat:@"تم إخفاء العلامة — اضغط زر الصوت %ld مرات لفتح الإعدادات", (long)requiredPresses]];
-    }]];
-    cy += 210 + 18;
 
-// 4. التنبيهات
-    // ════════════════════════════════════════════════════════
-    secLabel(@"التنبيهات", cy);
-    cy += 24;
-    UIView *notifCard = newCard(cy, 70);
-    BOOL expiryOn = [[NSUserDefaults standardUserDefaults] boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"];
-    [notifCard addSubview:[self royalSwitchInside:notifCard
-        t:@"تذكير قبل 3 أيام من انتهاء الاشتراك"
-        i:@"bell.badge.fill"
-        isOn:expiryOn
-        y:0
-        action:^(UISwitch *s){ [self expiryNotificationsChanged:s]; }]];
-    cy += 70 + 18;
+    UILabel *recovery = [[UILabel alloc] initWithFrame:CGRectMake(15, 198, width - 30, 54)];
+    recovery.text = @"بعد الإخفاء: ٣ نقرات وسط الشاشة، أو ضغطات الصوت حسب الاختيار أدناه خلال ثانية ونصف.";
+    recovery.textColor = [WolFoxProTheme textSecondary];
+    recovery.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
+    recovery.textAlignment = NSTextAlignmentRight;
+    recovery.numberOfLines = 3;
+    [interfaceCard addSubview:recovery];
 
-    // ════════════════════════════════════════════════════════
-    secLabel(@"تخصيص العلامة العائمة", cy);
-    cy += 24;
-    UIView *floatingCard = newCard(cy, 238);
+    UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
+    pressCount.frame = CGRectMake(15, 260, width - 30, 36);
+    NSInteger savedCount = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
+    pressCount.selectedSegmentIndex = savedCount == 2 ? 0 : (savedCount == 5 ? 2 : 1);
+    pressCount.accessibilityLabel = @"عدد ضغطات الصوت لإظهار أو إخفاء المنيو";
+    if (@available(iOS 13.0, *)) pressCount.selectedSegmentTintColor = [WolFoxProTheme accent];
+    [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
+    [interfaceCard addSubview:pressCount];
 
-    UILabel *pressLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 0, floatingCard.bounds.size.width - 165, 60)];
-    pressLabel.text = @"عدد ضغطات الصوت";
-    pressLabel.textAlignment = NSTextAlignmentRight;
-    pressLabel.textColor = [WolFoxProTheme textPrimary];
-    pressLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:pressLabel];
-    UISegmentedControl *pressControl = [[UISegmentedControl alloc] initWithItems:@[@"2", @"3", @"5"]];
-    pressControl.frame = CGRectMake(12, 14, 128, 32);
-    pressControl.selectedSegmentIndex = requiredPresses == 2 ? 0 : (requiredPresses == 5 ? 2 : 1);
-    [pressControl addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:pressControl];
+    UIButton *hideMenu = [self royalBtnInside:interfaceCard t:@"إخفاء المنيو الآن"
+        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:308];
+    [hideMenu addTarget:[WolFoxController shared] action:@selector(dismissUI)
+        forControlEvents:UIControlEventTouchUpInside];
+    UIButton *resetIcon = [self royalBtnInside:interfaceCard t:@"إعادة الأيقونة إلى مكانها"
+        i:@"arrow.counterclockwise" c:[WolFoxProTheme success] y:364];
+    [resetIcon addTarget:self action:@selector(resetFloatingIconPosition)
+        forControlEvents:UIControlEventTouchUpInside];
 
-    UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 60, floatingCard.bounds.size.width - 165, 60)];
-    sizeLabel.text = @"حجم العلامة";
-    sizeLabel.textAlignment = NSTextAlignmentRight;
-    sizeLabel.textColor = [WolFoxProTheme textPrimary];
-    sizeLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:sizeLabel];
-    UISegmentedControl *sizeControl = [[UISegmentedControl alloc] initWithItems:@[@"صغير", @"وسط", @"كبير"]];
-    sizeControl.frame = CGRectMake(12, 74, 128, 32);
-    NSInteger sizeIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
-    sizeControl.selectedSegmentIndex = MIN(MAX(sizeIndex, 0), 2);
-    [sizeControl addTarget:self action:@selector(floatingIconSizeChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:sizeControl];
+    y = CGRectGetMaxY(interfaceCard.frame) + 12.0;
 
-    UILabel *opacityLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 120, floatingCard.bounds.size.width - 165, 60)];
-    opacityLabel.text = @"شفافية العلامة";
-    opacityLabel.textAlignment = NSTextAlignmentRight;
-    opacityLabel.textColor = [WolFoxProTheme textPrimary];
-    opacityLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:opacityLabel];
-    UISlider *opacitySlider = [[UISlider alloc] initWithFrame:CGRectMake(12, 135, 128, 30)];
-    opacitySlider.minimumValue = 0.45;
-    opacitySlider.maximumValue = 1.0;
-    opacitySlider.tintColor = [WolFoxProTheme accent];
-    opacitySlider.value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WF_FLOATING_STATUS_OPACITY"]
-        ? [[NSUserDefaults standardUserDefaults] floatForKey:@"WF_FLOATING_STATUS_OPACITY"] : 0.92;
-    [opacitySlider addTarget:self action:@selector(floatingIconOpacityChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:opacitySlider];
+    UIView *licenseCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    licenseCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    licenseCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:licenseCard];
+    UIButton *activation = [self royalBtnInside:licenseCard t:@"إدخال كود تفعيل WolFox"
+        i:@"key.fill" c:[WolFoxProTheme accent] y:12];
+    [activation addTarget:[WolFoxController shared] action:@selector(showActivationScreen)
+         forControlEvents:UIControlEventTouchUpInside];
+    activation.accessibilityLabel = @"إدخال كود تفعيل WolFox";
 
-    UIButton *resetFloating = [UIButton buttonWithType:UIButtonTypeSystem];
-    resetFloating.frame = CGRectMake(12, 183, floatingCard.bounds.size.width - 24, 43);
-    resetFloating.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
-    resetFloating.layer.cornerRadius = 12;
-    [resetFloating setTitle:@"إعادة العلامة إلى مكانها الافتراضي" forState:UIControlStateNormal];
-    [resetFloating setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    resetFloating.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [resetFloating addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    [floatingCard addSubview:resetFloating];
-    cy += 238 + 18;
+    y = CGRectGetMaxY(licenseCard.frame) + 12.0;
 
-
-
-// 2. المظهر
-    // ════════════════════════════════════════════════════════
-    secLabel(@"المظهر", cy);
-    cy += 24;
-    BOOL isDark = [WolFoxProTheme isDark];
-    UIView *themeCard = newCard(cy, 66);
-    UIButton *themeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    themeBtn.frame = CGRectMake(12, 8, themeCard.bounds.size.width - 24, 50);
-    themeBtn.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
-    themeBtn.layer.cornerRadius = 14;
-    [themeBtn setTitle:@"  الوضع الليلي الداكن ثابت" forState:UIControlStateNormal];
-    [themeBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    themeBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightBold];
-        [themeBtn setImage:[UIImage systemImageNamed:@"moon.stars.fill" withConfiguration:cfg] forState:UIControlStateNormal];
-    }
-    themeBtn.tintColor = [WolFoxProTheme accent];
-    themeBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    themeBtn.enabled = NO;
-    themeBtn.accessibilityLabel = @"الوضع الليلي الداكن ثابت في هذا الإصدار";
-    objc_setAssociatedObject(self, "_theme_btn", themeBtn, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    [themeCard addSubview:themeBtn];
-    cy += 66 + 18;
-
-    // ════════════════════════════════════════════════════════
-    
-
-// 3. ألوان المؤشرات
-    // ════════════════════════════════════════════════════════
-    secLabel(@"ألوان المؤشرات على الخريطة", cy);
-    cy += 24;
-    UIView *colorCard = newCard(cy, 130);
-
-    UIColor *realColor = [self markerColorForKey:@"WF_REAL_DOT_COLOR"
-        defaultColor:[UIColor colorWithRed:0.26 green:0.56 blue:0.97 alpha:1.0]];
-    UIButton *realColorBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    realColorBtn.frame = CGRectMake(12, 8, colorCard.bounds.size.width - 24, 50);
-    realColorBtn.backgroundColor = [realColor colorWithAlphaComponent:0.18];
-    realColorBtn.layer.cornerRadius = 14;
-    realColorBtn.layer.borderWidth = 1.5;
-    realColorBtn.layer.borderColor = [realColor colorWithAlphaComponent:0.55].CGColor;
-    [realColorBtn setTitle:@"  الموقع الحقيقي — نقطة دائرية" forState:UIControlStateNormal];
-    [realColorBtn setTitleColor:realColor forState:UIControlStateNormal];
-    realColorBtn.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [realColorBtn setImage:[UIImage systemImageNamed:@"circle.fill"] forState:UIControlStateNormal];
-    realColorBtn.tintColor = realColor;
-    realColorBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [realColorBtn addTarget:self action:@selector(chooseRealMarkerColor) forControlEvents:UIControlEventTouchUpInside];
-    [colorCard addSubview:realColorBtn];
-
-    UIColor *fakeColor = [self markerColorForKey:@"WF_FAKE_DOT_COLOR"
-        defaultColor:[WolFoxProTheme success]];
-    UIButton *fakeColorBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    fakeColorBtn.frame = CGRectMake(12, 68, colorCard.bounds.size.width - 24, 50);
-    fakeColorBtn.backgroundColor = [fakeColor colorWithAlphaComponent:0.18];
-    fakeColorBtn.layer.cornerRadius = 14;
-    fakeColorBtn.layer.borderWidth = 1.5;
-    fakeColorBtn.layer.borderColor = [fakeColor colorWithAlphaComponent:0.55].CGColor;
-    [fakeColorBtn setTitle:@"  الموقع الوهمي — دبوس" forState:UIControlStateNormal];
-    [fakeColorBtn setTitleColor:fakeColor forState:UIControlStateNormal];
-    fakeColorBtn.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [fakeColorBtn setImage:[UIImage systemImageNamed:@"mappin.circle.fill"] forState:UIControlStateNormal];
-    fakeColorBtn.tintColor = fakeColor;
-    fakeColorBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [fakeColorBtn addTarget:self action:@selector(chooseFakeMarkerColor) forControlEvents:UIControlEventTouchUpInside];
-    [colorCard addSubview:fakeColorBtn];
-    cy += 130 + 18;
-
-    // ════════════════════════════════════════════════════════
-    
-
-// 5. دليل الاستخدام السريع
-    // ════════════════════════════════════════════════════════
-    secLabel(@"دليل الاستخدام السريع", cy);
-    cy += 24;
-    UIView *helpCard = newCard(cy, 162);
-    helpCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.08];
-    helpCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.20].CGColor;
-    NSArray *steps = @[
-        @[@"speaker.wave.2",  @"اضغط زر الصوت 3 مرات سريعاً لإظهار الواجهة"],
-        @[@"location.fill",   @"حدد موقعاً أو أدخل الإحداثيات ثم فعّل التزييف"],
-        @[@"figure.walk",     @"اضغط طويلاً: أول ضغطة البداية، ثانية الهدف، ثم شغّل"],
-        @[@"bell.badge",      @"فعّل التذكير لاستقبال إشعار قبل انتهاء الاشتراك"],
-    ];
-    for (NSUInteger i = 0; i < steps.count; i++) {
-        CGFloat rowY = 10 + i * 36;
-        if (@available(iOS 13.0, *)) {
-            UIImageView *icon = [[UIImageView alloc] initWithFrame:CGRectMake(helpCard.bounds.size.width - 34, rowY + 7, 20, 20)];
-            icon.image = [UIImage systemImageNamed:steps[i][0]];
-            icon.tintColor = [WolFoxProTheme accent];
-            icon.contentMode = UIViewContentModeScaleAspectFit;
-            [helpCard addSubview:icon];
-        }
-        UILabel *stepLabel = [[UILabel alloc] initWithFrame:CGRectMake(12, rowY, helpCard.bounds.size.width - 52, 32)];
-        stepLabel.text = steps[i][1];
-        stepLabel.textColor = [WolFoxProTheme textPrimary];
-        stepLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
-        stepLabel.textAlignment = NSTextAlignmentRight;
-        stepLabel.numberOfLines = 2;
-        [helpCard addSubview:stepLabel];
-    }
-    cy += 162 + 18;
-
-    _scrollDashboard.contentSize = CGSizeMake(w, cy);
+#if !WOLFOX_LITE
+    UIView *cameraCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    cameraCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    cameraCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:cameraCard];
+    UIButton *camera = [self royalBtnInside:cameraCard t:@"إعدادات الكاميرا"
+        i:@"camera.fill" c:[WolFoxProTheme accent] y:12];
+    [camera addTarget:self action:@selector(openCameraSettings)
+        forControlEvents:UIControlEventTouchUpInside];
+    y = CGRectGetMaxY(cameraCard.frame) + 12.0;
+#endif
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 8.0);
 }
+
 - (NSArray<UIColor *> *)markerPalette {
     return @[[UIColor systemBlueColor], [UIColor colorWithRed:0.16 green:0.72 blue:0.34 alpha:1.0], [UIColor systemOrangeColor], [UIColor systemPurpleColor], [UIColor systemRedColor], [UIColor systemTealColor]];
 }
@@ -3722,23 +3626,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CLLocationCoordinate2D c = [self.mapView convertPoint:p toCoordinateFromView:self.mapView];
     WolFoxProStore *store = [WolFoxProStore shared];
 
-    // ADDED: ضغط طويل أول → يضع نقطة البداية؛ إذا كانت موجودة → يضع نقطة الهدف
-    BOOL hasStartPin = _currentPin != nil && CLLocationCoordinate2DIsValid(store.currentFakeCoords);
-    BOOL hasTargetPin = objc_getAssociatedObject(self, "_target_pin") != nil;
-    if (hasStartPin && !hasTargetPin) {
-        // ضع نقطة الهدف
-        store.targetRouteCoords = c;
-        [store saveSettings];
-        MKPointAnnotation *targetPin = [MKPointAnnotation new];
-        targetPin.coordinate = c;
-        targetPin.title = @"نقطة الوصول";
-        targetPin.subtitle = @"اضغط «بدء محاكاة المسار» للانطلاق";
-        [self.mapView addAnnotation:targetPin];
-        objc_setAssociatedObject(self, "_target_pin", targetPin, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        [self showToast:@"📍 تم تحديد نقطة الوصول — اضغط «بدء» للانطلاق"];
-        return;
-    }
-    // ضع/أعد نقطة البداية وامسح الهدف السابق إن وجد
+    // Each long press selects one location after the route controls were removed.
     MKPointAnnotation *oldTarget = objc_getAssociatedObject(self, "_target_pin");
     if (oldTarget) {
         [self.mapView removeAnnotation:oldTarget];
@@ -3750,7 +3638,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[WolFoxProHookManager shared] deliverFakeUpdate];
     if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", c.latitude];
     if (_lonInput) _lonInput.text = [NSString stringWithFormat:@"%.6f", c.longitude];
-    [self showToast:@"📍 نقطة البداية — اضغط مجدداً لتحديد نقطة الوصول"];
+    [self showToast:@"تم تحديد الموقع على الخريطة"];
 }
 
 - (void)updateMapPin:(CLLocationCoordinate2D)c {
@@ -3974,7 +3862,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)saveCurrentLocation {
     UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"حفظ الموقع" message:@"أدخل اسماً لهذا الموقع" preferredStyle:UIAlertControllerStyleAlert];
-    [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){ tf.placeholder = @"اسم الموقع"; tf.textAlignment = NSTextAlignmentRight; }];
+    [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){ tf.placeholder = @"اسم الموقع (مثال: المنزل)"; tf.textAlignment = NSTextAlignmentRight; }];
     [ac addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [ac addAction:[UIAlertAction actionWithTitle:@"حفظ" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a){
         NSString *name = ac.textFields.firstObject.text ?: @"موقع جديد";
@@ -4078,9 +3966,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     if (!original) return;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"تعديل الموقع المحفوظ" message:@"عدّل الاسم أو الإحداثيات ثم اضغط حفظ." preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"اسم الموقع"; tf.text = original.name ?: @""; tf.textAlignment = NSTextAlignmentRight; }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط العرض"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.latitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط الطول"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.longitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"اسم الموقع (مثال: المنزل)"; tf.text = original.name ?: @""; tf.textAlignment = NSTextAlignmentRight; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط العرض: 19.4131522"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.latitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط الطول: 41.3194678"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.longitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حفظ التعديل" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSString *name = [alert.textFields[0].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -4245,20 +4133,29 @@ static BOOL WFMasterProcessIsEligible(void) {
 #ifdef DEBUG
         WFLog(@"[WolFox][UI] controller_init");
 #endif
+        // Migrate the old last-hidden state once; closing the menu must not rewrite launch preferences.
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if (![defaults objectForKey:WFMenuVisibleOnLaunchKey]) {
+            [defaults setBool:![defaults boolForKey:WFUIHiddenOnLaunchKey] forKey:WFMenuVisibleOnLaunchKey];
+        }
+        [defaults setBool:![defaults boolForKey:WFMenuVisibleOnLaunchKey] forKey:WFUIHiddenOnLaunchKey];
         [self setupUI];
         [self setupVolumeObserver];
+        dispatch_async(dispatch_get_main_queue(), ^{ [self prepareMenuRecoveryGesture]; });
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(licenseStateChanged:) name:@"WF_LICENSE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleStateChanged:) name:@"WF_SCHEDULE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleLocationMissing:) name:@"WF_SCHEDULE_LOCATION_MISSING" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraStateChangedForController:) name:WFVirtualCameraStateDidChangeNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraImageSelectedForController:) name:WFVirtualCameraImageDidSelectNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(spoofStateChangedForController:) name:WFSpoofStateDidChangeNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hostWindowBecameKey:) name:UIWindowDidBecomeKeyNotification object:nil];
         [[WFSpoofScheduleManager shared] start];
     } 
     return self; 
 }
 
 - (void)dealloc {
+    [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
     @try {
         if (self.volumeSession) {
             [self.volumeSession removeObserver:self forKeyPath:@"outputVolume" context:NULL];
@@ -4344,7 +4241,45 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
         shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
     return gestureRecognizer == self.virtualCameraLongPressGesture ||
-           otherGestureRecognizer == self.virtualCameraLongPressGesture;
+           otherGestureRecognizer == self.virtualCameraLongPressGesture ||
+           gestureRecognizer == self.menuRecoveryTapGesture ||
+           otherGestureRecognizer == self.menuRecoveryTapGesture;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer == self.menuRecoveryTapGesture) {
+        return self.mainVC.view.hidden && !self.mainVC.presentedViewController;
+    }
+    return YES;
+}
+
+- (void)prepareMenuRecoveryGesture {
+    UIWindow *host = [self hostKeyWindow] ?: self.previousKeyWindow;
+    if (!host || host == self.overlayWindow) return;
+    if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) return;
+    [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
+    UITapGestureRecognizer *gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleHostMenuRecoveryTap:)];
+    gesture.numberOfTapsRequired = 3;
+    gesture.numberOfTouchesRequired = 1;
+    gesture.cancelsTouchesInView = NO;
+    gesture.delaysTouchesBegan = NO;
+    gesture.delaysTouchesEnded = NO;
+    gesture.delegate = self;
+    self.menuRecoveryTapGesture = gesture;
+    self.menuRecoveryHostWindow = host;
+    [host addGestureRecognizer:gesture];
+}
+
+- (void)hostWindowBecameKey:(NSNotification *)notification {
+    if (notification.object != self.overlayWindow) [self prepareMenuRecoveryGesture];
+}
+
+- (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateEnded || !self.mainVC.view.hidden || self.mainVC.presentedViewController) return;
+    UIView *host = gesture.view;
+    CGRect bounds = host.bounds;
+    CGRect center = CGRectInset(bounds, CGRectGetWidth(bounds) * 0.25, CGRectGetHeight(bounds) * 0.25);
+    if (CGRectContainsPoint(center, [gesture locationInView:host])) [self showUI];
 }
 
 - (void)virtualCameraStateChangedForController:(__unused NSNotification *)notification {
@@ -4395,7 +4330,8 @@ static BOOL WFMasterProcessIsEligible(void) {
         strongSelf.mainVC.view.hidden = YES;
         strongSelf.mainVC.view.alpha = 0;
         if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey]) {
-            strongSelf.overlayWindow.hidden = YES;
+            [strongSelf closeSpoofQuickPanel:nil];
+            strongSelf.overlayWindow.hidden = strongSelf.floatingIcon.hidden;
             [strongSelf restoreHostKeyWindow];
             [strongSelf prepareHiddenVolumeListening];
 #ifdef DEBUG
@@ -4440,8 +4376,16 @@ static BOOL WFMasterProcessIsEligible(void) {
 #endif
 }
 
+- (void)enableMenuRecoveryShortcut {
+    [WolFoxProStore shared].volumeGestureEnabled = YES;
+    [[WolFoxProStore shared] saveSettings];
+    [self prepareHiddenVolumeListening];
+    [self prepareMenuRecoveryGesture];
+}
+
 - (void)applicationBecameActiveForVolume:(NSNotification *)notification {
     (void)notification;
+    [self prepareMenuRecoveryGesture];
     if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey] || self.mainVC.view.hidden) {
         [self prepareHiddenVolumeListening];
     }
@@ -4600,7 +4544,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                            forState:UIControlStateNormal];
     }
     self.floatingIcon.tintColor = UIColor.whiteColor;
-    self.floatingIcon.accessibilityHint = @"اضغط لفتح لوحة WolFox أو اسحب لتحريك العلامة";
+    self.floatingIcon.accessibilityHint = @"اضغط لفتح التحكم السريع وإظهار المنيو، أو اسحب لتحريك الأيقونة";
     [self.floatingIcon addTarget:self action:@selector(handleFloatingStatusTap:) forControlEvents:UIControlEventTouchUpInside];
     [self.floatingIcon addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusPan:)]];
     UILongPressGestureRecognizer *hidePress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusLongPress:)];
@@ -4638,8 +4582,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     BOOL explicitlyVisible = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
                              [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
-    BOOL hiddenByUser = [defaults boolForKey:WFUIHiddenOnLaunchKey];
-    if (!explicitlyVisible || hiddenByUser) {
+    if (!explicitlyVisible) {
+        [self enableMenuRecoveryShortcut];
         self.floatingIcon.hidden = YES;
         if (self.mainVC.view.hidden) self.overlayWindow.hidden = YES;
         return;
@@ -4649,8 +4593,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.floatingIcon.hidden = NO;
     [self refreshFloatingStatusIcon];
     [self.overlayWindow bringSubviewToFront:self.floatingIcon];
+    CGFloat preferredOpacity = self.floatingIcon.alpha;
     self.floatingIcon.alpha = 0.0;
-    [UIView animateWithDuration:0.20 animations:^{ self.floatingIcon.alpha = 0.92; }];
+    [UIView animateWithDuration:0.20 animations:^{ self.floatingIcon.alpha = preferredOpacity; }];
 }
 
 - (void)handleThreeSequentialTaps:(UITapGestureRecognizer *)gesture {
@@ -4696,6 +4641,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 #endif
         if (success) {
             [self showUI];
+        } else {
+            // Return keyboard focus and interaction to the host login screen after cancellation.
+            [self dismissUI];
         }
     };
 
@@ -4722,10 +4670,10 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self showActivationScreen];
         return;
     }
-    // امسح الـ flag حتى يعود للوضع الطبيعي بعد الظهور الناجح.
-    // dismissUI يضعه من جديد عند إغلاق الواجهة، وإعداد "إخفاء عند الفتح" يتحكم فيه.
+    // This flag tracks current visibility only; the launch preference has its own key.
     [[NSUserDefaults standardUserDefaults] setBool:NO forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+    [self closeSpoofQuickPanel:nil];
     [self makeOverlayKey];
         [self.mainVC refreshSpoofHeaderStatus];
         self.mainVC.view.hidden = NO; 
@@ -4747,11 +4695,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.mainVC closeExpandedMapIfNeeded];
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedback impactOccurred];
-    [WolFoxProStore shared].volumeGestureEnabled = YES;
-    [[WolFoxProStore shared] saveSettings];
+    [self enableMenuRecoveryShortcut];
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [self prepareHiddenVolumeListening];
+    [self closeSpoofQuickPanel:nil];
     [self closeFloatingControlPanel:nil];
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0;
@@ -4773,9 +4721,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] setBool:visible forKey:@"WF_FLOATING_STATUS_VISIBLE"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     self.floatingIcon.hidden = !visible;
-    if (!visible) [self closeSpoofQuickPanel:nil];
+    if (!visible) {
+        [self closeSpoofQuickPanel:nil];
+        [self enableMenuRecoveryShortcut];
+    }
     if (visible) {
         self.overlayWindow.hidden = NO;
+        [self applyFloatingStatusPreferences];
         [self refreshFloatingStatusIcon];
         [self.overlayWindow bringSubviewToFront:self.floatingIcon];
     }
@@ -4840,7 +4792,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     if (!self.spoofQuickPanel) {
         CGFloat width = MIN(292.0, self.overlayWindow.bounds.size.width - 28.0);
-        self.spoofQuickPanel = [[UIView alloc] initWithFrame:CGRectMake(14, 120, width, 242)];
+        self.spoofQuickPanel = [[UIView alloc] initWithFrame:CGRectMake(14, 120, width, 294)];
         self.spoofQuickPanel.backgroundColor = [WolFoxProTheme surfacePrimary];
         self.spoofQuickPanel.layer.cornerRadius = 22.0;
         self.spoofQuickPanel.layer.borderWidth = 1.5;
@@ -4897,6 +4849,11 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self.spoofQuickFavoriteButton addTarget:self action:@selector(activateFavoriteFromQuickPanel:) forControlEvents:UIControlEventTouchUpInside];
         [self.spoofQuickPanel addSubview:self.spoofQuickFavoriteButton];
 
+        UIButton *menuButton = quickButton(@"إظهار المنيو الكامل", @"rectangle.stack.fill", 228);
+        menuButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.39 blue:0.82 alpha:1.0];
+        [menuButton addTarget:self action:@selector(openMenuFromQuickPanel:) forControlEvents:UIControlEventTouchUpInside];
+        [self.spoofQuickPanel addSubview:menuButton];
+
         [self.overlayWindow addSubview:self.spoofQuickPanel];
     }
 
@@ -4924,6 +4881,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     } completion:^(__unused BOOL finished) {
         self.spoofQuickPanel.hidden = YES;
     }];
+}
+
+- (void)openMenuFromQuickPanel:(__unused UIButton *)sender {
+    [self closeSpoofQuickPanel:nil];
+    [self showUI];
 }
 
 - (void)refreshSpoofQuickPanel {
@@ -5317,7 +5279,7 @@ static void __attribute__((constructor)) initialize() {
         WFLog(@"[WolFox][BOOT] startup_stored=%d verify_before_ui=1", [WFLicenseClient hasStoredLicense]);
 #endif
         [WFLicenseClient validateStrictlyWithCompletion:^(WFLicenseResult *result) {
-            BOOL stayHidden = [[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey];
+            BOOL stayHidden = ![[NSUserDefaults standardUserDefaults] boolForKey:WFMenuVisibleOnLaunchKey];
             if (!stayHidden) {
                 if (result.success) {
                     if ([WolFoxProStore shared].mediaUploadActive) [controller toggleCameraIcon:YES];

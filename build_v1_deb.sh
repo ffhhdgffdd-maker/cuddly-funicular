@@ -11,12 +11,40 @@ VERSION="${WOLFOX_VERSION:-2.0.0}"
 if [ "$WOLFOX_EDITION" = "Lite" ]; then
     PRODUCT_NAME="WolFoxLite"
     PACKAGE_ID="com.wolfox.gpspro.lite"
-    PACKAGE_TITLE="WolFox Lite"
+    PACKAGE_TITLE="WolFox"
 else
     PRODUCT_NAME="WolFox"
     PACKAGE_ID="com.wolfox.gpspro"
-    PACKAGE_TITLE="FAKE GPS WFX"
+    PACKAGE_TITLE="WolFox"
 fi
+
+# Version 3 profiles are isolated by package ID and MobileSubstrate filename.
+# A package targets exactly one application, including the two Lite and
+# Standard Full variants in the four-edition release.
+case "${WOLFOX_PROFILE:-}" in
+    "") ;;
+    control-full|mosques-full|lite-tahakom|lite-mosques|full-tahakom|full-mosques)
+        PROFILE="${WOLFOX_PROFILE}"
+        case "$PROFILE" in
+            *tahakom|control-full) PROFILE_BUNDLE="com.tahakom.mytahakom" ;;
+            *) PROFILE_BUNDLE="sa.gov.moia.mosques-2" ;;
+        esac
+        if [ -n "${WOLFOX_TARGET_BUNDLE_IDS:-}" ] && [ "$WOLFOX_TARGET_BUNDLE_IDS" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ فلتر التطبيق لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        if [ -n "${WOLFOX_PROJECT_BUNDLE_ID:-}" ] && [ "$WOLFOX_PROJECT_BUNDLE_ID" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ ربط الترخيص لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        WOLFOX_TARGET_BUNDLE_IDS="$PROFILE_BUNDLE"
+        WOLFOX_PROJECT_BUNDLE_ID="$PROFILE_BUNDLE"
+        VERSION="${WOLFOX_VERSION:-3.0.0}"
+        case "$PROFILE" in lite-*) WOLFOX_EDITION="Lite" ;; *) WOLFOX_EDITION="Full" ;; esac
+        PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
+        PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
+        PACKAGE_TITLE="WolFox"
+        ;;
+    *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
+esac
 
 # Clang deployment target is 15.0; supported packaged runtime starts at 15.8.
 MIN_IOS="${MIN_IOS:-15.0}"
@@ -133,6 +161,7 @@ for ((offset=0; offset<${#PROJECT_KEY_HEX}; offset+=2)); do
     PROJECT_KEY_BYTES+="${PROJECT_KEY_BYTES:+, }$encoded_byte"
 done
 cat > "$GENERATED_LICENSE_CONFIG" <<EOF
+#define WOLFOX_BUILD_PROFILE @"$(escape_objc_string "${WOLFOX_PROFILE:-legacy}")"
 #define WOLFOX_LICENSE_BASE_URL @"$(escape_objc_string "$PANEL_BASE_URL_VALUE")"
 #define WOLFOX_LICENSE_PROJECT_KEY_XOR_MASK $PROJECT_KEY_XOR_MASK
 #define WOLFOX_LICENSE_PROJECT_KEY_LENGTH $PROJECT_KEY_LENGTH
@@ -170,8 +199,28 @@ make_deb() {
 { Filter = { Bundles = ( $(printf '"%s",' "${TARGET_BUNDLES[@]}" | sed 's/,$//') ); }; }
 EOF
     chmod 0644 "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.plist"
-    cat > "$root/DEBIAN/control" <<EOF
-Package: $PACKAGE_ID
+    local conflicts=""
+    if [ -n "${WOLFOX_PROFILE:-}" ]; then
+        if [ "$PROFILE_BUNDLE" = "com.tahakom.mytahakom" ]; then
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.control.full, com.wolfox.gpspro.v3.lite.tahakom, com.wolfox.gpspro.v3.full.tahakom"
+        else
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
+        fi
+        local candidate
+        local -a conflict_items
+        IFS=',' read -r -a conflict_items <<< "$conflicts"
+        conflicts=""
+        for candidate in "${conflict_items[@]}"; do
+            candidate="${candidate#${candidate%%[![:space:]]*}}"
+            if [ "$candidate" != "$PACKAGE_ID" ]; then
+                conflicts="${conflicts:+$conflicts, }$candidate"
+            fi
+        done
+    fi
+    {
+        printf 'Package: %s\n' "$PACKAGE_ID"
+        if [ -n "$conflicts" ]; then printf 'Conflicts: %s\n' "$conflicts"; fi
+        cat <<EOF
 Name: $PACKAGE_TITLE
 Version: $VERSION
 Architecture: iphoneos-arm
@@ -181,6 +230,7 @@ Maintainer: WFX
 Author: WFX
 Section: Tweaks
 EOF
+    } > "$root/DEBIAN/control"
     cat > "$root/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
 if command -v sbreload >/dev/null 2>&1; then

@@ -9,7 +9,11 @@ CONFIG="$PROJECT_DIR/WFLicenseConfig.h"
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 reject() { if grep -Fq "$2" "$1"; then echo "❌ $3"; exit 1; fi; echo "✅ $3"; }
 
-check "$MASTER" '_titleLabel.text = @"WolFox GPS";' "اسم WolFox GPS موحد في النظامين"
+if grep -Fq '_titleLabel.text = @"WolFox";' "$MASTER"; then
+    echo "✅ اسم WolFox الأساسي متاح مع اسم الإصدار"
+else
+    echo "❌ اسم WolFox الأساسي غير موجود"; exit 1
+fi
 reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الكاميرا محذوف من الواجهة"
 check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX LITE";' "عداد الجولة يعرض Lite الصحيح"
 check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX FULL";' "عداد الجولة يعرض Full الصحيح"

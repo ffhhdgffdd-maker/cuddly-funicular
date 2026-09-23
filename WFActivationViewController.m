@@ -136,8 +136,8 @@
     self.codeField.layer.cornerRadius = 16.0;
     self.codeField.layer.borderWidth = 1.5;
     self.codeField.layer.borderColor = [[WolFoxProTheme royalBlue] colorWithAlphaComponent:0.62].CGColor;
-    self.codeField.placeholder = @"GPS-XXXX-XXXX-XXXX";
-    self.codeField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.codeField.placeholder attributes:@{NSForegroundColorAttributeName: [UIColor colorWithWhite:0.40 alpha:1.0]}];
+    self.codeField.placeholder = @"أدخل كود التفعيل GPS-…";
+    self.codeField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.codeField.placeholder attributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textSecondary]}];
     self.codeField.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
     self.codeField.autocorrectionType = UITextAutocorrectionTypeNo;
     self.codeField.keyboardType = UIKeyboardTypeASCIICapable;
@@ -373,7 +373,9 @@
     [self.view endEditing:YES];
     self.statusLabel.hidden = YES;
     self.statusLabel.text = @"";
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (self.completion) self.completion(NO);
+    }];
 }
 
 - (void)dismissKeyboard {
@@ -626,6 +628,7 @@
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:^{
         WFLog(@"[WolFox][ACT] activation_view_dismissed_skip");
+        if (self.completion) self.completion(NO);
     }];
 }
 

@@ -1,0 +1,87 @@
+name: Build WolFox 3.0.0 — Four Editions
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wolfox-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: "${{ matrix.edition }} · ${{ matrix.target }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        include:
+          - { edition: "1 Full Control", profile: control-full, target: tahakom, bundle: com.tahakom.mytahakom, mode: Full }
+          - { edition: "2 Full Mosques", profile: mosques-full, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Full }
+          - { edition: "3 Lite", profile: lite-tahakom, target: tahakom, bundle: com.tahakom.mytahakom, mode: Lite }
+          - { edition: "3 Lite", profile: lite-mosques, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Lite }
+          - { edition: "4 Full", profile: full-tahakom, target: tahakom, bundle: com.tahakom.mytahakom, mode: Full }
+          - { edition: "4 Full", profile: full-mosques, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Full }
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: 3.0.0
+      WOLFOX_EDITION: ${{ matrix.mode }}
+      WOLFOX_PROFILE: ${{ matrix.profile }}
+      WOLFOX_TARGET_BUNDLE_IDS: ${{ matrix.bundle }}
+      WOLFOX_PROJECT_BUNDLE_ID: ${{ matrix.bundle }}
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ matrix.target == 'tahakom' && (secrets.WOLFOX_PROJECT_KEY_TAHAKOM || secrets.WOLFOX_PROJECT_KEY) || (secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate edition configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${WOLFOX_PROJECT_KEY:-}"
+          test -s build_v1_deb.sh
+          test -s WolFoxProTheme.m
+          echo "Edition=${WOLFOX_PROFILE}; target=${WOLFOX_PROJECT_BUNDLE_ID}"
+
+      - name: Build and run Linux checks
+        run: bash ./wolfox_setup_build.sh
+
+      - name: Verify target and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          product="WolFox3_${WOLFOX_PROFILE//-/_}"
+          mkdir -p release
+          for mode in Rootful Rootless; do
+            deb="${product}_v3.0.0_iOS15.8-27.0_${mode}.deb"
+            test -s "$deb"
+            test "$(dpkg-deb -f "$deb" Version)" = "3.0.0"
+            dpkg-deb -c "$deb" | grep -F "${product}.plist"
+            rm -rf verify
+            mkdir verify
+            dpkg-deb -x "$deb" verify
+            plist="$(find verify -name "${product}.plist" -print -quit)"
+            test -n "$plist"
+            grep -F "${WOLFOX_PROJECT_BUNDLE_ID}" "$plist"
+            cp "$deb" release/
+          done
+          test -s "${product}.dylib"
+          file "${product}.dylib" | grep -F 'Mach-O 64-bit'
+          cp "${product}.dylib" release/
+          printf 'VERSION=3.0.0\nEDITION=%s\nTARGET=%s\nAPI=https://gps.p3nd.fun/api/v1\n' "${WOLFOX_PROFILE}" "${WOLFOX_PROJECT_BUNDLE_ID}" > release/BUILD_INFO.txt
+          (cd release && sha256sum * > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "WolFox-3.0.0-${{ matrix.profile }}-arm64-${{ github.run_number }}"
+          if-no-files-found: error
+          retention-days: 14
+          path: release/
