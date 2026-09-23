@@ -11,11 +11,11 @@ VERSION="${WOLFOX_VERSION:-2.0.0}"
 if [ "$WOLFOX_EDITION" = "Lite" ]; then
     PRODUCT_NAME="WolFoxLite"
     PACKAGE_ID="com.wolfox.gpspro.lite"
-    PACKAGE_TITLE="WolFox Lite"
+    PACKAGE_TITLE="WolFox"
 else
     PRODUCT_NAME="WolFox"
     PACKAGE_ID="com.wolfox.gpspro"
-    PACKAGE_TITLE="FAKE GPS WFX"
+    PACKAGE_TITLE="WolFox"
 fi
 
 # Version 3 profiles are isolated by package ID and MobileSubstrate filename.
@@ -41,7 +41,7 @@ case "${WOLFOX_PROFILE:-}" in
         case "$PROFILE" in lite-*) WOLFOX_EDITION="Lite" ;; *) WOLFOX_EDITION="Full" ;; esac
         PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
         PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
-        PACKAGE_TITLE="WolFox 3 ${PROFILE}"
+        PACKAGE_TITLE="WolFox"
         ;;
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
