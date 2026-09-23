@@ -10,8 +10,9 @@ LITE_WORKFLOW="$PROJECT_DIR/.github/workflows/build.yml"
 check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 
 check "$MASTER" "#if WOLFOX_LITE" "وجود واجهة Lite المشروطة"
-check "$MASTER" '@[@"location.fill", @"person.text.rectangle.fill", @"gearshape.fill"]' "Lite تعرض الخريطة والمعرّف والإعدادات دون ازدحام"
-check "$MASTER" '@[@"الخريطة والبحث", @"المعرّف وUDID", @"الإعدادات"]' "توضيح أقسام Lite المبسطة"
+check "$MASTER" '@[@"location.fill", @"person.text.rectangle.fill"]' "Lite تعرض الخريطة والمعرّف دون تبويب إعدادات مكرر"
+check "$MASTER" '@[@"الخريطة والبحث", @"المعرّف وUDID"]' "توضيح أقسام Lite المبسطة"
+check "$MASTER" '@selector(openSettingsPage)' "زر الإعدادات متاح من القسم الأول"
 check "$MASTER" "if (candidate.tag == page)" "تنقل Lite الصحيح بين الأقسام"
 check "$MASTER" 'showSaudiServicesOnMainMap' "دمج المدارس والمساجد والخدمات الصحية في الخريطة الرئيسية"
 check "$MASTER" 'https://overpass-api.de/api/interpreter' "مصدر OpenStreetMap للمعالم"
@@ -38,3 +39,4 @@ check "$LITE_WORKFLOW" 'SHA256SUMS.txt' "إنشاء بصمات الإصدار ا
 check "$LITE_WORKFLOW" 'git archive --format=tar.gz' "إرفاق السورس المطابق للبناء"
 
 echo "✅ اجتازت بنية WolFox Lite اختبارات الفصل الآمن."
+

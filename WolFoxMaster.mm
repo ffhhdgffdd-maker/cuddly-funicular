@@ -16,6 +16,8 @@
 #import <math.h>
 
 #import "WolFoxProStore.h"
+#import "WFIdentifierTransfer.h"
+#import <stdlib.h>
 #import "WolFoxProTheme.h"
 #import "WolFoxProHookManager.h"
 #import "WolFoxProCellModel.h"
@@ -131,7 +133,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 @interface WolFoxOverlayWindow : UIWindow
 @end
 
-@interface WolFoxMainViewController : UIViewController <MKMapViewDelegate, UITextFieldDelegate, UISearchBarDelegate, CBCentralManagerDelegate, CLLocationManagerDelegate>
+@interface WolFoxMainViewController : UIViewController <MKMapViewDelegate, UITextFieldDelegate, UISearchBarDelegate, CBCentralManagerDelegate, CLLocationManagerDelegate, UIDocumentPickerDelegate>
 @property (nonatomic, strong) MKMapView *mapView;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) MKPointAnnotation *realLocPin;
@@ -160,6 +162,15 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
 - (void)floatingIconOpacityChanged:(UISlider *)slider;
 - (void)resetFloatingIconPosition;
+- (void)openSettingsPage;
+- (void)requestApplicationExit;
+- (void)finishConfirmedChange;
+- (void)confirmChangeAndClose:(NSString *)title apply:(BOOL (^)(void))apply;
+- (void)showIdentifierMessage:(NSString *)message;
+- (void)importIdentifierClipboard;
+- (void)importIdentifierFile;
+- (void)acceptIdentifierData:(NSData *)data;
+- (void)componentSwitchChanged:(UISwitch *)sender;
 @end
 
 @implementation WolFoxOverlayWindow
@@ -452,22 +463,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.view addSubview:_tabsBar];
     
 #if WOLFOX_LITE
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 2.0, 3)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 4.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [_tabsBar addSubview:indicator];
     
 #if WOLFOX_LITE
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @1, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID"];
+    NSArray *tabPages = @[@0, @1];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"gearshape.fill"];
-    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"البلوتوث", @"الإعدادات"];
-    NSArray *tabPages = @[@0, @1, @2, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right"];
+    NSArray *tabLabels = @[@"الخريطة والبحث", @"المعرّف وUDID", @"البلوتوث"];
+    NSArray *tabPages = @[@0, @1, @2];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -650,6 +661,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     // يحسب موضع المؤشر من الزر الفعلي؛ يدعم Full بخمسة أقسام وLite بثلاثة أقسام.
     CGFloat tabCount = MAX((CGFloat)_tabBtns.count, 1.0);
     NSInteger tabIndex = 0;
+    indicator.hidden = (page == 3 || page == 4);
     for (NSUInteger index = 0; index < _tabBtns.count; index++) {
         UIButton *candidate = (UIButton *)_tabBtns[index];
         if (candidate.tag == page) { tabIndex = (NSInteger)index; break; }
@@ -1441,8 +1453,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     [scheduleCard addSubview:scheduleButton];
     cy += 87;
 
-    // إعدادات الكاميرا الافتراضية موجودة في تبويب الكاميرا المستقل لتبقى واضحة ومعزولة.
-    cy += 20.0;
+    UIButton *settingsButton = [self royalBtnInside:_scrollDashboard t:@"الإعدادات"
+        i:@"gearshape.fill" c:[WolFoxProTheme accent] y:cy];
+    [settingsButton addTarget:self action:@selector(openSettingsPage) forControlEvents:UIControlEventTouchUpInside];
+    cy += 62.0;
+    UIButton *exitButton = [self royalBtnInside:_scrollDashboard t:@"خروج من التطبيق"
+        i:@"rectangle.portrait.and.arrow.right" c:[WolFoxProTheme danger] y:cy];
+    [exitButton addTarget:self action:@selector(requestApplicationExit) forControlEvents:UIControlEventTouchUpInside];
+    cy += 70.0;
     _scrollDashboard.contentSize = CGSizeMake(w, cy + 30);
 }
 
@@ -2690,7 +2708,14 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)handleSwitch:(UISwitch *)s {
     void(^block)(UISwitch *) = objc_getAssociatedObject(s, "_sw_block");
-    if (block) block(s);
+    if (!block) return;
+    if (_activePage == 4) {
+        BOOL desired = s.on;
+        [s setOn:!desired animated:YES];
+        [self confirmChangeAndClose:s.accessibilityLabel apply:^BOOL {
+            s.on = desired; block(s); return YES;
+        }];
+    } else block(s);
 }
 
 - (UIButton *)royalBtn:(NSString *)t icon:(NSString *)i color:(UIColor *)c y:(CGFloat)y {
@@ -2750,7 +2775,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [idCard addSubview:layersCard];
     UILabel *layersTitle = [[UILabel alloc] initWithFrame:CGRectMake(10, 6, layersCard.bounds.size.width - 20, 17)];
     layersTitle.text = @"طبقات المعرّف الموحدة"; layersTitle.textAlignment = NSTextAlignmentRight;
-    layersTitle.textColor = [WolFoxProTheme accent]; layersTitle.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
+    layersTitle.textColor = [WolFoxProTheme textPrimary]; layersTitle.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
     [layersCard addSubview:layersTitle];
     UILabel *layersValue = [[UILabel alloc] initWithFrame:CGRectMake(10, 25, layersCard.bounds.size.width - 20, 22)];
     BOOL identifierEnabled = [WolFoxProStore shared].validatedActiveIdentifier != nil;
@@ -2794,19 +2819,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     targetBundle.adjustsFontSizeToFitWidth = YES;
     [idCard addSubview:targetBundle];
 
-    // Read the mosque application's own flutter_udid Keychain item, without activating it.
-    BOOL mosqueApp = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"];
-    if (mosqueApp) {
-        UIButton *importMosque = [self royalBtnInside:_scrollDashboard
-            t:@"استيراد معرّف تطبيق المساجد" i:@"square.and.arrow.down"
-            c:[WolFoxProTheme accent] y:570];
-        [importMosque addTarget:self action:@selector(importMosquesIdentifier)
-              forControlEvents:UIControlEventTouchUpInside];
-    }
-
-    // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = mosqueApp ? 635 : 575;
+    CGFloat cy = 575;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -2885,27 +2899,22 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)selectSavedIdentifier:(UIButton *)btn {
     NSString *uuid = objc_getAssociatedObject(btn, "_id_uuid");
     if (!uuid.length) return;
-    if ([[WolFoxProStore shared] activateIdentifierString:uuid]) {
-        UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = uuid;
-        [self refreshSpoofHeaderStatus];
-        [self showToast:@"✅ تم تفعيل المعرّف المحفوظ"];
-        [self switchPage:1];
-    }
+    [self confirmChangeAndClose:@"تفعيل المعرّف المحفوظ" apply:^BOOL {
+        return [[WolFoxProStore shared] activateIdentifierString:uuid forBundleID:NSBundle.mainBundle.bundleIdentifier];
+    }];
 }
 
 - (void)deleteSavedIdentifier:(UIButton *)btn {
     NSString *uuid = objc_getAssociatedObject(btn, "_id_uuid");
     if (!uuid.length) return;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حذف المعرّف؟"
-                                                                   message:@"سيُحذف هذا المعرّف من القائمة نهائياً."
+                                                                   message:@"سيُحذف المعرّف ويُغلق التطبيق بعد التأكيد. أعد فتحه من الأيقونة."
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حذف" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *a) {
         [[WolFoxProStore shared] deleteIdentifierUUID:uuid];
         [self refreshSpoofHeaderStatus];
-        [self showToast:@"✅ تم حذف المعرّف"];
-        [self switchPage:1];
+        [self finishConfirmedChange];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -2932,6 +2941,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         field.clearButtonMode = UITextFieldViewModeWhileEditing;
         field.textAlignment = NSTextAlignmentCenter;
     }];
+    alert.message = @"عند حفظ التعديل يُغلق التطبيق. أعد فتحه من الأيقونة.";
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حفظ التعديل" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSString *name = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -2954,8 +2964,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         [[WolFoxProStore shared] saveIdentifier:updated];
         if (wasActive) [[WolFoxProStore shared] activateIdentifierString:newUUID forBundleID:updated.bundleID];
         [self refreshSpoofHeaderStatus];
-        [self showToast:@"تم تعديل المعرّف بنجاح"];
-        [self switchPage:1];
+        [self finishConfirmedChange];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -2978,64 +2987,102 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)saveIDProPage {
     UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-    NSString *raw = [tf.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
-    raw = [raw stringByReplacingOccurrencesOfString:@"urn:uuid:" withString:@"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, raw.length)];
-    raw = [raw stringByReplacingOccurrencesOfString:@"{" withString:@""];
-    raw = [raw stringByReplacingOccurrencesOfString:@"}" withString:@""];
-    NSUUID *normalizedUUID = [[NSUUID alloc] initWithUUIDString:raw];
-    if (normalizedUUID && [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:NSBundle.mainBundle.bundleIdentifier]) {
-        tf.text = [WolFoxProStore shared].activeIdentifierUUID;
-        [self refreshSpoofHeaderStatus];
-        UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"🔵 المعرّف نشط";
-        status.textColor = [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0];
-        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
-        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", NSBundle.mainBundle.bundleIdentifier, normalizedUUID.UUIDString];
-    } else {
-        [self showToast:@"صيغة UUID غير صحيحة ❌"];
-    }
+    NSString *validUUID = WFTransferUUID(tf.text);
+    NSUUID *normalizedUUID = validUUID ? [[NSUUID alloc] initWithUUIDString:validUUID] : nil;
+    if (!normalizedUUID) { [self showIdentifierMessage:@"أدخل معرّف UUID صالحًا أولاً."]; return; }
+    [self confirmChangeAndClose:@"حفظ المعرّف وتفعيله" apply:^BOOL {
+        BOOL saved = [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:NSBundle.mainBundle.bundleIdentifier];
+        if (saved) [NSUserDefaults.standardUserDefaults setObject:normalizedUUID.UUIDString forKey:@"WF_LAST_MANUAL_IDENTIFIER"];
+        return saved;
+    }];
+}
+
+- (void)showIdentifierMessage:(NSString *)message {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"WolFox" message:message preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"إغلاق" style:UIAlertActionStyleCancel handler:nil]];
+        UIViewController *host = self;
+        while (host.presentedViewController && !host.presentedViewController.isBeingDismissed) host = host.presentedViewController;
+        [host presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 - (void)importIDProPage {
-    UIPasteboard *pb = [UIPasteboard generalPasteboard];
-    if (pb.string.length > 0) {
-        NSString *raw = [pb.string stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        raw = [raw stringByReplacingOccurrencesOfString:@"urn:uuid:" withString:@"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, raw.length)];
-        raw = [[raw stringByReplacingOccurrencesOfString:@"{" withString:@""] stringByReplacingOccurrencesOfString:@"}" withString:@""];
-        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:raw];
-        if (!uuid) { [self showToast:@"صيغة UUID في الحافظة غير صحيحة ❌"]; return; }
-        UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = uuid.UUIDString; [self showToast:@"تم استيراد UUID — اضغط حفظ وتفعيل 📋"];
+    [self.view endEditing:YES];
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"استيراد المعرّف" message:@"اختر المصدر. يُعرض المعرّف للمراجعة قبل حفظه وتفعيله." preferredStyle:UIAlertControllerStyleAlert];
+    [menu addAction:[UIAlertAction actionWithTitle:@"من ملف GPS Plus أو WolFox" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importIdentifierFile]; }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"من الحافظة" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importIdentifierClipboard]; }]];
+    if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"])
+        [menu addAction:[UIAlertAction actionWithTitle:@"من التطبيق الحالي" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importMosquesIdentifier]; }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:menu animated:YES completion:nil];
+}
+
+- (void)acceptIdentifierData:(NSData *)data {
+    NSString *error = nil;
+    NSString *uuid = WFIdentifierFromTransfer(data, NSBundle.mainBundle.bundleIdentifier, &error);
+    if (!uuid) { [self showIdentifierMessage:error]; return; }
+    UITextField *field = objc_getAssociatedObject(self, "_id_tf_page");
+    field.text = uuid;
+    [self showIdentifierMessage:@"تم استيراد المعرّف إلى الخانة للمراجعة. اضغط حفظ وتفعيل لتطبيقه. لم تتغير بيانات التطبيق."];
+}
+
+- (void)importIdentifierClipboard {
+    NSString *text = UIPasteboard.generalPasteboard.string;
+    if (!text.length) { [self showIdentifierMessage:@"الحافظة فارغة. انسخ المعرّف أو اختر استيراد ملف."]; return; }
+    [self acceptIdentifierData:[text dataUsingEncoding:NSUTF8StringEncoding]];
+}
+
+- (void)importIdentifierFile {
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.data"] inMode:UIDocumentPickerModeImport];
+    picker.delegate = self;
+    picker.allowsMultipleSelection = NO;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+- (void)documentPicker:(__unused UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *url = urls.firstObject;
+    if (!url) return;
+    BOOL scoped = [url startAccessingSecurityScopedResource];
+    NSData *data = nil;
+    NSFileHandle *handle = nil;
+    @try {
+        handle = [NSFileHandle fileHandleForReadingFromURL:url error:NULL];
+        data = [handle readDataOfLength:WFIdentifierTransferMaxBytes + 1];
+    } @catch (__unused NSException *exception) {
+        data = nil;
+    } @finally {
+        [handle closeFile];
+        if (scoped) [url stopAccessingSecurityScopedResource];
     }
+    // Present results only after the document picker has dismissed.
+    [self dismissViewControllerAnimated:YES completion:^{ [self acceptIdentifierData:data]; }];
 }
 
 - (void)importMosquesIdentifier {
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"]) return;
-    NSDictionary *query = @{
-        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: @"org.cocoapods.flutter-udid",
-        (__bridge id)kSecMatchLimit: (__bridge id)kSecMatchLimitAll,
-        (__bridge id)kSecReturnData: @YES
-    };
-    CFTypeRef result = NULL;
-    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
-    NSArray *items = status == errSecSuccess ? CFBridgingRelease(result) : nil;
-    if (status != errSecSuccess && result) CFRelease(result);
-    if (![items isKindOfClass:[NSArray class]]) {
-        [self showToast:@"معرّف التطبيق غير متاح في Keychain"];
-        return;
+    NSArray *queries = @[
+        @{(__bridge id)kSecAttrService: @"flutter_secure_storage_service", (__bridge id)kSecAttrAccount: @"appUUID"},
+        @{(__bridge id)kSecAttrService: @"org.cocoapods.flutter-udid"}
+    ];
+    for (NSDictionary *attributes in queries) {
+        NSMutableDictionary *query = [attributes mutableCopy];
+        query[(__bridge id)kSecClass] = (__bridge id)kSecClassGenericPassword;
+        query[(__bridge id)kSecMatchLimit] = (__bridge id)kSecMatchLimitAll;
+        query[(__bridge id)kSecReturnData] = @YES;
+        CFTypeRef result = NULL;
+        OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+        id items = result ? CFBridgingRelease(result) : nil;
+        if (status != errSecSuccess || ![items isKindOfClass:NSArray.class]) continue;
+        for (id item in items) {
+            if (![item isKindOfClass:NSData.class]) continue;
+            NSString *uuid = WFTransferUUID([[NSString alloc] initWithData:item encoding:NSUTF8StringEncoding]);
+            if (!uuid) continue;
+            [self acceptIdentifierData:[uuid dataUsingEncoding:NSUTF8StringEncoding]];
+            return;
+        }
     }
-    for (id item in items) {
-        if (![item isKindOfClass:[NSData class]]) continue;
-        NSString *value = [[NSString alloc] initWithData:item encoding:NSUTF8StringEncoding];
-        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:value];
-        if (!uuid) continue;
-        UITextField *field = objc_getAssociatedObject(self, "_id_tf_page");
-        field.text = uuid.UUIDString;
-        [self showToast:@"تم استيراد معرّف المساجد؛ اضغط حفظ وتفعيل"];
-        return;
-    }
-    [self showToast:@"لا يوجد معرّف UUID صالح للتطبيق"];
+    [self showIdentifierMessage:@"تعذر قراءة معرّف التطبيق الحالي. قد لا يكون محفوظًا أو متاحًا لهذه النسخة. اختر استيراد من ملف GPS Plus أو أدخل UUID يدويًا."];
 }
 
 - (void)copyDeviceUDID {
@@ -3047,26 +3094,43 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)exportIDProPage {
     UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-    UIPasteboard *pb = [UIPasteboard generalPasteboard];
-    NSString *serial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
-    if (!serial.length) serial = [[NSUUID alloc] initWithUUIDString:tf.text].UUIDString;
-    if (!serial.length) { [self showToast:@"أدخل معرّف UUID صالحًا أولاً"]; return; }
-    pb.string = serial; [self showToast:@"تم تصدير السيريال إلى الحافظة 📤"];
+    NSString *serial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString ?: WFTransferUUID(tf.text);
+    if (!serial.length) { [self showIdentifierMessage:@"أدخل معرّف UUID صالحًا أولاً."]; return; }
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"تصدير المعرّف" message:@"يحتوي التصدير المعرّف المختار فقط." preferredStyle:UIAlertControllerStyleAlert];
+    [menu addAction:[UIAlertAction actionWithTitle:@"نسخ المعرّف" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
+        UIPasteboard.generalPasteboard.string = serial;
+        [self showIdentifierMessage:@"تم نسخ المعرّف بنجاح."];
+    }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"حفظ أو مشاركة ملف" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
+        NSData *data = WFIdentifierExport(serial, NSBundle.mainBundle.bundleIdentifier);
+        NSURL *directory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];
+        NSURL *url = [directory URLByAppendingPathComponent:@"WolFox-Identifier.json"];
+        BOOL created = [[NSFileManager defaultManager] createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:nil error:NULL];
+        if (!created || ![data writeToURL:url options:NSDataWritingAtomic error:NULL]) {
+            [self showIdentifierMessage:@"تعذر إنشاء ملف التصدير."]; return;
+        }
+        UIActivityViewController *share = [[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
+        if (share.popoverPresentationController) {
+            share.popoverPresentationController.sourceView = self.view;
+            share.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+        }
+        share.completionWithItemsHandler = ^(__unused UIActivityType type, BOOL completed, __unused NSArray *items, NSError *error) {
+            [[NSFileManager defaultManager] removeItemAtURL:directory error:NULL];
+            if (completed && !error) [self showIdentifierMessage:@"تم تصدير المعرّف بنجاح."];
+            else if (error) [self showIdentifierMessage:@"تعذر إتمام التصدير. حاول مرة أخرى."];
+        };
+        [self presentViewController:share animated:YES completion:nil];
+    }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:menu animated:YES completion:nil];
 }
 
 - (void)resetIDProPage {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"إعادة المعرّف الأصلي؟" message:@"سيتم إيقاف المعرّف المخصص والعودة إلى معرّف الجهاز الأصلي." preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"إعادة الآن" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
-        UITextField *tf = objc_getAssociatedObject(self, "_id_tf_page");
-        tf.text = @""; [[WolFoxProStore shared] deactivateIdentifier]; [self refreshSpoofHeaderStatus];
-        UILabel *status = objc_getAssociatedObject(self, "_id_status_label");
-        status.text = @"أدخل المعرّف واضغط حفظ وتفعيل";
-        UILabel *serialLabel = objc_getAssociatedObject(self, "_id_serial_label");
-        serialLabel.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: لم يُضف بعد", NSBundle.mainBundle.bundleIdentifier];
-        status.textColor = [WolFoxProTheme textSecondary];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [self confirmChangeAndClose:@"إعادة المعرّف للأصلي" apply:^BOOL {
+        [[WolFoxProStore shared] deactivateIdentifier];
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"WF_LAST_MANUAL_IDENTIFIER"];
+        return YES;
+    }];
 }
 
 - (void)setupCameraPage {
@@ -3110,9 +3174,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray<NSNumber *> *values = @[@2, @3, @5];
     if (control.selectedSegmentIndex < 0 || control.selectedSegmentIndex >= (NSInteger)values.count) return;
     NSInteger count = values[control.selectedSegmentIndex].integerValue;
-    [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_VOLUME_PRESS_COUNT"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    [self showToast:[NSString stringWithFormat:@"سيتم إظهار الواجهة بعد %ld ضغطات صوت", (long)count]];
+    NSInteger previous = [NSUserDefaults.standardUserDefaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
+    control.selectedSegmentIndex = previous == 2 ? 0 : previous == 5 ? 2 : 1;
+    [self confirmChangeAndClose:@"حفظ اختصار الصوت" apply:^BOOL {
+        [NSUserDefaults.standardUserDefaults setInteger:count forKey:@"WF_VOLUME_PRESS_COUNT"];
+        return YES;
+    }];
 }
 
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control {
@@ -3127,8 +3194,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)resetFloatingIconPosition {
-    [[WolFoxController shared] resetFloatingStatusPosition];
-    [self showToast:@"تمت إعادة العلامة إلى مكانها الافتراضي"];
+    [self confirmChangeAndClose:@"إعادة موضع الأيقونة" apply:^BOOL {
+        [[WolFoxController shared] resetFloatingStatusPosition]; return YES;
+    }];
 }
 
 - (void)presentMosquesAppControls {
@@ -3259,10 +3327,108 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self switchPage:3];
 }
 
+- (void)openSettingsPage { [self switchPage:4]; }
+
+- (void)finishConfirmedChange {
+    [[WolFoxProStore shared] saveSettings];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    // User explicitly confirmed closing the current app. iOS relaunch is manual.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ exit(0); });
+}
+
+- (void)confirmChangeAndClose:(NSString *)title apply:(BOOL (^)(void))apply {
+    [self.view endEditing:YES];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
+        message:@"عند التأكيد يُحفظ التغيير ويُغلق التطبيق. أعد فتحه من الأيقونة لتكمل الاستخدام."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"تأكيد وإغلاق التطبيق" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
+        if (!apply || apply()) [self finishConfirmedChange];
+        else [self showIdentifierMessage:@"لم يُحفظ التغيير. تأكد من إعداد المكوّن أولاً ثم حاول مجددًا."];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)requestApplicationExit {
+    [self confirmChangeAndClose:@"خروج من التطبيق" apply:nil];
+}
+
+- (void)componentSwitchChanged:(UISwitch *)sender {
+    BOOL desired = sender.on;
+    [sender setOn:!desired animated:YES];
+    NSInteger component = sender.tag;
+    [self confirmChangeAndClose:sender.accessibilityLabel apply:^BOOL {
+        WolFoxProStore *store = [WolFoxProStore shared];
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        if (component == 8100) {
+            if (desired && !CLLocationCoordinate2DIsValid(store.currentFakeCoords)) return NO;
+            if (!desired) { [[WolFoxProHookManager shared] stopRoute]; store.scheduleApplied = NO; }
+            store.spoofActive = desired;
+        } else if (component == 8101) {
+            if (desired) {
+                NSString *uuid = [defaults stringForKey:@"WF_LAST_MANUAL_IDENTIFIER"];
+                if (!uuid.length || ![[WolFoxProStore shared] activateIdentifierString:uuid forBundleID:NSBundle.mainBundle.bundleIdentifier]) return NO;
+            } else {
+                NSString *uuid = store.validatedActiveIdentifier.UUIDString;
+                if (uuid.length) [defaults setObject:uuid forKey:@"WF_LAST_MANUAL_IDENTIFIER"];
+                [store deactivateIdentifier];
+            }
+        } else if (component == 8102) {
+            if (desired && !store.activeBleProfile) return NO;
+            store.bluetoothActive = desired;
+        } else if (component == 8103) {
+            if (desired && ![[WFVirtualCameraManager shared] enableUsingAvailableImage]) return NO;
+            if (!desired) [WFVirtualCameraManager shared].enabled = NO;
+        } else if (component == 8104) {
+            if (desired && (!store.scheduleLocationID || !store.scheduleWeekdays.count || store.scheduleStartMinutes == store.scheduleEndMinutes)) return NO;
+            store.scheduleEnabled = desired;
+            [store commitScheduleDraft];
+        } else if (component == 8105) {
+            store.volumeGestureEnabled = desired;
+        }
+        return YES;
+    }];
+}
+
 - (void)setupSettingsPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
     CGFloat width = w - 30.0;
     CGFloat y = 12.0;
+    UIButton *back = [self royalBtnInside:_scrollDashboard t:@"العودة إلى الخريطة"
+        i:@"arrow.right" c:[WolFoxProTheme accent] y:y];
+    [back addTarget:self action:@selector(openGPSPage) forControlEvents:UIControlEventTouchUpInside];
+    y += 62.0;
+    WolFoxProStore *store = [WolFoxProStore shared];
+#if WOLFOX_LITE
+    NSArray *componentNames = @[@"تشغيل الموقع", @"تشغيل المعرّف", @"تشغيل الجدولة", @"استعادة المنيو بأزرار الصوت"];
+    NSArray *componentTags = @[@8100, @8101, @8104, @8105];
+    NSArray *componentStates = @[@(store.spoofActive), @(store.validatedActiveIdentifier != nil), @(store.committedScheduleEnabled), @(store.volumeGestureEnabled)];
+#else
+    NSArray *componentNames = @[@"تشغيل الموقع", @"تشغيل المعرّف", @"تشغيل البلوتوث", @"تشغيل الكاميرا", @"تشغيل الجدولة", @"استعادة المنيو بأزرار الصوت"];
+    NSArray *componentTags = @[@8100, @8101, @8102, @8103, @8104, @8105];
+    NSArray *componentStates = @[@(store.spoofActive), @(store.validatedActiveIdentifier != nil), @(store.bluetoothActive), @([WFVirtualCameraManager shared].enabled), @(store.committedScheduleEnabled), @(store.volumeGestureEnabled)];
+#endif
+    UIView *components = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 48 + componentNames.count * 72)];
+    components.backgroundColor = [WolFoxProTheme surfacePrimary];
+    components.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:components];
+    UILabel *componentTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, width - 30, 28)];
+    componentTitle.text = @"تشغيل المكونات وإيقافها";
+    componentTitle.textColor = [WolFoxProTheme textPrimary];
+    componentTitle.textAlignment = NSTextAlignmentRight;
+    componentTitle.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    [components addSubview:componentTitle];
+    for (NSUInteger i = 0; i < componentNames.count; i++) {
+        UIView *row = [self royalSwitchInside:components t:componentNames[i] i:@"power" isOn:[componentStates[i] boolValue] y:44 + i * 72 action:nil];
+        [components addSubview:row];
+        for (UIView *view in row.subviews) if ([view isKindOfClass:UISwitch.class]) {
+            UISwitch *toggle = (UISwitch *)view;
+            toggle.tag = [componentTags[i] integerValue];
+            [toggle removeTarget:self action:@selector(handleSwitch:) forControlEvents:UIControlEventValueChanged];
+            [toggle addTarget:self action:@selector(componentSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+        }
+    }
+    y = CGRectGetMaxY(components.frame) + 12;
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     UIView *interfaceCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 426)];
@@ -5296,3 +5462,4 @@ static void __attribute__((constructor)) initialize() {
         }];
     });
 }
+
