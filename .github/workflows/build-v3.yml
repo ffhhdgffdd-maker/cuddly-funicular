@@ -20,16 +20,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     strategy:
-      fail-fast: false
-      max-parallel: 3
+      fail-fast: true
+      max-parallel: 1
       matrix:
         include:
           - { edition: "1 Full Control", profile: control-full, target: tahakom, bundle: com.tahakom.mytahakom, mode: Full }
-          - { edition: "2 Full Mosques", profile: mosques-full, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Full }
-          - { edition: "3 Lite", profile: lite-tahakom, target: tahakom, bundle: com.tahakom.mytahakom, mode: Lite }
-          - { edition: "3 Lite", profile: lite-mosques, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Lite }
-          - { edition: "4 Full", profile: full-tahakom, target: tahakom, bundle: com.tahakom.mytahakom, mode: Full }
-          - { edition: "4 Full", profile: full-mosques, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Full }
     env:
       THEOS: ${{ github.workspace }}/.theos
       WOLFOX_VERSION: 3.0.0
