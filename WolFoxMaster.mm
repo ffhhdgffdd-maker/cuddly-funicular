@@ -78,6 +78,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, strong) UISwitch *floatingRememberSwitch;
 @property (nonatomic, strong) UIWindow *overlayWindow;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
+@property (nonatomic, strong) UITapGestureRecognizer *menuRecoveryTapGesture;
+@property (nonatomic, weak) UIWindow *menuRecoveryHostWindow;
 @property (nonatomic, strong) UILongPressGestureRecognizer *virtualCameraLongPressGesture;
 @property (nonatomic, weak) UIWindow *virtualCameraGestureHostWindow;
 @property (nonatomic, assign) CFTimeInterval cameraDragStartTime;
@@ -99,6 +101,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)handleVolumeGesturePulse;
 - (void)prepareHiddenVolumeListening;
 - (void)enableMenuRecoveryShortcut;
+- (void)prepareMenuRecoveryGesture;
+- (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture;
 - (void)recordVolumeButtonPress;
 - (void)showActivationScreen;
 - (void)showActivationScreenWithResult:(WFLicenseResult *)result;
@@ -3299,7 +3303,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }]];
 
     UILabel *recovery = [[UILabel alloc] initWithFrame:CGRectMake(15, 198, width - 30, 54)];
-    recovery.text = @"إظهار المنيو بعد الإخفاء: اضغط أحد زري الصوت بالعدد المحدد أدناه خلال ثانية ونصف.";
+    recovery.text = @"بعد الإخفاء: ٣ نقرات وسط الشاشة، أو ضغطات الصوت حسب الاختيار أدناه خلال ثانية ونصف.";
     recovery.textColor = [WolFoxProTheme textSecondary];
     recovery.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
     recovery.textAlignment = NSTextAlignmentRight;
@@ -4190,18 +4194,21 @@ static BOOL WFMasterProcessIsEligible(void) {
         [defaults setBool:![defaults boolForKey:WFMenuVisibleOnLaunchKey] forKey:WFUIHiddenOnLaunchKey];
         [self setupUI];
         [self setupVolumeObserver];
+        dispatch_async(dispatch_get_main_queue(), ^{ [self prepareMenuRecoveryGesture]; });
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(licenseStateChanged:) name:@"WF_LICENSE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleStateChanged:) name:@"WF_SCHEDULE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleLocationMissing:) name:@"WF_SCHEDULE_LOCATION_MISSING" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraStateChangedForController:) name:WFVirtualCameraStateDidChangeNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraImageSelectedForController:) name:WFVirtualCameraImageDidSelectNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(spoofStateChangedForController:) name:WFSpoofStateDidChangeNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hostWindowBecameKey:) name:UIWindowDidBecomeKeyNotification object:nil];
         [[WFSpoofScheduleManager shared] start];
     } 
     return self; 
 }
 
 - (void)dealloc {
+    [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
     @try {
         if (self.volumeSession) {
             [self.volumeSession removeObserver:self forKeyPath:@"outputVolume" context:NULL];
@@ -4287,7 +4294,45 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
         shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
     return gestureRecognizer == self.virtualCameraLongPressGesture ||
-           otherGestureRecognizer == self.virtualCameraLongPressGesture;
+           otherGestureRecognizer == self.virtualCameraLongPressGesture ||
+           gestureRecognizer == self.menuRecoveryTapGesture ||
+           otherGestureRecognizer == self.menuRecoveryTapGesture;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (gestureRecognizer == self.menuRecoveryTapGesture) {
+        return self.mainVC.view.hidden && !self.mainVC.presentedViewController;
+    }
+    return YES;
+}
+
+- (void)prepareMenuRecoveryGesture {
+    UIWindow *host = [self hostKeyWindow] ?: self.previousKeyWindow;
+    if (!host || host == self.overlayWindow) return;
+    if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) return;
+    [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
+    UITapGestureRecognizer *gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleHostMenuRecoveryTap:)];
+    gesture.numberOfTapsRequired = 3;
+    gesture.numberOfTouchesRequired = 1;
+    gesture.cancelsTouchesInView = NO;
+    gesture.delaysTouchesBegan = NO;
+    gesture.delaysTouchesEnded = NO;
+    gesture.delegate = self;
+    self.menuRecoveryTapGesture = gesture;
+    self.menuRecoveryHostWindow = host;
+    [host addGestureRecognizer:gesture];
+}
+
+- (void)hostWindowBecameKey:(NSNotification *)notification {
+    if (notification.object != self.overlayWindow) [self prepareMenuRecoveryGesture];
+}
+
+- (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateEnded || !self.mainVC.view.hidden || self.mainVC.presentedViewController) return;
+    UIView *host = gesture.view;
+    CGRect bounds = host.bounds;
+    CGRect center = CGRectInset(bounds, CGRectGetWidth(bounds) * 0.25, CGRectGetHeight(bounds) * 0.25);
+    if (CGRectContainsPoint(center, [gesture locationInView:host])) [self showUI];
 }
 
 - (void)virtualCameraStateChangedForController:(__unused NSNotification *)notification {
@@ -4388,10 +4433,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [WolFoxProStore shared].volumeGestureEnabled = YES;
     [[WolFoxProStore shared] saveSettings];
     [self prepareHiddenVolumeListening];
+    [self prepareMenuRecoveryGesture];
 }
 
 - (void)applicationBecameActiveForVolume:(NSNotification *)notification {
     (void)notification;
+    [self prepareMenuRecoveryGesture];
     if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey] || self.mainVC.view.hidden) {
         [self prepareHiddenVolumeListening];
     }
