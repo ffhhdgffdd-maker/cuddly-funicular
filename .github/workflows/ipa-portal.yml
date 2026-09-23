@@ -1,0 +1,22 @@
+name: WolFox Private IPA Portal
+on:
+  pull_request:
+    paths: ['ipa_portal/**', '.github/workflows/ipa-portal.yml']
+  push:
+    branches: ['main', 'codex/private-ipa-portal']
+    paths: ['ipa_portal/**', '.github/workflows/ipa-portal.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PHP syntax
+        working-directory: ipa_portal
+        run: find . -name '*.php' -exec php -l {} \;
+      - name: Test packaging and private HTTP routes
+        working-directory: ipa_portal
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
