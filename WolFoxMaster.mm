@@ -3308,264 +3308,90 @@ static BOOL WFMasterProcessIsEligible(void) {
     }];
 }
 
+- (void)openIdentifierSettings {
+    [self switchPage:1];
+}
+
+- (void)openBluetoothSettings {
+    [self switchPage:2];
+}
+
+- (void)openCameraSettings {
+    [self switchPage:3];
+}
+
 - (void)setupSettingsPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    CGFloat cy = 10;
-    CGFloat cardW = w - 30;
+    CGFloat width = w - 30.0;
+    CGFloat y = 12.0;
 
-    // ── عنوان قسم ────────────────────────────────────────────
-    void (^secLabel)(NSString *, CGFloat) = ^(NSString *text, CGFloat y) {
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(20, y, cardW - 10, 18)];
-        label.text = [text uppercaseString];
-        label.textAlignment = NSTextAlignmentRight;
-        label.textColor = [WolFoxProTheme accent];
-        label.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
-        label.alpha = 0.85;
-        [_scrollDashboard addSubview:label];
-    };
+    UIView *licenseCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    licenseCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    licenseCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:licenseCard];
+    UIButton *activation = [self royalBtnInside:licenseCard t:@"تفعيل WolFox أو عرض الاشتراك"
+        i:@"key.fill" c:[WolFoxProTheme accent] y:12];
+    [activation addTarget:[WolFoxController shared] action:@selector(showActivationScreen)
+         forControlEvents:UIControlEventTouchUpInside];
+    activation.accessibilityLabel = @"إدخال كود تفعيل WolFox";
 
-    // ── بطاقة قسم ────────────────────────────────────────────
-    UIView * __block (^newCard)(CGFloat, CGFloat) = ^UIView *(CGFloat y, CGFloat h) {
-        UIView *c = [[UIView alloc] initWithFrame:CGRectMake(15, y, cardW, h)];
-        c.backgroundColor = [WolFoxProTheme surfacePrimary];
-        c.layer.cornerRadius = 18;
-        c.layer.borderWidth  = 1.0;
-        c.layer.borderColor  = [[WolFoxProTheme accent] colorWithAlphaComponent:0.12].CGColor;
-        [_scrollDashboard addSubview:c];
-        return c;
-    };
-
-    // ════════════════════════════════════════════════════════
-    // 1. الظهور والإخفاء
-    // ════════════════════════════════════════════════════════
-    secLabel(@"الظهور والإخفاء", cy);
-    cy += 24;
-    UIView *visCard = newCard(cy, 210);
-    NSInteger requiredPresses = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_VOLUME_PRESS_COUNT"];
-    if (requiredPresses != 2 && requiredPresses != 3 && requiredPresses != 5) requiredPresses = 3;
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:[NSString stringWithFormat:@"إظهار الواجهة بـ %ld ضغطات على الصوت", (long)requiredPresses]
-        i:@"speaker.wave.2.fill"
-        isOn:[WolFoxProStore shared].volumeGestureEnabled
-        y:0
-        action:^(UISwitch *s){
-            [WolFoxProStore shared].volumeGestureEnabled = s.on;
-            [[WolFoxProStore shared] saveSettings];
-            [self showToast:s.on
-                ? [NSString stringWithFormat:@"اضغط زر الصوت %ld مرات سريعاً لإظهار الواجهة", (long)requiredPresses]
-                : @"تم إيقاف زر الصوت"];
-    }]];
-    BOOL hiddenOnLaunch = [[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey];
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:@"إخفاء الواجهة عند فتح التطبيق"
-        i:@"eye.slash.fill"
-        isOn:hiddenOnLaunch
-        y:70
-        action:^(UISwitch *s){
-            [[NSUserDefaults standardUserDefaults] setBool:s.on forKey:WFUIHiddenOnLaunchKey];
-            [[NSUserDefaults standardUserDefaults] synchronize];
-            [self showToast:s.on
-                ? @"ستختفي الواجهة — افتحها بزر الصوت"
-                : @"الواجهة ستظهر عند كل فتح"];
-    }]];
-    BOOL iconVisible = ![[NSUserDefaults standardUserDefaults] objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ||
-                       [[NSUserDefaults standardUserDefaults] boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
-    [visCard addSubview:[self royalSwitchInside:visCard
-        t:@"إظهار العلامة العائمة للحالة"
-        i:@"location.circle.fill"
-        isOn:iconVisible
-        y:140
-        action:^(UISwitch *s){
-            if (!s.on && ![WolFoxProStore shared].volumeGestureEnabled) {
-                [WolFoxProStore shared].volumeGestureEnabled = YES;
-                [[WolFoxProStore shared] saveSettings];
-                [self showToast:@"تم تفعيل اختصار الصوت لاستعادة العلامة"];
+    y += 88.0;
+    UIView *locationCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 70)];
+    locationCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    locationCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:locationCard];
+    [locationCard addSubview:[self royalSwitchInside:locationCard
+        t:@"تشغيل الموقع" i:@"location.fill"
+        isOn:[WolFoxProStore shared].spoofActive y:0 action:^(UISwitch *toggle) {
+        if (toggle.on) {
+            if (![WFLicenseClient isRuntimeLicenseValid]) {
+                [toggle setOn:NO animated:YES];
+                [[WolFoxController shared] showActivationScreen];
+                return;
             }
-            [[WolFoxController shared] setFloatingStatusIconVisible:s.on];
-            [self showToast:s.on
-                ? @"العلامة العائمة ظاهرة الآن"
-                : [NSString stringWithFormat:@"تم إخفاء العلامة — اضغط زر الصوت %ld مرات لفتح الإعدادات", (long)requiredPresses]];
-    }]];
-    cy += 210 + 18;
-
-// 4. التنبيهات
-    // ════════════════════════════════════════════════════════
-    secLabel(@"التنبيهات", cy);
-    cy += 24;
-    UIView *notifCard = newCard(cy, 70);
-    BOOL expiryOn = [[NSUserDefaults standardUserDefaults] boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"];
-    [notifCard addSubview:[self royalSwitchInside:notifCard
-        t:@"تذكير قبل 3 أيام من انتهاء الاشتراك"
-        i:@"bell.badge.fill"
-        isOn:expiryOn
-        y:0
-        action:^(UISwitch *s){ [self expiryNotificationsChanged:s]; }]];
-    cy += 70 + 18;
-
-    // ════════════════════════════════════════════════════════
-    secLabel(@"تخصيص العلامة العائمة", cy);
-    cy += 24;
-    UIView *floatingCard = newCard(cy, 238);
-
-    UILabel *pressLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 0, floatingCard.bounds.size.width - 165, 60)];
-    pressLabel.text = @"عدد ضغطات الصوت";
-    pressLabel.textAlignment = NSTextAlignmentRight;
-    pressLabel.textColor = [WolFoxProTheme textPrimary];
-    pressLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:pressLabel];
-    UISegmentedControl *pressControl = [[UISegmentedControl alloc] initWithItems:@[@"2", @"3", @"5"]];
-    pressControl.frame = CGRectMake(12, 14, 128, 32);
-    pressControl.selectedSegmentIndex = requiredPresses == 2 ? 0 : (requiredPresses == 5 ? 2 : 1);
-    [pressControl addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:pressControl];
-
-    UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 60, floatingCard.bounds.size.width - 165, 60)];
-    sizeLabel.text = @"حجم العلامة";
-    sizeLabel.textAlignment = NSTextAlignmentRight;
-    sizeLabel.textColor = [WolFoxProTheme textPrimary];
-    sizeLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:sizeLabel];
-    UISegmentedControl *sizeControl = [[UISegmentedControl alloc] initWithItems:@[@"صغير", @"وسط", @"كبير"]];
-    sizeControl.frame = CGRectMake(12, 74, 128, 32);
-    NSInteger sizeIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
-    sizeControl.selectedSegmentIndex = MIN(MAX(sizeIndex, 0), 2);
-    [sizeControl addTarget:self action:@selector(floatingIconSizeChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:sizeControl];
-
-    UILabel *opacityLabel = [[UILabel alloc] initWithFrame:CGRectMake(150, 120, floatingCard.bounds.size.width - 165, 60)];
-    opacityLabel.text = @"شفافية العلامة";
-    opacityLabel.textAlignment = NSTextAlignmentRight;
-    opacityLabel.textColor = [WolFoxProTheme textPrimary];
-    opacityLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [floatingCard addSubview:opacityLabel];
-    UISlider *opacitySlider = [[UISlider alloc] initWithFrame:CGRectMake(12, 135, 128, 30)];
-    opacitySlider.minimumValue = 0.45;
-    opacitySlider.maximumValue = 1.0;
-    opacitySlider.tintColor = [WolFoxProTheme accent];
-    opacitySlider.value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WF_FLOATING_STATUS_OPACITY"]
-        ? [[NSUserDefaults standardUserDefaults] floatForKey:@"WF_FLOATING_STATUS_OPACITY"] : 0.92;
-    [opacitySlider addTarget:self action:@selector(floatingIconOpacityChanged:) forControlEvents:UIControlEventValueChanged];
-    [floatingCard addSubview:opacitySlider];
-
-    UIButton *resetFloating = [UIButton buttonWithType:UIButtonTypeSystem];
-    resetFloating.frame = CGRectMake(12, 183, floatingCard.bounds.size.width - 24, 43);
-    resetFloating.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
-    resetFloating.layer.cornerRadius = 12;
-    [resetFloating setTitle:@"إعادة العلامة إلى مكانها الافتراضي" forState:UIControlStateNormal];
-    [resetFloating setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    resetFloating.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [resetFloating addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    [floatingCard addSubview:resetFloating];
-    cy += 238 + 18;
-
-
-
-// 2. المظهر
-    // ════════════════════════════════════════════════════════
-    secLabel(@"المظهر", cy);
-    cy += 24;
-    BOOL isDark = [WolFoxProTheme isDark];
-    UIView *themeCard = newCard(cy, 66);
-    UIButton *themeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    themeBtn.frame = CGRectMake(12, 8, themeCard.bounds.size.width - 24, 50);
-    themeBtn.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.14];
-    themeBtn.layer.cornerRadius = 14;
-    [themeBtn setTitle:@"  الوضع الليلي الداكن ثابت" forState:UIControlStateNormal];
-    [themeBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    themeBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightBold];
-        [themeBtn setImage:[UIImage systemImageNamed:@"moon.stars.fill" withConfiguration:cfg] forState:UIControlStateNormal];
-    }
-    themeBtn.tintColor = [WolFoxProTheme accent];
-    themeBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    themeBtn.enabled = NO;
-    themeBtn.accessibilityLabel = @"الوضع الليلي الداكن ثابت في هذا الإصدار";
-    objc_setAssociatedObject(self, "_theme_btn", themeBtn, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    [themeCard addSubview:themeBtn];
-    cy += 66 + 18;
-
-    // ════════════════════════════════════════════════════════
-    
-
-// 3. ألوان المؤشرات
-    // ════════════════════════════════════════════════════════
-    secLabel(@"ألوان المؤشرات على الخريطة", cy);
-    cy += 24;
-    UIView *colorCard = newCard(cy, 130);
-
-    UIColor *realColor = [self markerColorForKey:@"WF_REAL_DOT_COLOR"
-        defaultColor:[UIColor colorWithRed:0.26 green:0.56 blue:0.97 alpha:1.0]];
-    UIButton *realColorBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    realColorBtn.frame = CGRectMake(12, 8, colorCard.bounds.size.width - 24, 50);
-    realColorBtn.backgroundColor = [realColor colorWithAlphaComponent:0.18];
-    realColorBtn.layer.cornerRadius = 14;
-    realColorBtn.layer.borderWidth = 1.5;
-    realColorBtn.layer.borderColor = [realColor colorWithAlphaComponent:0.55].CGColor;
-    [realColorBtn setTitle:@"  الموقع الحقيقي — نقطة دائرية" forState:UIControlStateNormal];
-    [realColorBtn setTitleColor:realColor forState:UIControlStateNormal];
-    realColorBtn.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [realColorBtn setImage:[UIImage systemImageNamed:@"circle.fill"] forState:UIControlStateNormal];
-    realColorBtn.tintColor = realColor;
-    realColorBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [realColorBtn addTarget:self action:@selector(chooseRealMarkerColor) forControlEvents:UIControlEventTouchUpInside];
-    [colorCard addSubview:realColorBtn];
-
-    UIColor *fakeColor = [self markerColorForKey:@"WF_FAKE_DOT_COLOR"
-        defaultColor:[WolFoxProTheme success]];
-    UIButton *fakeColorBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    fakeColorBtn.frame = CGRectMake(12, 68, colorCard.bounds.size.width - 24, 50);
-    fakeColorBtn.backgroundColor = [fakeColor colorWithAlphaComponent:0.18];
-    fakeColorBtn.layer.cornerRadius = 14;
-    fakeColorBtn.layer.borderWidth = 1.5;
-    fakeColorBtn.layer.borderColor = [fakeColor colorWithAlphaComponent:0.55].CGColor;
-    [fakeColorBtn setTitle:@"  الموقع الوهمي — دبوس" forState:UIControlStateNormal];
-    [fakeColorBtn setTitleColor:fakeColor forState:UIControlStateNormal];
-    fakeColorBtn.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [fakeColorBtn setImage:[UIImage systemImageNamed:@"mappin.circle.fill"] forState:UIControlStateNormal];
-    fakeColorBtn.tintColor = fakeColor;
-    fakeColorBtn.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-    [fakeColorBtn addTarget:self action:@selector(chooseFakeMarkerColor) forControlEvents:UIControlEventTouchUpInside];
-    [colorCard addSubview:fakeColorBtn];
-    cy += 130 + 18;
-
-    // ════════════════════════════════════════════════════════
-    
-
-// 5. دليل الاستخدام السريع
-    // ════════════════════════════════════════════════════════
-    secLabel(@"دليل الاستخدام السريع", cy);
-    cy += 24;
-    UIView *helpCard = newCard(cy, 162);
-    helpCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.08];
-    helpCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.20].CGColor;
-    NSArray *steps = @[
-        @[@"speaker.wave.2",  @"اضغط زر الصوت 3 مرات سريعاً لإظهار الواجهة"],
-        @[@"location.fill",   @"حدد موقعاً أو أدخل الإحداثيات ثم فعّل التزييف"],
-        @[@"figure.walk",     @"اضغط طويلاً: أول ضغطة البداية، ثانية الهدف، ثم شغّل"],
-        @[@"bell.badge",      @"فعّل التذكير لاستقبال إشعار قبل انتهاء الاشتراك"],
-    ];
-    for (NSUInteger i = 0; i < steps.count; i++) {
-        CGFloat rowY = 10 + i * 36;
-        if (@available(iOS 13.0, *)) {
-            UIImageView *icon = [[UIImageView alloc] initWithFrame:CGRectMake(helpCard.bounds.size.width - 34, rowY + 7, 20, 20)];
-            icon.image = [UIImage systemImageNamed:steps[i][0]];
-            icon.tintColor = [WolFoxProTheme accent];
-            icon.contentMode = UIViewContentModeScaleAspectFit;
-            [helpCard addSubview:icon];
+            [WolFoxProStore shared].spoofActive = YES;
+            [[WolFoxProStore shared] saveSettings];
+            [[WolFoxProHookManager shared] deliverFakeUpdate];
+            [self refreshSpoofHeaderStatus];
+        } else {
+            [self confirmDisableSpoofForSwitch:toggle];
         }
-        UILabel *stepLabel = [[UILabel alloc] initWithFrame:CGRectMake(12, rowY, helpCard.bounds.size.width - 52, 32)];
-        stepLabel.text = steps[i][1];
-        stepLabel.textColor = [WolFoxProTheme textPrimary];
-        stepLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
-        stepLabel.textAlignment = NSTextAlignmentRight;
-        stepLabel.numberOfLines = 2;
-        [helpCard addSubview:stepLabel];
-    }
-    cy += 162 + 18;
+    }]];
 
-    _scrollDashboard.contentSize = CGSizeMake(w, cy);
+    y += 82.0;
+    UIView *identifierCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    identifierCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    identifierCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:identifierCard];
+    UIButton *identifier = [self royalBtnInside:identifierCard t:@"تفعيل معرّف التطبيق"
+        i:@"person.crop.square" c:[WolFoxProTheme accent] y:12];
+    [identifier addTarget:self action:@selector(openIdentifierSettings)
+        forControlEvents:UIControlEventTouchUpInside];
+
+#if !WOLFOX_LITE
+    y += 88.0;
+    UIView *bluetoothCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    bluetoothCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    bluetoothCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:bluetoothCard];
+    UIButton *bluetooth = [self royalBtnInside:bluetoothCard t:@"تشغيل البلوتوث"
+        i:@"antenna.radiowaves.left.and.right" c:[WolFoxProTheme accent] y:12];
+    [bluetooth addTarget:self action:@selector(openBluetoothSettings)
+        forControlEvents:UIControlEventTouchUpInside];
+
+    y += 88.0;
+    UIView *cameraCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
+    cameraCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    cameraCard.layer.cornerRadius = 16;
+    [_scrollDashboard addSubview:cameraCard];
+    UIButton *camera = [self royalBtnInside:cameraCard t:@"تشغيل الكاميرا"
+        i:@"camera.fill" c:[WolFoxProTheme accent] y:12];
+    [camera addTarget:self action:@selector(openCameraSettings)
+        forControlEvents:UIControlEventTouchUpInside];
+#endif
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 92.0);
 }
+
 - (NSArray<UIColor *> *)markerPalette {
     return @[[UIColor systemBlueColor], [UIColor colorWithRed:0.16 green:0.72 blue:0.34 alpha:1.0], [UIColor systemOrangeColor], [UIColor systemPurpleColor], [UIColor systemRedColor], [UIColor systemTealColor]];
 }
