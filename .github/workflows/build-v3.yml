@@ -24,7 +24,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - { edition: "4 Full", profile: full-tahakom, target: tahakom, bundle: com.tahakom.mytahakom, mode: Full }
+          - { edition: "4 Full", profile: full-mosques, target: mosques, bundle: sa.gov.moia.mosques-2, mode: Full }
     env:
       THEOS: ${{ github.workspace }}/.theos
       WOLFOX_VERSION: 3.0.0
