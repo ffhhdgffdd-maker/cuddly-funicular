@@ -18,6 +18,34 @@ else
     PACKAGE_TITLE="FAKE GPS WFX"
 fi
 
+# Version 3 profiles are isolated by package ID and MobileSubstrate filename.
+# A package targets exactly one application, including the two Lite and
+# Standard Full variants in the four-edition release.
+case "${WOLFOX_PROFILE:-}" in
+    "") ;;
+    control-full|mosques-full|lite-tahakom|lite-mosques|full-tahakom|full-mosques)
+        PROFILE="${WOLFOX_PROFILE}"
+        case "$PROFILE" in
+            *tahakom|control-full) PROFILE_BUNDLE="com.tahakom.mytahakom" ;;
+            *) PROFILE_BUNDLE="sa.gov.moia.mosques-2" ;;
+        esac
+        if [ -n "${WOLFOX_TARGET_BUNDLE_IDS:-}" ] && [ "$WOLFOX_TARGET_BUNDLE_IDS" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ فلتر التطبيق لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        if [ -n "${WOLFOX_PROJECT_BUNDLE_ID:-}" ] && [ "$WOLFOX_PROJECT_BUNDLE_ID" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ ربط الترخيص لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        WOLFOX_TARGET_BUNDLE_IDS="$PROFILE_BUNDLE"
+        WOLFOX_PROJECT_BUNDLE_ID="$PROFILE_BUNDLE"
+        VERSION="${WOLFOX_VERSION:-3.0.0}"
+        case "$PROFILE" in lite-*) WOLFOX_EDITION="Lite" ;; *) WOLFOX_EDITION="Full" ;; esac
+        PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
+        PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
+        PACKAGE_TITLE="WolFox 3 ${PROFILE}"
+        ;;
+    *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
+esac
+
 # Clang deployment target is 15.0; supported packaged runtime starts at 15.8.
 MIN_IOS="${MIN_IOS:-15.0}"
 MAX_TARGET_IOS="27.0"
@@ -170,8 +198,18 @@ make_deb() {
 { Filter = { Bundles = ( $(printf '"%s",' "${TARGET_BUNDLES[@]}" | sed 's/,$//') ); }; }
 EOF
     chmod 0644 "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.plist"
+    local conflicts=""
+    if [ -n "${WOLFOX_PROFILE:-}" ]; then
+        if [ "$PROFILE_BUNDLE" = "com.tahakom.mytahakom" ]; then
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.control.full, com.wolfox.gpspro.v3.lite.tahakom, com.wolfox.gpspro.v3.full.tahakom"
+        else
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
+        fi
+        conflicts="$(printf '%s' "$conflicts" | tr ',' '\\n' | sed "s/^[[:space:]]*//; /^$PACKAGE_ID$/d" | paste -sd, - | sed 's/,/, /g')"
+    fi
     cat > "$root/DEBIAN/control" <<EOF
 Package: $PACKAGE_ID
+${conflicts:+Conflicts: $conflicts}
 Name: $PACKAGE_TITLE
 Version: $VERSION
 Architecture: iphoneos-arm
