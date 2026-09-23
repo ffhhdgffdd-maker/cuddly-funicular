@@ -2740,7 +2740,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     UIButton *udidButton = [UIButton buttonWithType:UIButtonTypeSystem];
     udidButton.frame = CGRectMake(15, 48, idCard.bounds.size.width - 30, 30);
-    NSString *deviceUDID = [WFLicenseClient deviceIdentifier] ?: @"غير متوفر";
+    NSString *deviceUDID = [WFLicenseClient deviceIdentifier];
+    if (!deviceUDID.length) deviceUDID = @"غير متوفر";
     [udidButton setTitle:[NSString stringWithFormat:@"UDID الجهاز: %@  •  نسخ", deviceUDID] forState:UIControlStateNormal];
     [udidButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
     udidButton.titleLabel.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightBold];
@@ -2752,7 +2753,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 82, idCard.bounds.size.width - 30, 50)];
     tf.backgroundColor = [WolFoxProTheme surfaceSecondary]; tf.layer.cornerRadius = 12; tf.textColor = [WolFoxProTheme textPrimary]; tf.textAlignment = NSTextAlignmentCenter;
     tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
-    tf.text = [WolFoxProStore shared].activeIdentifierUUID ?: [WFLicenseClient deviceIdentifier];
+    NSString *activeUUID = [WolFoxProStore shared].activeIdentifierUUID;
+    tf.text = activeUUID.length ? activeUUID : [WFLicenseClient deviceIdentifier];
     tf.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
@@ -2794,6 +2796,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     idStatus.textAlignment = NSTextAlignmentCenter;
     [idCard addSubview:idStatus];
     objc_setAssociatedObject(self, "_id_status_label", idStatus, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(15, 505, idCard.bounds.size.width - 30, 20)];
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
+    targetBundle.text = [NSString stringWithFormat:@"التطبيق المرتبط: %@", bundleID.length ? bundleID : @"غير متوفر"];
+    targetBundle.textColor = [WolFoxProTheme textSecondary];
+    targetBundle.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightMedium];
+    targetBundle.textAlignment = NSTextAlignmentCenter;
+    targetBundle.adjustsFontSizeToFitWidth = YES;
+    [idCard addSubview:targetBundle];
 
     // ── قائمة المعرّفات المحفوظة ──
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
