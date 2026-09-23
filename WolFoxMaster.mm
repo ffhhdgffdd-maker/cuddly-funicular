@@ -401,7 +401,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *v3Profile = WOLFOX_BUILD_PROFILE;
     BOOL v3Build = ![v3Profile isEqualToString:@"legacy"];
     BOOL tahakomTarget = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.tahakom.mytahakom"];
-    _titleLabel.text = v3Build ? (tahakomTarget ? @"WolFox 3 · تحكم" : @"WolFox 3 · مساجد") : @"WolFox GPS";
+    _titleLabel.text = @"WolFox GPS";
+    if (v3Build) _titleLabel.text = tahakomTarget ? @"WolFox 3 · تحكم" : @"WolFox 3 · مساجد";
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
