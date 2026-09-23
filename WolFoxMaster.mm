@@ -2507,7 +2507,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     if (googleMaps && [mapLink.path hasPrefix:@"/maps/place/"]) {
         NSString *place = [[mapLink.path substringFromIndex:@"/maps/place/".length] componentsSeparatedByString:@"/"].firstObject;
-        place = [[place stringByRemovingPercentEncoding] ?: place stringByReplacingOccurrencesOfString:@"+" withString:@" "];
+        NSString *decodedPlace = [place stringByRemovingPercentEncoding] ?: place;
+        place = [decodedPlace stringByReplacingOccurrencesOfString:@"+" withString:@" "];
         if (place.length && ![place hasPrefix:@"@"]) query = place;
     } else if (appleMaps) {
         NSString *name = nil;
