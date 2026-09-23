@@ -4647,6 +4647,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 #endif
         if (success) {
             [self showUI];
+        } else {
+            // Return keyboard focus and interaction to the host login screen after cancellation.
+            [self dismissUI];
         }
     };
 

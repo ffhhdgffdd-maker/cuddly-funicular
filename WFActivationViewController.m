@@ -373,7 +373,9 @@
     [self.view endEditing:YES];
     self.statusLabel.hidden = YES;
     self.statusLabel.text = @"";
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (self.completion) self.completion(NO);
+    }];
 }
 
 - (void)dismissKeyboard {
@@ -626,6 +628,7 @@
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:^{
         WFLog(@"[WolFox][ACT] activation_view_dismissed_skip");
+        if (self.completion) self.completion(NO);
     }];
 }
 
