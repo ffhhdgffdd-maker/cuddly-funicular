@@ -1226,14 +1226,14 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupGPSPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
 
-    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 48)];
+    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(10, 10, w - 20, 64)];
     servicesCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.13];
     servicesCard.layer.cornerRadius = 13;
     servicesCard.layer.borderWidth = 1.0;
     servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
     [_scrollDashboard addSubview:servicesCard];
     // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, 68, w - 30, 260)];
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 260)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     mapCard.layer.cornerRadius = 20; mapCard.clipsToBounds = YES;
@@ -1254,16 +1254,27 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     
     // Search Bar
-    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(4, 2, servicesCard.bounds.size.width - 8, 44)];
+    self.searchBar = [[UISearchBar alloc] initWithFrame:servicesCard.bounds];
+    self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"اسم مكان، إحداثيات أو رابط مشاركة";
+    self.searchBar.placeholder = @"ابحث باسم المكان أو العنوان";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchBar.barTintColor = [UIColor clearColor];
     self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
     self.searchBar.returnKeyType = UIReturnKeySearch;
-    self.searchBar.accessibilityLabel = @"البحث بالإحداثيات أو العنوان";
+    self.searchBar.accessibilityLabel = @"البحث عن موقع";
+    self.searchBar.accessibilityHint = @"أدخل اسم مكان أو عنوانًا أو إحداثيات أو رابط خريطة";
     if (@available(iOS 13.0, *)) {
         UITextField *searchField = self.searchBar.searchTextField;
+        searchField.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightMedium];
+        searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.searchBar.placeholder
+            attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+        NSLayoutConstraint *searchHeight = [searchField.heightAnchor constraintEqualToConstant:48.0];
+        searchHeight.priority = UILayoutPriorityDefaultHigh;
+        searchHeight.active = YES;
+        UIImageSymbolConfiguration *searchSymbol = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightSemibold];
+        UIImage *searchImage = [[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:searchSymbol] imageWithTintColor:[WolFoxProTheme accent] renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [self.searchBar setImage:searchImage forSearchBarIcon:UISearchBarIconSearch state:UIControlStateNormal];
         searchField.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.92];
         searchField.textColor = [WolFoxProTheme textPrimary];
         searchField.tintColor = [WolFoxProTheme accent];
@@ -1292,14 +1303,23 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realLocBtn addTarget:self action:@selector(showRealLocation) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:realLocBtn];
 
-    // Expand Map Button
-    UIButton *expandBtn = [self mapCircleBtn:@"arrow.up.left.and.arrow.down.right" x:114 y:mapCard.bounds.size.height - 54];
-    expandBtn.tintColor = [UIColor colorWithRed:0.83 green:0.60 blue:1.0 alpha:1.0];
+    // A full-width action keeps expansion discoverable on narrow screens.
+    UIButton *expandBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    expandBtn.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 48);
+    expandBtn.backgroundColor = [WolFoxProTheme surfacePrimary];
+    expandBtn.layer.cornerRadius = 12;
+    expandBtn.layer.borderWidth = 1.0;
+    expandBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
+    [expandBtn setTitle:@"  توسيع الخريطة" forState:UIControlStateNormal];
+    [expandBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
+    expandBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightSemibold];
+    if (@available(iOS 13.0, *)) [expandBtn setImage:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"] forState:UIControlStateNormal];
+    expandBtn.tintColor = [WolFoxProTheme accent];
     expandBtn.accessibilityLabel = @"توسيع الخريطة إلى ملء الشاشة";
     [expandBtn addTarget:self action:@selector(expandMap) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:expandBtn];
+    [_scrollDashboard addSubview:expandBtn];
 
-    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:166 y:mapCard.bounds.size.height - 54];
+    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:114 y:mapCard.bounds.size.height - 54];
     searchButton.tintColor = [UIColor colorWithRed:1.0 green:0.75 blue:0.33 alpha:1.0];
     searchButton.accessibilityLabel = @"تنفيذ البحث في الخريطة";
     [searchButton addTarget:self action:@selector(searchFromKeyboard) forControlEvents:UIControlEventTouchUpInside];
@@ -1324,7 +1344,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     else [self showRealLocation];
     
     // Real-location notice placed between the map and coordinate inputs.
-    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, 340, w - 30, 54)];
+    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(expandBtn.frame) + 12, w - 30, 54)];
     realNotice.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.12];
     realNotice.layer.cornerRadius = 12;
     realNotice.layer.borderWidth = 1.0;
@@ -1350,7 +1370,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realNotice addSubview:mapLegend];
 
     // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, 406, w - 30, 140)];
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(realNotice.frame) + 12, w - 30, 140)];
     kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
     [_scrollDashboard addSubview:kbCard];
     
@@ -1391,92 +1411,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         }
     }]];
 
-    CGFloat cy = 406.0 + 140.0 + 15.0;
-
-    UIView *routeCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 276)];
-    routeCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    routeCard.layer.cornerRadius = 18;
-    [_scrollDashboard addSubview:routeCard];
-
-    UILabel *speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 12, routeCard.bounds.size.width - 36, 24)];
-    speedLabel.text = [NSString stringWithFormat:@"السرعة: %.0f كم/س", [WolFoxProStore shared].simSpeed];
-    speedLabel.textColor = [WolFoxProTheme textPrimary];
-    speedLabel.textAlignment = NSTextAlignmentRight;
-    speedLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    [routeCard addSubview:speedLabel];
-    objc_setAssociatedObject(self, "_speed_label", speedLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UISlider *speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(18, 38, routeCard.bounds.size.width - 36, 30)];
-    speedSlider.minimumValue = 1;
-    speedSlider.maximumValue = 120;
-    speedSlider.value = MAX(1, [WolFoxProStore shared].simSpeed);
-    speedSlider.minimumTrackTintColor = [WolFoxProTheme accent];
-    [speedSlider addTarget:self action:@selector(speedChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:speedSlider];
-
-    UILabel *intervalLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 68, routeCard.bounds.size.width - 36, 22)];
-    intervalLabel.text = [NSString stringWithFormat:@"معدل التحديث: %.2f ث", [WolFoxProStore shared].updateIntervalSeconds];
-    intervalLabel.textColor = [WolFoxProTheme textPrimary];
-    intervalLabel.textAlignment = NSTextAlignmentRight;
-    intervalLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [routeCard addSubview:intervalLabel];
-    objc_setAssociatedObject(self, "_interval_label", intervalLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UISlider *intervalSlider = [[UISlider alloc] initWithFrame:CGRectMake(18, 88, routeCard.bounds.size.width - 36, 26)];
-    intervalSlider.minimumValue = WFMinimumGPSUpdateIntervalSeconds;
-    intervalSlider.maximumValue = WFMaximumGPSUpdateIntervalSeconds;
-    intervalSlider.value = WFClampGPSUpdateInterval([WolFoxProStore shared].updateIntervalSeconds);
-    intervalSlider.minimumTrackTintColor = [WolFoxProTheme gold];
-    intervalSlider.accessibilityLabel = @"معدل تحديث المسار بالثواني";
-    [intervalSlider addTarget:self action:@selector(updateIntervalChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:intervalSlider];
-
-    UILabel *jitterLabel = [[UILabel alloc] initWithFrame:CGRectMake(80, 116, routeCard.bounds.size.width - 98, 32)];
-    jitterLabel.text = @"حركة طبيعية بسيطة";
-    jitterLabel.textColor = [WolFoxProTheme textSecondary];
-    jitterLabel.textAlignment = NSTextAlignmentRight;
-    jitterLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightSemibold];
-    [routeCard addSubview:jitterLabel];
-    UISwitch *jitterSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(18, 116, 50, 30)];
-    jitterSwitch.on = [WolFoxProStore shared].jitterActive;
-    jitterSwitch.onTintColor = [WolFoxProTheme accent];
-    [jitterSwitch addTarget:self action:@selector(jitterChanged:) forControlEvents:UIControlEventValueChanged];
-    [routeCard addSubview:jitterSwitch];
-
-    UIButton *routeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    routeButton.frame = CGRectMake(18, 156, routeCard.bounds.size.width - 36, 42);
-    routeButton.backgroundColor = [WolFoxProStore shared].routeActive ? [WolFoxProTheme danger] : [WolFoxProTheme accent];
-    routeButton.layer.cornerRadius = 12;
-    [routeButton setTitle:[WolFoxProStore shared].routeActive ? @"إيقاف المحاكاة" : @"بدء محاكاة المسار" forState:UIControlStateNormal];
-    [routeButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    routeButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBlack];
-    [routeButton addTarget:self action:@selector(toggleRouteSimulation) forControlEvents:UIControlEventTouchUpInside];
-    routeButton.accessibilityLabel = [WolFoxProStore shared].routeActive ? @"إيقاف محاكاة المسار" : @"بدء محاكاة المسار";
-    [routeCard addSubview:routeButton];
-    objc_setAssociatedObject(self, "_route_btn", routeButton, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    UIButton *saveRouteButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveRouteButton.frame = CGRectMake(18, 208, (routeCard.bounds.size.width - 48) / 2.0, 48);
-    saveRouteButton.backgroundColor = [WolFoxProTheme accentSoft];
-    saveRouteButton.layer.cornerRadius = 12;
-    [saveRouteButton setTitle:@"حفظ المسار" forState:UIControlStateNormal];
-    [saveRouteButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    saveRouteButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [saveRouteButton addTarget:self action:@selector(saveCurrentRoute) forControlEvents:UIControlEventTouchUpInside];
-    saveRouteButton.accessibilityLabel = @"حفظ مسار الحركة الحالي";
-    [routeCard addSubview:saveRouteButton];
-
-    UIButton *savedRoutesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    savedRoutesButton.frame = CGRectMake(30 + (routeCard.bounds.size.width - 48) / 2.0, 208, (routeCard.bounds.size.width - 48) / 2.0, 48);
-    savedRoutesButton.backgroundColor = [WolFoxProTheme accentSoft];
-    savedRoutesButton.layer.cornerRadius = 12;
-    [savedRoutesButton setTitle:@"المسارات المحفوظة" forState:UIControlStateNormal];
-    [savedRoutesButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    savedRoutesButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    [savedRoutesButton addTarget:self action:@selector(showSavedRoutes) forControlEvents:UIControlEventTouchUpInside];
-    savedRoutesButton.accessibilityLabel = @"إدارة مسارات الحركة المحفوظة";
-    [routeCard addSubview:savedRoutesButton];
-    cy += 291;
+    CGFloat cy = CGRectGetMaxY(kbCard.frame) + 15.0;
 
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -2125,8 +2060,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat safeBottom = MAX(self.view.safeAreaInsets.bottom, 12.0);
     _expandedMapContainer.frame = self.view.bounds;
     self.mapView.frame = _expandedMapContainer.bounds;
-    self.searchBar.frame = CGRectMake(10, safeTop + 4, MAX(120, width - 78), 48);
-    _expandedMapCloseButton.frame = CGRectMake(width - 56, safeTop + 6, 44, 44);
+    self.searchBar.frame = CGRectMake(10, safeTop + 4, MAX(120, width - 78), 64);
+    _expandedMapCloseButton.frame = CGRectMake(width - 56, safeTop + 14, 44, 44);
     CGFloat controlsY = height - safeBottom - 50;
     [_expandedMapContainer viewWithTag:6203].frame = CGRectMake(12, controlsY, 44, 44);
     [_expandedMapContainer viewWithTag:6204].frame = CGRectMake(64, controlsY, 44, 44);
@@ -2151,7 +2086,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.searchBar.tag = 0;
         UIView *searchHost = objc_getAssociatedObject(self, "_map_search_host");
         if (!searchHost) searchHost = _mapCard;
-        self.searchBar.frame = CGRectMake(4, 2, searchHost.bounds.size.width - 8, 44);
+        self.searchBar.frame = searchHost.bounds;
         [searchHost addSubview:self.searchBar];
     }
     [_expandedMapContainer removeFromSuperview];
@@ -2611,6 +2546,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     tf.textAlignment = NSTextAlignmentCenter;
     tf.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
     tf.placeholder = p;
+    tf.attributedPlaceholder = [[NSAttributedString alloc] initWithString:p ?: @"" attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+    tf.accessibilityLabel = p;
     tf.layer.borderWidth = 1.0;
     tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor;
     tf.tintColor = [WolFoxProTheme accent];
@@ -2794,6 +2731,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
     tf.text = @"";
     tf.placeholder = @"أدخل كود المعرّف UUID هنا";
+    tf.attributedPlaceholder = [[NSAttributedString alloc] initWithString:tf.placeholder attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
+    tf.accessibilityLabel = @"كود معرّف التطبيق UUID";
     tf.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
@@ -3222,7 +3161,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UITextField *identifierField = [[UITextField alloc] initWithFrame:CGRectMake(24, 132, 312, 48)];
     identifierField.tag = 7301;
     identifierField.text = [WolFoxProStore shared].activeIdentifierUUID ?: [WFLicenseClient deviceIdentifier];
-    identifierField.placeholder = @"UUID";
+    identifierField.placeholder = @"أدخل معرّف التطبيق UUID";
+    identifierField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:identifierField.placeholder attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
     identifierField.backgroundColor = [WolFoxProTheme surfaceSecondary];
     identifierField.textColor = [WolFoxProTheme textPrimary];
     identifierField.tintColor = [WolFoxProTheme accent];
@@ -3670,23 +3610,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CLLocationCoordinate2D c = [self.mapView convertPoint:p toCoordinateFromView:self.mapView];
     WolFoxProStore *store = [WolFoxProStore shared];
 
-    // ADDED: ضغط طويل أول → يضع نقطة البداية؛ إذا كانت موجودة → يضع نقطة الهدف
-    BOOL hasStartPin = _currentPin != nil && CLLocationCoordinate2DIsValid(store.currentFakeCoords);
-    BOOL hasTargetPin = objc_getAssociatedObject(self, "_target_pin") != nil;
-    if (hasStartPin && !hasTargetPin) {
-        // ضع نقطة الهدف
-        store.targetRouteCoords = c;
-        [store saveSettings];
-        MKPointAnnotation *targetPin = [MKPointAnnotation new];
-        targetPin.coordinate = c;
-        targetPin.title = @"نقطة الوصول";
-        targetPin.subtitle = @"اضغط «بدء محاكاة المسار» للانطلاق";
-        [self.mapView addAnnotation:targetPin];
-        objc_setAssociatedObject(self, "_target_pin", targetPin, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        [self showToast:@"📍 تم تحديد نقطة الوصول — اضغط «بدء» للانطلاق"];
-        return;
-    }
-    // ضع/أعد نقطة البداية وامسح الهدف السابق إن وجد
+    // Each long press selects one location after the route controls were removed.
     MKPointAnnotation *oldTarget = objc_getAssociatedObject(self, "_target_pin");
     if (oldTarget) {
         [self.mapView removeAnnotation:oldTarget];
@@ -3698,7 +3622,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[WolFoxProHookManager shared] deliverFakeUpdate];
     if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", c.latitude];
     if (_lonInput) _lonInput.text = [NSString stringWithFormat:@"%.6f", c.longitude];
-    [self showToast:@"📍 نقطة البداية — اضغط مجدداً لتحديد نقطة الوصول"];
+    [self showToast:@"تم تحديد الموقع على الخريطة"];
 }
 
 - (void)updateMapPin:(CLLocationCoordinate2D)c {
@@ -3922,7 +3846,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)saveCurrentLocation {
     UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"حفظ الموقع" message:@"أدخل اسماً لهذا الموقع" preferredStyle:UIAlertControllerStyleAlert];
-    [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){ tf.placeholder = @"اسم الموقع"; tf.textAlignment = NSTextAlignmentRight; }];
+    [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){ tf.placeholder = @"اسم الموقع (مثال: المنزل)"; tf.textAlignment = NSTextAlignmentRight; }];
     [ac addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [ac addAction:[UIAlertAction actionWithTitle:@"حفظ" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a){
         NSString *name = ac.textFields.firstObject.text ?: @"موقع جديد";
@@ -4026,9 +3950,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     if (!original) return;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"تعديل الموقع المحفوظ" message:@"عدّل الاسم أو الإحداثيات ثم اضغط حفظ." preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"اسم الموقع"; tf.text = original.name ?: @""; tf.textAlignment = NSTextAlignmentRight; }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط العرض"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.latitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط الطول"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.longitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"اسم الموقع (مثال: المنزل)"; tf.text = original.name ?: @""; tf.textAlignment = NSTextAlignmentRight; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط العرض: 19.4131522"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.latitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) { tf.placeholder = @"خط الطول: 41.3194678"; tf.text = [NSString stringWithFormat:@"%.6f", original.coordinate.longitude]; tf.keyboardType = UIKeyboardTypeNumbersAndPunctuation; tf.textAlignment = NSTextAlignmentCenter; }];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حفظ التعديل" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSString *name = [alert.textFields[0].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
