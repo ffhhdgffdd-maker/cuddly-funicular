@@ -33,6 +33,8 @@ expect_pattern "ربط الهوية بتطبيق المساجد" 'sa[.]gov[.]moi
 expect_pattern "تطبيق UUID حسب Bundle ID" 'currentBundleID.*boundBundleID|isEqualToString:boundBundleID' WolFoxProStore.m
 expect_pattern "شاشة منسوبي المساجد تربط المعرّف بالتطبيق المحدد" 'activateIdentifierString:uuid[.]UUIDString forBundleID:@"sa[.]gov[.]moia[.]mosques-2"' WolFoxMaster.mm
 expect_pattern "واجهة التفعيل تستخدم الربط الصريح" 'activateIdentifierString:normalizedUUID[.]UUIDString forBundleID:' WolFoxMaster.mm
+expect_pattern "ربط flutter_udid للمساجد فقط" 'service isEqualToString:@"org[.]cocoapods[.]flutter-udid"' WolFoxIntegrated.mm
+expect_pattern "بقية استدعاءات Keychain تحتفظ بالأصل" 'orig_SAMKeychain_passwordForService.*self, _cmd, service, account' WolFoxIntegrated.mm
 expect_pattern "إيقاف الهوية الموحدة" 'deactivateIdentifier' WolFoxProStore.h WolFoxProStore.m WolFoxMaster.mm
 expect_pattern "واجهة توضح الأنواع المدمجة" 'IDFA • IDFV • Web' WolFoxMaster.mm
 expect_pattern "إظهار قسم المعرّف في Full وLite" 'person[.]text[.]rectangle[.]fill' WolFoxMaster.mm
