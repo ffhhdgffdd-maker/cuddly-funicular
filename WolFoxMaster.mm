@@ -979,7 +979,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     y += 65;
 
     UIButton *autoCapture = [self royalBtnInside:_scrollDashboard
-        t:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_BT_AUTO_CAPTURE"] ? @"الحفظ التلقائي أثناء البحث: مفعّل" : @"الحفظ التلقائي أثناء البحث: متوقف"
+        t:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_BT_AUTO_CAPTURE"] ? @"اقتراح حفظ أول جهاز: مفعّل" : @"اقتراح حفظ أول جهاز: متوقف"
         i:@"arrow.triangle.2.circlepath" c:[WolFoxProTheme accent] y:y];
     [autoCapture addTarget:self action:@selector(toggleBluetoothAutoCapture) forControlEvents:UIControlEventTouchUpInside];
     y += 62;
@@ -1212,11 +1212,11 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary *)adData RSSI:(NSNumber *)RSSI {
     if (!_btScanRequested || !_btScanRunning || central != _btManager || _activePage != 2) return;
-    NSString *uuid = peripheral.identifier.UUIDString;
+    NSString *uuid = WFBLEActualPeripheralIdentifier(peripheral).UUIDString;
     if (!uuid.length) return;
     NSMutableDictionary *record = [WFBLECaptureAdvertisement(adData) mutableCopy];
     record[@"uuid"] = uuid; record[@"source_uuid"] = uuid;
-    record[@"name"] = peripheral.name ?: adData[CBAdvertisementDataLocalNameKey] ?: @"جهاز غير معروف";
+    record[@"name"] = WFBLEActualPeripheralName(peripheral) ?: adData[CBAdvertisementDataLocalNameKey] ?: @"جهاز غير معروف";
     record[@"local_name"] = adData[CBAdvertisementDataLocalNameKey] ?: @"";
     record[@"rssi"] = RSSI ?: @127;
     NSDictionary *valid = WFBLEValidatedRecord(record);
@@ -5641,4 +5641,3 @@ static void __attribute__((constructor)) initialize() {
         }];
     });
 }
-

@@ -4,6 +4,10 @@
 
 static const NSUInteger WFBLEMaxFileBytes = 131072;
 
+// Capture uses original accessors even if the host previously discovered this object.
+FOUNDATION_EXPORT NSUUID *WFBLEActualPeripheralIdentifier(CBPeripheral *peripheral);
+FOUNDATION_EXPORT NSString *WFBLEActualPeripheralName(CBPeripheral *peripheral);
+
 static inline NSString *WFBLEServiceUUID(id value) {
     if (![value isKindOfClass:NSString.class]) return nil;
     NSString *s = [(NSString *)value uppercaseString];

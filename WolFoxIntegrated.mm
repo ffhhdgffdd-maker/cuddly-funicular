@@ -195,6 +195,14 @@ static NSString *hook_CBPeripheral_name(CBPeripheral *self, SEL _cmd) {
 }
 
 static IMP orig_CBPeripheral_identifier;
+NSUUID *WFBLEActualPeripheralIdentifier(CBPeripheral *peripheral) {
+    return orig_CBPeripheral_identifier
+        ? ((NSUUID *(*)(id, SEL))orig_CBPeripheral_identifier)(peripheral, @selector(identifier)) : peripheral.identifier;
+}
+NSString *WFBLEActualPeripheralName(CBPeripheral *peripheral) {
+    return orig_CBPeripheral_name
+        ? ((NSString *(*)(id, SEL))orig_CBPeripheral_name)(peripheral, @selector(name)) : peripheral.name;
+}
 static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
     WolFoxBleProfile *profile = WFActiveBleProfile();
     NSString *associatedID = objc_getAssociatedObject(self, &kWFCBProfileIDKey);
