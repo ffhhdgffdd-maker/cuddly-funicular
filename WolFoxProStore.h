@@ -88,16 +88,17 @@ FOUNDATION_EXPORT NSNotificationName const WFSpoofStateDidChangeNotification;
 - (void)commitScheduleDraft;
 
 // Bluetooth Spoofing
-@property (nonatomic, assign) BOOL bluetoothActive;
-@property (nonatomic, copy, nullable) NSString *activeBleProfileID;
-@property (nonatomic, strong) NSMutableArray<WolFoxBleProfile *> *savedBleProfiles;
+@property (atomic, assign) BOOL bluetoothActive;
+@property (atomic, copy, nullable) NSString *activeBleProfileID;
+@property (nonatomic, copy, readonly) NSArray<WolFoxBleProfile *> *savedBleProfiles;
 
 - (void)saveSettings;
 - (void)loadSettings;
 - (NSString *)mediaStoragePath;
 
 // BLE Profiles
-- (void)saveBleProfile:(WolFoxBleProfile *)profile;
+- (BOOL)saveBleProfile:(WolFoxBleProfile *)profile;
+- (BOOL)selectBleProfileID:(NSString *)profileID;
 - (void)deleteBleProfileID:(NSString *)profileID;
 - (nullable WolFoxBleProfile *)activeBleProfile;
 

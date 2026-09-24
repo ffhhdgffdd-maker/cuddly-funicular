@@ -64,16 +64,19 @@ int main(void) {
         assert([WFBLEServiceUUID(@"12345678") isEqual:@"12345678"]);
         assert(!WFBLEServiceUUID(@"123"));
         assert([WFBLECaptureAdvertisement(@{CBAdvertisementDataServiceUUIDsKey:@3})[@"service_uuids"] count] == 0);
-        assert(!WFInterfaceMenuDefault(4) && WFInterfaceMenuDefault(5));
-        assert(!WFInterfaceVolumeAllowed(4, YES));
-        assert(WFInterfaceVolumeAllowed(5, YES) && !WFInterfaceVolumeAllowed(5, NO));
-        assert(WFInterfaceTripleTapAllowed(4, NO));
-        assert(!WFInterfaceTripleTapAllowed(5, NO));
-        assert(WFInterfaceNeedsFallback(5, NO, NO, NO));
-        assert(!WFInterfaceNeedsFallback(5, YES, NO, NO));
-        assert(!WFInterfaceNeedsFallback(5, NO, YES, NO));
-        assert(!WFInterfaceNeedsFallback(5, NO, NO, YES));
-        assert(!WFInterfaceNeedsFallback(4, NO, NO, NO));
+        for (NSInteger version = 0; version <= 5; version++) {
+            assert(!WFInterfaceMenuDefault(version));
+            assert(WFInterfaceVolumeAllowed(version, YES));
+            assert(!WFInterfaceVolumeAllowed(version, NO));
+            assert(!WFInterfaceTripleTapAllowed(version, YES));
+            assert(WFInterfaceNeedsFallback(version, NO, NO, YES));
+            assert(!WFInterfaceNeedsFallback(version, YES, NO, NO));
+            assert(!WFInterfaceNeedsFallback(version, NO, YES, NO));
+        }
+        assert(!WFRecoveryMethodValid(0) && !WFRecoveryMethodValid(4));
+        assert(WFRecoveryUsesIcon(1) && !WFRecoveryUsesVolume(1));
+        assert(!WFRecoveryUsesIcon(2) && WFRecoveryUsesVolume(2));
+        assert(WFRecoveryUsesIcon(3) && WFRecoveryUsesVolume(3));
         puts("Bluetooth codec and interface policy tests passed");
     }
     return 0;

@@ -34,7 +34,7 @@ static inline NSDictionary *WFBLECaptureAdvertisement(NSDictionary *advertisemen
             [(NSData *)value length] <= 4096 && serviceData.count < 64)
             serviceData[((CBUUID *)key).UUIDString] = [(NSData *)value base64EncodedStringWithOptions:0];
     }
-    NSMutableDictionary *record = [@{@"service_uuids":services, @"service_data_b64":serviceData} mutableCopy];
+    NSMutableDictionary *record = [@{@"service_uuids":[services copy], @"service_data_b64":[serviceData copy]} mutableCopy];
     NSData *manufacturer = advertisement[CBAdvertisementDataManufacturerDataKey];
     if ([manufacturer isKindOfClass:NSData.class] && manufacturer.length <= 4096)
         record[@"manufacturer_b64"] = [manufacturer base64EncodedStringWithOptions:0];
@@ -73,17 +73,17 @@ static inline NSDictionary *WFBLEValidatedRecord(id value) {
         NSData *bytes = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
         if (!bytes || bytes.length > 4096) return nil;
         payloadBytes += bytes.length;
-        serviceData[service] = encoded;
+        serviceData[service] = [encoded copy];
     }
     if (payloadBytes > 65536) return nil;
-    NSMutableDictionary *result = [@{@"uuid":uuid, @"name":name, @"rssi":@(integerRSSI),
-        @"service_uuids":services, @"service_data_b64":serviceData} mutableCopy];
+    NSMutableDictionary *result = [@{@"uuid":uuid, @"name":[name copy], @"rssi":@(integerRSSI),
+        @"service_uuids":[services copy], @"service_data_b64":[serviceData copy]} mutableCopy];
     for (NSString *key in @[@"source_uuid", @"local_name"]) {
         id text = record[key];
         if (text) {
             if (![text isKindOfClass:NSString.class] || [text length] > 200) return nil;
             if ([key isEqual:@"source_uuid"] && !WFTransferUUID(text)) return nil;
-            result[key] = [key isEqual:@"source_uuid"] ? WFTransferUUID(text) : text;
+            result[key] = [key isEqual:@"source_uuid"] ? WFTransferUUID(text) : [text copy];
         }
     }
     id encoded = record[@"manufacturer_b64"];
@@ -91,13 +91,13 @@ static inline NSDictionary *WFBLEValidatedRecord(id value) {
         if (![encoded isKindOfClass:NSString.class] || [encoded length] > 5500) return nil;
         NSData *bytes = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
         if (!bytes || bytes.length > 4096) return nil;
-        result[@"manufacturer_b64"] = encoded;
+        result[@"manufacturer_b64"] = [encoded copy];
     }
     if (record[@"connectable"]) {
         if (![record[@"connectable"] isKindOfClass:NSNumber.class]) return nil;
         result[@"connectable"] = @([record[@"connectable"] boolValue]);
     }
-    return result;
+    return [result copy];
 }
 
 static inline BOOL WFBLEMatchesPeripheral(NSDictionary *record, NSString *actualUUID) {
@@ -120,7 +120,7 @@ static inline NSDictionary *WFBLEReplayAdvertisement(NSDictionary *original, NSD
     NSString *encoded = record[@"manufacturer_b64"];
     if (encoded) result[CBAdvertisementDataManufacturerDataKey] = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
     // The live connectable flag and connection callbacks are always preserved.
-    return result;
+    return [result copy];
 }
 
 static inline NSData *WFBLEExport(NSDictionary *record) {

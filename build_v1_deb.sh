@@ -49,9 +49,9 @@ esac
 INTERFACE_VARIANT="${WOLFOX_INTERFACE_VARIANT:-0}"
 case "$INTERFACE_VARIANT" in
     0) ;;
-    4|5)
+    3|4|5)
         [ "$WOLFOX_EDITION" = "Full" ] || { echo "Full required for Bluetooth editions"; exit 1; }
-        [ "$VERSION" = "$INTERFACE_VARIANT.0.0" ] || { echo "Version and interface do not match"; exit 1; }
+        [ "${VERSION%%.*}" = "$INTERFACE_VARIANT" ] || { echo "Version and interface do not match"; exit 1; }
         PRODUCT_NAME="WolFox${INTERFACE_VARIANT}_Bluetooth"
         PACKAGE_ID="com.wolfox.gpspro.v${INTERFACE_VARIANT}.bluetooth.${PROFILE_BUNDLE:-mosques}"
         ;;
@@ -139,7 +139,7 @@ else
 fi
 [ "${#TARGET_BUNDLES[@]}" -gt 0 ] || { echo "❌ لا توجد Bundle IDs صالحة؛ تم منع الحقن العام"; exit 1; }
 
-FILES=("WFRedactedLogger.m" "WFNetworkPairingStore.m" "WFVirtualCameraManager.mm" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
+FILES=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFRedactedLogger.m" "WFNetworkPairingStore.m" "WFVirtualCameraManager.mm" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)

@@ -78,6 +78,9 @@ void WFLogEvent(NSString *event, NSDictionary<NSString *, id> *fields) {
 }
 
 // التحسينات العربية الإضافية لنسختي فل ولايت. لا تغيّر التصميم الأساسي.
-#import "WolFoxArabicEnhancements.inc"
+// Feature controls and transfers are owned by WolFoxMainViewController sections.
 // حفظ المفضلة وكود التفعيل بدون فقدان أو طلب إدخال متكرر.
+#import <TargetConditionals.h>
+#if TARGET_OS_IOS
 #import "WFPersistenceFixes.m"
+#endif

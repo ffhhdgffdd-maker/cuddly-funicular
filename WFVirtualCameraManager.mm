@@ -1,4 +1,5 @@
 #import "WFVirtualCameraManager.h"
+#import "WFCameraLifecycle.h"
 
 #import <PhotosUI/PhotosUI.h>
 #import <CoreVideo/CoreVideo.h>
@@ -16,6 +17,7 @@
 NSNotificationName const WFVirtualCameraStateDidChangeNotification = @"WF_VIRTUAL_CAMERA_STATE_DID_CHANGE";
 NSNotificationName const WFVirtualCameraSessionDidStartNotification = @"WF_VIRTUAL_CAMERA_SESSION_DID_START";
 NSNotificationName const WFVirtualCameraImageDidSelectNotification = @"WF_VIRTUAL_CAMERA_IMAGE_DID_SELECT";
+NSNotificationName const WFVirtualCameraIconStateDidChangeNotification = @"WF_VIRTUAL_CAMERA_ICON_STATE_DID_CHANGE";
 
 #pragma mark - Window and image helpers
 
@@ -300,6 +302,10 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     NSUInteger _cachedGeneration;
     NSData *_cachedPhotoData;
     BOOL _pickerPresented;
+    WFCameraLifecycle *_iconLifecycle;
+    NSHashTable<AVCaptureVideoPreviewLayer *> *_visiblePreviews;
+    NSTimer *_visibilityTimer;
+    BOOL _lastIconVisible;
 }
 @end
 
@@ -316,6 +322,12 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     self = [super init];
     if (!self) return nil;
     _imageGeneration = 1;
+    _iconLifecycle = [WFCameraLifecycle new];
+    _visiblePreviews = [NSHashTable weakObjectsHashTable];
+    for (NSString *name in @[AVCaptureSessionDidStartRunningNotification, AVCaptureSessionDidStopRunningNotification,
+                            AVCaptureSessionWasInterruptedNotification, AVCaptureSessionInterruptionEndedNotification,
+                            UIApplicationDidBecomeActiveNotification, UIApplicationDidEnterBackgroundNotification])
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cameraVisibilityEvent:) name:name object:nil];
     WolFoxProStore *store = [WolFoxProStore shared];
     BOOL repairedStoredState = NO;
     _rememberLastImage = store.rememberCameraImage;
@@ -331,7 +343,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
         store.spoofedImagePath = nil;
         repairedStoredState = YES;
     }
-    _enabled = store.mediaUploadActive && _currentImage != nil;
+    _enabled = store.mediaUploadActive;
     if (store.mediaUploadActive != _enabled || repairedStoredState) {
         store.mediaUploadActive = _enabled;
         [store saveSettings];
@@ -340,16 +352,84 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [_visibilityTimer invalidate];
     if (_cachedPixelBuffer) CVPixelBufferRelease(_cachedPixelBuffer);
 }
 
 - (void)postStateChange {
     void (^postBlock)(void) = ^{
+        [self refreshCameraVisibility];
         [[NSNotificationCenter defaultCenter] postNotificationName:WFVirtualCameraStateDidChangeNotification
                                                             object:self];
     };
     if (NSThread.isMainThread) postBlock();
     else dispatch_async(dispatch_get_main_queue(), postBlock);
+}
+
+- (void)cameraVisibilityEvent:(__unused NSNotification *)notification {
+    if (NSThread.isMainThread) [self refreshCameraVisibility];
+    else dispatch_async(dispatch_get_main_queue(), ^{ [self refreshCameraVisibility]; });
+}
+
+- (void)trackPreviewLayer:(AVCaptureVideoPreviewLayer *)layer {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self trackPreviewLayer:layer]; }); return; }
+    [_visiblePreviews addObject:layer];
+    [self refreshCameraVisibility];
+}
+
+- (BOOL)previewIsVisible:(AVCaptureVideoPreviewLayer *)layer {
+    if (!layer.session.isRunning || layer.session.isInterrupted || CGRectIsEmpty(layer.bounds)) return NO;
+    UIView *host = nil;
+    for (CALayer *parent = layer; parent; parent = parent.superlayer) {
+        if (parent.hidden || parent.opacity < 0.01) return NO;
+        if ([parent.delegate isKindOfClass:UIView.class]) { host = (UIView *)parent.delegate; break; }
+    }
+    if (!host.window || host.window.hidden) return NO;
+    for (UIView *view = host; view; view = view.superview) if (view.hidden || view.alpha < 0.01) return NO;
+    CGRect rect = [host convertRect:host.bounds toView:host.window];
+    return CGRectIntersectsRect(rect, host.window.bounds);
+}
+
+- (void)refreshCameraVisibility {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self refreshCameraVisibility]; }); return; }
+    BOOL running = NO, visible = NO;
+    for (AVCaptureVideoPreviewLayer *preview in _visiblePreviews.allObjects) {
+        running |= preview.session.isRunning;
+        visible |= [self previewIsVisible:preview];
+    }
+    _iconLifecycle.enabled = self.enabled && [WFLicenseClient isRuntimeLicenseValid];
+    _iconLifecycle.foreground = UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
+    _iconLifecycle.cameraVisible = visible;
+    BOOL show = _iconLifecycle.shouldShowIcon;
+    if (show != _lastIconVisible) {
+        _lastIconVisible = show;
+        [[NSNotificationCenter defaultCenter] postNotificationName:WFVirtualCameraIconStateDidChangeNotification object:self];
+    }
+    // Poll only while a real capture session exists, to catch host view transitions.
+    if (running && !_visibilityTimer) {
+        __weak typeof(self) weakSelf = self;
+        _visibilityTimer = [NSTimer scheduledTimerWithTimeInterval:0.10 repeats:YES block:^(__unused NSTimer *timer) { [weakSelf refreshCameraVisibility]; }];
+    } else if (!running && _visibilityTimer) { [_visibilityTimer invalidate]; _visibilityTimer = nil; }
+}
+
+- (BOOL)shouldShowPickerIcon { return _iconLifecycle.shouldShowIcon; }
+- (void)setToolVisible:(BOOL)visible {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self setToolVisible:visible]; }); return; }
+    _iconLifecycle.toolVisible = visible; [self refreshCameraVisibility];
+}
+- (void)beginCameraActivity:(NSString *)identifier {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self beginCameraActivity:identifier]; }); return; }
+    [_iconLifecycle beginActivity:identifier]; [self refreshCameraVisibility];
+}
+- (void)endCameraActivity:(NSString *)identifier {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self endCameraActivity:identifier]; }); return; }
+    [_iconLifecycle endActivity:identifier]; [self refreshCameraVisibility];
+}
+- (BOOL)containsCurrentPhotoData:(NSData *)data {
+    if (!self.enabled || !data.length || data.length > 32 * 1024 * 1024) return NO;
+    NSData *photo = [self photoDataRepresentation];
+    return photo.length && photo.length <= data.length && [data rangeOfData:photo options:0 range:NSMakeRange(0, data.length)].location != NSNotFound;
 }
 
 - (void)invalidatePixelBufferCacheLocked {
@@ -370,7 +450,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
 - (void)setEnabled:(BOOL)enabled {
     BOOL finalValue;
     @synchronized (self) {
-        finalValue = enabled && _currentImage != nil && [WFLicenseClient isRuntimeLicenseValid];
+        finalValue = enabled && [WFLicenseClient isRuntimeLicenseValid];
         _enabled = finalValue;
     }
     WolFoxProStore *store = [WolFoxProStore shared];
@@ -525,6 +605,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
             [self postStateChange];
             return;
         }
+        [self beginCameraActivity:@"image-picker"];
         PHPickerConfiguration *configuration = [[PHPickerConfiguration alloc] init];
         configuration.filter = PHPickerFilter.imagesFilter;
         configuration.selectionLimit = 1;
@@ -538,10 +619,9 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
 
 - (void)picker:(PHPickerViewController *)picker
 didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0)) {
-    @synchronized (self) { _pickerPresented = NO; }
     PHPickerResult *result = results.firstObject;
     if (!result || ![result.itemProvider canLoadObjectOfClass:UIImage.class]) {
-        [picker dismissViewControllerAnimated:YES completion:^{ [self postStateChange]; }];
+        [picker dismissViewControllerAnimated:YES completion:^{ @synchronized (self) { self->_pickerPresented = NO; } [self endCameraActivity:@"image-picker"]; [self postStateChange]; }];
         return;
     }
 
@@ -551,14 +631,27 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0)) {
     [result.itemProvider loadObjectOfClass:UIImage.class completionHandler:^(id<NSItemProviderReading> object,
                                                                               NSError *error) {
         if (error || ![object isKindOfClass:UIImage.class]) {
-            [weakSelf postStateChange];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                WFVirtualCameraManager *manager = weakSelf;
+                if (!manager) return;
+                @synchronized (manager) { manager->_pickerPresented = NO; }
+                [manager endCameraActivity:@"image-picker"]; [manager postStateChange];
+                UIViewController *host = WFVirtualCameraBestPresenter();
+                if (host && !host.presentedViewController) {
+                    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"WolFox" message:@"تعذر تحميل الصورة. اختر صورة أخرى." preferredStyle:UIAlertControllerStyleAlert];
+                    [alert addAction:[UIAlertAction actionWithTitle:@"إغلاق" style:UIAlertActionStyleCancel handler:nil]];
+                    [host presentViewController:alert animated:YES completion:nil];
+                }
+            });
             return;
         }
         UIImage *selectedImage = (UIImage *)object;
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
+            @synchronized (strongSelf) { strongSelf->_pickerPresented = NO; }
             [strongSelf setSelectedImage:selectedImage];
+            [strongSelf endCameraActivity:@"image-picker"];
             UINotificationFeedbackGenerator *feedback = [UINotificationFeedbackGenerator new];
             [feedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             [[NSNotificationCenter defaultCenter]

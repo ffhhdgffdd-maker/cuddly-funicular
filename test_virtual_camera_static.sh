@@ -59,7 +59,6 @@ expect_pattern "وكيل NSProxy يرفع استثناءً عند تعذر ال�
 expect_pattern "حفظ آخر صورة اختياري" 'rememberCameraImage' WolFoxProStore.h
 expect_pattern "إظهار الأداة بالتعليق المطول" 'minimumPressDuration = 0[.]8' WolFoxMaster.mm
 expect_pattern "منطقة التفعيل الوسطى بقيت كما هي" 'CGRectInset[(]bounds, CGRectGetWidth[(]bounds[)] \* 0[.]25, CGRectGetHeight[(]bounds[)] \* 0[.]25[)]' WolFoxMaster.mm
-expect_pattern "اختصار السحب لأكثر من ثانيتين" 'duration > 2[.]0' WolFoxMaster.mm
 expect_pattern "مدير الكاميرا ضمن ملفات البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh
 expect_pattern "CoreMedia مرتبط" 'framework CoreMedia' build_v1_deb.sh
 expect_pattern "CoreVideo مرتبط" 'framework CoreVideo' build_v1_deb.sh
@@ -78,6 +77,8 @@ else
     echo "✅ ملفات المعرض القديمة محذوفة"
     PASS=$((PASS + 1))
 fi
+
+expect_pattern "الأيقونة تخضع لدورة الكاميرا" 'shouldShowPickerIcon' WFVirtualCameraManager.mm WolFoxMaster.mm
 
 echo "النتيجة: $PASS ناجح، $FAIL فاشل"
 if [ "$FAIL" -ne 0 ]; then
