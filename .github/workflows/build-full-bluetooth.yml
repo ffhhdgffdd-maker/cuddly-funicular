@@ -1,7 +1,7 @@
 name: Build WolFox Full Bluetooth 4 and 5
 on:
   push:
-    branches: [codex/full-bluetooth-gpsplus]
+    branches: [main, codex/full-bluetooth-gpsplus]
   workflow_dispatch:
 permissions:
   contents: read
