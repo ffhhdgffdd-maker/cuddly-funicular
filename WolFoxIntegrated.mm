@@ -11,6 +11,7 @@
 #import <objc/runtime.h>
 #import "WolFoxProHookManager.h"
 #import "WolFoxProStore.h"
+#import "WFBluetoothProfileCodec.h"
 #import "WFLicenseClient.h"
 #import "WFCompatibility.h"
 #import "WFHookDefaults.h"
@@ -207,7 +208,6 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
 @interface WolFoxCBProxy : NSProxy <CBCentralManagerDelegate> {
     __weak id _delegate;
     __weak CBCentralManager *_manager;
-    BOOL _deliveredProfile;
 }
 - (instancetype)initWithDelegate:(id)delegate;
 - (void)setManager:(CBCentralManager *)manager;
@@ -217,7 +217,7 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
 @implementation WolFoxCBProxy
 - (instancetype)initWithDelegate:(id)delegate { _delegate = delegate; return self; }
 - (void)setManager:(CBCentralManager *)manager { _manager = manager; }
-- (void)resetScan { @synchronized(self) { _deliveredProfile = NO; } }
+- (void)resetScan { /* Every discovered peripheral retains its own identity. */ }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
     NSMethodSignature *signature = [(NSObject *)_delegate methodSignatureForSelector:selector];
@@ -225,7 +225,12 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation {
-    if ([_delegate respondsToSelector:invocation.selector]) [invocation invokeWithTarget:_delegate];
+    id delegate = _delegate;
+    if ([delegate respondsToSelector:invocation.selector]) [invocation invokeWithTarget:delegate];
+    else if (invocation.methodSignature.methodReturnLength) {
+        NSMutableData *zero = [NSMutableData dataWithLength:invocation.methodSignature.methodReturnLength];
+        [invocation setReturnValue:zero.mutableBytes];
+    }
 }
 
 - (BOOL)respondsToSelector:(SEL)selector {
@@ -246,22 +251,21 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
         [delegate centralManager:central didDiscoverPeripheral:peripheral advertisementData:advertisementData RSSI:RSSI];
         return;
     }
-    @synchronized(self) {
-        if (_deliveredProfile) return;
-        _deliveredProfile = YES;
+    NSDictionary *record = [profile bluetoothRecord];
+    NSUUID *actualIdentifier = orig_CBPeripheral_identifier
+        ? ((NSUUID *(*)(id, SEL))orig_CBPeripheral_identifier)(peripheral, @selector(identifier)) : peripheral.identifier;
+    if (!record || !WFBLEMatchesPeripheral(record, actualIdentifier.UUIDString)) {
+        objc_setAssociatedObject(peripheral, &kWFCBProfileIDKey, nil, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        [delegate centralManager:central didDiscoverPeripheral:peripheral advertisementData:advertisementData RSSI:RSSI];
+        return;
     }
-    NSString *displayName    = profile.localName.length ? profile.localName : profile.name;
-    NSString *identifierText = profile.uuid.length ? profile.uuid : profile.profileID;
-    NSUUID *identifier = [[NSUUID alloc] initWithUUIDString:identifierText];
-    if (!identifier) identifier = [[NSUUID alloc] initWithUUIDString:profile.profileID];
-
+    NSString *displayName = profile.localName.length ? profile.localName : profile.name;
+    NSUUID *identifier = [[NSUUID alloc] initWithUUIDString:profile.uuid];
     objc_setAssociatedObject(peripheral, &kWFCBProfileIDKey, profile.profileID, OBJC_ASSOCIATION_COPY_NONATOMIC);
-    objc_setAssociatedObject(peripheral, &kWFCBNameKey,      displayName,        OBJC_ASSOCIATION_COPY_NONATOMIC);
-    if (identifier) objc_setAssociatedObject(peripheral, &kWFCBUUIDKey, identifier, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-    NSMutableDictionary *spoofedAdvertisement = advertisementData ? [advertisementData mutableCopy] : [NSMutableDictionary new];
-    if (displayName.length) spoofedAdvertisement[CBAdvertisementDataLocalNameKey] = displayName;
-    NSNumber *spoofedRSSI = (profile.rssi == 0) ? RSSI : @(profile.rssi);
+    objc_setAssociatedObject(peripheral, &kWFCBNameKey, displayName, OBJC_ASSOCIATION_COPY_NONATOMIC);
+    objc_setAssociatedObject(peripheral, &kWFCBUUIDKey, identifier, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    NSDictionary *spoofedAdvertisement = WFBLEReplayAdvertisement(advertisementData, record);
+    NSNumber *spoofedRSSI = (profile.rssi == 0 || profile.rssi == 127) ? RSSI : @(profile.rssi);
 
     [delegate centralManager:central
        didDiscoverPeripheral:peripheral
@@ -286,6 +290,22 @@ static id hook_CBCentralManager_initWithDelegate(CBCentralManager *self, SEL _cm
     [proxy setManager:manager];
     objc_setAssociatedObject(manager, &kWFCBProxyKey, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return manager;
+}
+
+static IMP orig_CBCentralManager_setDelegate;
+static void hook_CBCentralManager_setDelegate(CBCentralManager *manager, SEL cmd, id delegate) {
+    if (!orig_CBCentralManager_setDelegate) return;
+    Class ui = NSClassFromString(@"WolFoxMainViewController");
+    BOOL ourProxy = delegate && object_getClass(delegate) == WolFoxCBProxy.class;
+    if (!delegate || ourProxy || (ui && [delegate isKindOfClass:ui])) {
+        ((void (*)(id, SEL, id))orig_CBCentralManager_setDelegate)(manager, cmd, delegate);
+        if (!ourProxy) objc_setAssociatedObject(manager, &kWFCBProxyKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        return;
+    }
+    WolFoxCBProxy *proxy = [[WolFoxCBProxy alloc] initWithDelegate:delegate];
+    [proxy setManager:manager];
+    objc_setAssociatedObject(manager, &kWFCBProxyKey, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    ((void (*)(id, SEL, id))orig_CBCentralManager_setDelegate)(manager, cmd, proxy);
 }
 
 // FIX: use IMP (not function-pointer typedef) for scanForPeripheralsWithServices:options:
@@ -641,6 +661,11 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
             orig_CBCentralManager_initWithDelegate =
                 (id (*)(CBCentralManager *, SEL, id, dispatch_queue_t, NSDictionary *))original;
         }
+
+        WFInstallInstanceHook(CBCentralManager.class,
+                              @selector(setDelegate:),
+                              (IMP)hook_CBCentralManager_setDelegate,
+                              &orig_CBCentralManager_setDelegate);
 
         WFInstallInstanceHook(CBCentralManager.class,
                               @selector(scanForPeripheralsWithServices:options:),

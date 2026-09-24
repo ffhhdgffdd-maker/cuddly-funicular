@@ -1,6 +1,7 @@
 #import "WFRedactedLogger.h"
 // WolFoxProStore.m
 #import "WolFoxProStore.h"
+#import "WFBluetoothProfileCodec.h"
 #import "WFHookDefaults.h"
 #import <sqlite3.h>
 
@@ -31,8 +32,30 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     WolFoxBleProfile *copy = [[WolFoxBleProfile allocWithZone:zone] init];
     copy.profileID = self.profileID; copy.name = self.name;
     copy.uuid = self.uuid; copy.localName = self.localName; copy.rssi = self.rssi;
+    copy.advertisementMetadata = self.advertisementMetadata; copy.capturedAt = self.capturedAt;
     return copy;
 }
+- (NSDictionary *)bluetoothRecord {
+    NSMutableDictionary *record = [self.advertisementMetadata mutableCopy] ?: [NSMutableDictionary new];
+    record[@"uuid"] = self.uuid ?: @"";
+    record[@"name"] = self.name.length ? self.name : @"جهاز غير معروف";
+    record[@"local_name"] = self.localName ?: @"";
+    record[@"rssi"] = @(self.rssi);
+    return WFBLEValidatedRecord(record);
+}
++ (instancetype)profileFromBluetoothRecord:(NSDictionary *)record {
+    NSDictionary *valid = WFBLEValidatedRecord(record);
+    if (!valid) return nil;
+    WolFoxBleProfile *profile = [self new];
+    profile.profileID = NSUUID.UUID.UUIDString;
+    profile.uuid = valid[@"uuid"]; profile.name = valid[@"name"];
+    profile.localName = valid[@"local_name"] ?: @"";
+    profile.rssi = [valid[@"rssi"] integerValue];
+    profile.advertisementMetadata = valid;
+    profile.capturedAt = NSDate.date;
+    return profile;
+}
+
 @end
 
 @implementation WolFoxProStore {
@@ -278,12 +301,16 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     self.savedBleProfiles = [NSMutableArray new];
     for (NSDictionary *d in rawProfiles) {
         if (![d isKindOfClass:[NSDictionary class]]) continue;
-        WolFoxBleProfile *p = [WolFoxBleProfile new];
-        p.profileID = d[@"profileID"] ?: [[NSUUID UUID] UUIDString];
-        p.name      = d[@"name"] ?: @"جهاز غير معروف";
-        p.uuid      = d[@"uuid"] ?: @"";
-        p.localName = d[@"localName"] ?: @"";
-        p.rssi      = [d[@"rssi"] integerValue];
+        NSMutableDictionary *record = [d[@"advertisement"] isKindOfClass:NSDictionary.class]
+            ? [d[@"advertisement"] mutableCopy] : [NSMutableDictionary new];
+        record[@"uuid"] = d[@"uuid"] ?: @"";
+        record[@"name"] = d[@"name"] ?: @"جهاز غير معروف";
+        record[@"local_name"] = d[@"localName"] ?: @"";
+        record[@"rssi"] = d[@"rssi"] ?: @0;
+        WolFoxBleProfile *p = [WolFoxBleProfile profileFromBluetoothRecord:record];
+        if (!p) continue;
+        if ([d[@"profileID"] isKindOfClass:NSString.class] && [d[@"profileID"] length]) p.profileID = d[@"profileID"];
+        p.capturedAt = [d[@"capturedAt"] isKindOfClass:NSDate.class] ? d[@"capturedAt"] : nil;
         [self.savedBleProfiles addObject:p];
     }
     } // @synchronized
@@ -342,7 +369,9 @@ static NSString *WFDefaultIdentifierBundleID(void) {
                 @"name":      p.name ?: @"",
                 @"uuid":      p.uuid ?: @"",
                 @"localName": p.localName ?: @"",
-                @"rssi":      @(p.rssi)
+                @"rssi":      @(p.rssi),
+                @"advertisement": p.advertisementMetadata ?: @{},
+                @"capturedAt": p.capturedAt ?: NSDate.date
             }];
         }
         [u setObject:rawProfiles forKey:@"WF_PRO_BT_PROFILES"];
@@ -449,6 +478,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 - (NSArray *)identifiers { return [_mutableIdentifiers copy]; }
 
 - (void)saveBleProfile:(WolFoxBleProfile *)profile {
+    if (![profile bluetoothRecord]) return;
     if (!profile.profileID) profile.profileID = [[NSUUID UUID] UUIDString];
     @synchronized(self.savedBleProfiles) {
         for (WolFoxBleProfile *p in [self.savedBleProfiles copy]) {
@@ -508,3 +538,4 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 }
 
 @end
+

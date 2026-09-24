@@ -26,6 +26,10 @@ FOUNDATION_EXPORT NSNotificationName const WFSpoofStateDidChangeNotification;
 @property (nonatomic, copy) NSString *uuid;       // CBPeripheral UUID string
 @property (nonatomic, copy) NSString *localName;  // advertised name
 @property (nonatomic, assign) NSInteger rssi;
+@property (nonatomic, copy) NSDictionary *advertisementMetadata;
+@property (nonatomic, strong) NSDate *capturedAt;
+- (NSDictionary *)bluetoothRecord;
++ (nullable instancetype)profileFromBluetoothRecord:(NSDictionary *)record;
 @end
 
 @interface WolFoxProStore : NSObject
@@ -100,3 +104,4 @@ FOUNDATION_EXPORT NSNotificationName const WFSpoofStateDidChangeNotification;
 @end
 
 NS_ASSUME_NONNULL_END
+

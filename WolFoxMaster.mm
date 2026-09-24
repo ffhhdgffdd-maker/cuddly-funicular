@@ -17,6 +17,8 @@
 
 #import "WolFoxProStore.h"
 #import "WFIdentifierTransfer.h"
+#import "WFBluetoothProfileCodec.h"
+#import "WFInterfacePolicy.h"
 #import <stdlib.h>
 #import "WolFoxProTheme.h"
 #import "WolFoxProHookManager.h"
@@ -165,12 +167,20 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)openSettingsPage;
 - (void)requestApplicationExit;
 - (void)finishConfirmedChange;
-- (void)confirmChangeAndClose:(NSString *)title apply:(BOOL (^)(void))apply;
+- (void)confirmInternalChange:(NSString *)title apply:(BOOL (^)(void))apply;
 - (void)showIdentifierMessage:(NSString *)message;
 - (void)importIdentifierClipboard;
 - (void)importIdentifierFile;
 - (void)acceptIdentifierData:(NSData *)data;
 - (void)componentSwitchChanged:(UISwitch *)sender;
+- (void)importBluetoothFile;
+- (void)exportBluetoothFile;
+- (void)acceptBluetoothData:(NSData *)data;
+- (void)confirmBluetoothRecord:(NSDictionary *)record;
+- (void)toggleBluetoothAutoCapture;
+- (void)finishBTScan;
+- (void)cancelBTScan;
+- (NSString *)bluetoothStateMessage;
 @end
 
 @implementation WolFoxOverlayWindow
@@ -237,6 +247,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     CLLocationManager *_realLocManager;
     CBCentralManager *_btManager;
     NSMutableArray *_discoveredDevices; // array of NSDictionary
+    NSUInteger _btScanGeneration;
+    BOOL _btScanRequested;
+    BOOL _btScanRunning;
     UIView *_schedulePage;
     UIView *_scheduleTimePickerOverlay;
     UIDatePicker *_scheduleTimePicker;
@@ -426,6 +439,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, edition ? MAX(120.0, w - 190.0) : 135, 26)];
     _titleLabel.text = @"WolFox";
+#if WOLFOX_INTERFACE_VARIANT == 4 || WOLFOX_INTERFACE_VARIANT == 5
+    _titleLabel.text = [NSString stringWithFormat:@"WolFox %d", WOLFOX_INTERFACE_VARIANT];
+#endif
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
@@ -695,9 +711,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 
     // Stop BT scan if leaving BT tab (check before updating _activePage)
-    if (_activePage == 2 && page != 2 && _btManager) {
-        [_btManager stopScan];
-    }
+    if (_activePage == 2 && page != 2) [self cancelBTScan];
     // ADDED: إذا غادرنا صفحة GPS ولم يكن هناك مسار نشط، امسح دبوس الهدف
     if (_activePage == 0 && page != 0 && ![WolFoxProStore shared].routeActive) {
         MKPointAnnotation *targetPin = objc_getAssociatedObject(self, "_target_pin");
@@ -926,25 +940,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = _scrollDashboard.bounds.size.width;
     CGFloat y = 10;
 
-    // ── Toggle Card ──
-    UIView *toggleCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 65)];
-    toggleCard.backgroundColor = [WolFoxProTheme surfacePrimary]; toggleCard.layer.cornerRadius = 15;
-    [_scrollDashboard addSubview:toggleCard];
-
-    UILabel *tl = [[UILabel alloc] initWithFrame:CGRectMake(15, 0, toggleCard.bounds.size.width - 80, 65)];
-    tl.text = @"تفعيل تزييف البلوتوث"; tl.textColor = [WolFoxProTheme textPrimary];
-    tl.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; tl.textAlignment = NSTextAlignmentRight;
-    [toggleCard addSubview:tl];
-
-    UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(15, 17, 50, 30)];
-    sw.on = [WolFoxProStore shared].bluetoothActive; sw.onTintColor = [WolFoxProTheme accent];
-    sw.accessibilityLabel = @"تزييف البلوتوث";
-    [sw addTarget:self action:@selector(btToggleChanged:) forControlEvents:UIControlEventValueChanged];
-    [toggleCard addSubview:sw];
-    y += 80;
-
     UILabel *btStatus = [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 28)];
-    btStatus.text = [WolFoxProStore shared].bluetoothActive ? @"حالة تزييف البلوتوث: مفعّل" : @"حالة تزييف البلوتوث: متوقف";
+    btStatus.text = [self bluetoothStateMessage];
     btStatus.textColor = [WolFoxProStore shared].bluetoothActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
     btStatus.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
     btStatus.layer.cornerRadius = 10; btStatus.clipsToBounds = YES;
@@ -980,6 +977,31 @@ static BOOL WFMasterProcessIsEligible(void) {
     [addBtn addTarget:self action:@selector(addBleDeviceManually) forControlEvents:UIControlEventTouchUpInside];
     [_scrollDashboard addSubview:addBtn];
     y += 65;
+
+    UIButton *autoCapture = [self royalBtnInside:_scrollDashboard
+        t:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_BT_AUTO_CAPTURE"] ? @"الحفظ التلقائي أثناء البحث: مفعّل" : @"الحفظ التلقائي أثناء البحث: متوقف"
+        i:@"arrow.triangle.2.circlepath" c:[WolFoxProTheme accent] y:y];
+    [autoCapture addTarget:self action:@selector(toggleBluetoothAutoCapture) forControlEvents:UIControlEventTouchUpInside];
+    y += 62;
+    UIButton *importFile = [self royalBtnInside:_scrollDashboard t:@"استيراد ملف بلوتوث"
+        i:@"square.and.arrow.down" c:[WolFoxProTheme accent] y:y];
+    [importFile addTarget:self action:@selector(importBluetoothFile) forControlEvents:UIControlEventTouchUpInside];
+    y += 62;
+    UIButton *exportFile = [self royalBtnInside:_scrollDashboard t:@"تصدير الجهاز المختار"
+        i:@"square.and.arrow.up" c:[WolFoxProTheme accent] y:y];
+    [exportFile addTarget:self action:@selector(exportBluetoothFile) forControlEvents:UIControlEventTouchUpInside];
+    y += 62;
+    WolFoxBleProfile *selected = [WolFoxProStore shared].activeBleProfile;
+    if (selected) {
+        NSDictionary *record = selected.bluetoothRecord;
+        UILabel *details = [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 82)];
+        details.text = [NSString stringWithFormat:@"%@\nUUID: %@\nالخدمات: %lu • بيانات الخدمات: %lu • RSSI: %ld", selected.name, selected.uuid,
+            (unsigned long)[record[@"service_uuids"] count], (unsigned long)[record[@"service_data_b64"] count], (long)selected.rssi];
+        details.numberOfLines = 4; details.textAlignment = NSTextAlignmentRight;
+        details.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightMedium];
+        details.textColor = [WolFoxProTheme textSecondary];
+        [_scrollDashboard addSubview:details]; y += 94;
+    }
 
     // ── Discovered Devices (scan results) ──
     NSArray *discovered = _discoveredDevices ?: @[];
@@ -1119,82 +1141,159 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self showToast:@"تم حذف ملف البلوتوث النشط — تم إيقاف التزييف تلقائياً"];
 }
 
-- (void)startBTScan {
-    if (_discoveredDevices == nil) _discoveredDevices = [NSMutableArray new];
-    [_discoveredDevices removeAllObjects];
-    // أوقف أي مسح سابق قبل بدء دورة جديدة حتى لا تختلط النتائج القديمة بالجديدة.
-    if (_btManager) [_btManager stopScan];
-
-    UIButton *scanBtn = objc_getAssociatedObject(self, "bt_scan_btn");
-    [scanBtn setTitle:@"  جاري البحث..." forState:UIControlStateNormal];
-    scanBtn.enabled = NO;
-
-    if (!_btManager) {
-        _btManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:@{CBCentralManagerOptionShowPowerAlertKey: @NO}];
-    } else {
-        [self _doStartBTScan];
-    }
-    [self showToast:@"🔍 جاري البحث عن أجهزة Bluetooth..."];
+- (NSString *)bluetoothStateMessage {
+    if (_btScanRequested) return @"جارٍ البحث عن أجهزة قريبة";
+    WolFoxProStore *store = [WolFoxProStore shared];
+    if (!store.activeBleProfile) return @"اختر جهازًا محفوظًا قبل التشغيل من الإعدادات";
+    return store.bluetoothActive ? @"ملف البلوتوث مفعّل للجهاز المختار" : @"الجهاز محفوظ • التشغيل متوقف";
 }
 
-- (void)_doStartBTScan {
-    if (_btManager.state != CBManagerStatePoweredOn) {
-        [self showToast:@"❌ البلوتوث غير مفعّل على الجهاز"];
-        UIButton *scanBtn = objc_getAssociatedObject(self, "bt_scan_btn");
-        [scanBtn setTitle:@"  بحث" forState:UIControlStateNormal]; scanBtn.enabled = YES;
-        return;
+- (void)cancelBTScan {
+    _btScanGeneration++;
+    _btScanRequested = NO;
+    _btScanRunning = NO;
+    [_btManager stopScan];
+}
+
+- (void)startBTScan {
+    if (_activePage != 2) return;
+    NSDictionary *info = NSBundle.mainBundle.infoDictionary;
+    if (!info[@"NSBluetoothAlwaysUsageDescription"] && !info[@"NSBluetoothPeripheralUsageDescription"]) {
+        [self showIdentifierMessage:@"هذا التطبيق لا يعلن إذن استخدام البلوتوث. يلزم إضافة وصف إذن Bluetooth إلى إعدادات التطبيق قبل البحث."]; return;
     }
-    [_btManager scanForPeripheralsWithServices:nil options:@{CBCentralManagerScanOptionAllowDuplicatesKey: @NO}];
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 8 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        [strongSelf->_btManager stopScan];
-        UIButton *scanBtn = objc_getAssociatedObject(strongSelf, "bt_scan_btn");
-        [scanBtn setTitle:@"  بحث" forState:UIControlStateNormal]; scanBtn.enabled = YES;
-        [strongSelf switchPage:2]; // Refresh BT page
-        [strongSelf showToast:[NSString stringWithFormat:@"✅ تم العثور على %lu جهاز", (unsigned long)strongSelf->_discoveredDevices.count]];
+    [self cancelBTScan];
+    _btScanRequested = YES;
+    _discoveredDevices = [NSMutableArray new];
+    UIButton *button = objc_getAssociatedObject(self, "bt_scan_btn");
+    [button setTitle:@"جارٍ البحث…" forState:UIControlStateNormal]; button.enabled = NO;
+    if (!_btManager) _btManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:@{CBCentralManagerOptionShowPowerAlertKey:@NO}];
+    else [self _doStartBTScan];
+    // A pending authorization/reset must never leave the button disabled forever.
+    NSUInteger generation = _btScanGeneration;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 20 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (self->_btScanRequested && self->_btScanGeneration == generation) [self finishBTScan];
     });
 }
 
-// CBCentralManagerDelegate
+- (void)_doStartBTScan {
+    if (!_btScanRequested || _activePage != 2 || _btScanRunning) return;
+    CBManagerState state = _btManager.state;
+    if (state == CBManagerStateUnknown || state == CBManagerStateResetting) return;
+    if (state != CBManagerStatePoweredOn) {
+        [self cancelBTScan]; [self switchPage:2];
+        NSString *message = state == CBManagerStateUnauthorized ? @"اسمح للتطبيق باستخدام Bluetooth من إعدادات الجهاز." :
+            state == CBManagerStateUnsupported ? @"البلوتوث غير مدعوم على هذا الجهاز." : @"شغّل Bluetooth ثم أعد البحث.";
+        [self showIdentifierMessage:message]; return;
+    }
+    _btScanRunning = YES;
+    [_btManager scanForPeripheralsWithServices:nil options:@{CBCentralManagerScanOptionAllowDuplicatesKey:@YES}];
+    NSUInteger generation = _btScanGeneration;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 8 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (self->_btScanRequested && self->_btScanGeneration == generation && self->_activePage == 2) [self finishBTScan];
+    });
+}
+
+- (void)finishBTScan {
+    if (!_btScanRequested) return;
+    [self cancelBTScan];
+    if (_activePage != 2) return;
+    [self switchPage:2];
+    if (!_discoveredDevices.count) { [self showIdentifierMessage:@"لم يُعثر على أجهزة. قرّب الجهاز وتأكد من أنه يعلن عبر Bluetooth ثم أعد البحث."]; return; }
+    if ([NSUserDefaults.standardUserDefaults boolForKey:@"WF_BT_AUTO_CAPTURE"])
+        [self confirmBluetoothRecord:_discoveredDevices.firstObject];
+    else [self showIdentifierMessage:[NSString stringWithFormat:@"اكتمل البحث: %lu جهاز. اختر الجهاز الذي تريد حفظه.", (unsigned long)_discoveredDevices.count]];
+}
+
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
-    if (central.state == CBManagerStatePoweredOn) [self _doStartBTScan];
+    if (!_btScanRequested) return;
+    if (central.state != CBManagerStatePoweredOn) _btScanRunning = NO;
+    [self _doStartBTScan];
 }
 
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary *)adData RSSI:(NSNumber *)RSSI {
-    NSString *name = peripheral.name ?: adData[CBAdvertisementDataLocalNameKey] ?: @"جهاز غير معروف";
-    NSString *uuidStr = peripheral.identifier.UUIDString;
-    // Avoid duplicates
-    for (NSDictionary *d in _discoveredDevices) {
-        if ([d[@"uuid"] isEqualToString:uuidStr]) return;
+    if (!_btScanRequested || !_btScanRunning || central != _btManager || _activePage != 2) return;
+    NSString *uuid = peripheral.identifier.UUIDString;
+    if (!uuid.length) return;
+    NSMutableDictionary *record = [WFBLECaptureAdvertisement(adData) mutableCopy];
+    record[@"uuid"] = uuid; record[@"source_uuid"] = uuid;
+    record[@"name"] = peripheral.name ?: adData[CBAdvertisementDataLocalNameKey] ?: @"جهاز غير معروف";
+    record[@"local_name"] = adData[CBAdvertisementDataLocalNameKey] ?: @"";
+    record[@"rssi"] = RSSI ?: @127;
+    NSDictionary *valid = WFBLEValidatedRecord(record);
+    if (!valid) return;
+    for (NSUInteger i = 0; i < _discoveredDevices.count; i++) {
+        if ([_discoveredDevices[i][@"uuid"] isEqual:uuid]) { _discoveredDevices[i] = valid; return; }
     }
-    [_discoveredDevices addObject:@{@"name": name, @"uuid": uuidStr, @"localName": adData[CBAdvertisementDataLocalNameKey] ?: @"", @"rssi": RSSI ?: @0}];
+    if (_discoveredDevices.count < 128) [_discoveredDevices addObject:valid];
 }
 
 - (void)saveDiscoveredDevice:(UIButton *)btn {
-    NSDictionary *dev = objc_getAssociatedObject(btn, "bt_dev_dict");
-    if (!dev) return;
-    WolFoxBleProfile *p = [WolFoxBleProfile new];
-    p.profileID = [[NSUUID UUID] UUIDString];
-    p.name      = dev[@"name"] ?: @"جهاز";
-    p.uuid      = dev[@"uuid"] ?: @"";
-    p.localName = dev[@"localName"] ?: @"";
-    p.rssi      = [dev[@"rssi"] integerValue];
-    [[WolFoxProStore shared] saveBleProfile:p];
-    [self showToast:[NSString stringWithFormat:@"✅ تم حفظ: %@", p.name]];
-    [self switchPage:2];
+    [self confirmBluetoothRecord:objc_getAssociatedObject(btn, "bt_dev_dict")];
+}
+
+- (void)confirmBluetoothRecord:(NSDictionary *)record {
+    WolFoxBleProfile *profile = [WolFoxBleProfile profileFromBluetoothRecord:record];
+    if (!profile) { [self showIdentifierMessage:@"بيانات جهاز البلوتوث غير صالحة."]; return; }
+    NSString *title = [NSString stringWithFormat:@"حفظ %@؟\n%@", profile.name, profile.uuid];
+    [self confirmInternalChange:title apply:^BOOL {
+        WolFoxProStore *store = [WolFoxProStore shared];
+        for (WolFoxBleProfile *existing in store.savedBleProfiles)
+            if ([existing.uuid isEqual:profile.uuid]) { profile.profileID = existing.profileID; break; }
+        [store saveBleProfile:profile]; store.activeBleProfileID = profile.profileID;
+        return YES;
+    }];
+}
+
+- (void)toggleBluetoothAutoCapture {
+    BOOL next = ![NSUserDefaults.standardUserDefaults boolForKey:@"WF_BT_AUTO_CAPTURE"];
+    [self confirmInternalChange:next ? @"اقتراح حفظ أول جهاز بعد كل بحث" : @"إيقاف اقتراح الحفظ التلقائي" apply:^BOOL {
+        [NSUserDefaults.standardUserDefaults setBool:next forKey:@"WF_BT_AUTO_CAPTURE"]; return YES;
+    }];
+}
+
+- (void)importBluetoothFile {
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.data"] inMode:UIDocumentPickerModeImport];
+    picker.delegate = self; picker.allowsMultipleSelection = NO;
+    objc_setAssociatedObject(picker, "WF_TRANSFER_KIND", @"bluetooth", OBJC_ASSOCIATION_COPY_NONATOMIC);
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+- (void)acceptBluetoothData:(NSData *)data {
+    NSDictionary *record = WFBLEImport(data);
+    if (!record) { [self showIdentifierMessage:@"ملف Bluetooth غير صالح. اختر ملف WolFox Bluetooth لا يتجاوز 128 كيلوبايت."]; return; }
+    [self confirmBluetoothRecord:record];
+}
+
+- (void)exportBluetoothFile {
+    WolFoxBleProfile *profile = [WolFoxProStore shared].activeBleProfile;
+    NSData *data = WFBLEExport(profile.bluetoothRecord);
+    if (!data) { [self showIdentifierMessage:@"اختر جهاز بلوتوث محفوظًا أولاً."]; return; }
+    NSURL *directory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] isDirectory:YES];
+    NSURL *url = [directory URLByAppendingPathComponent:@"WolFox-Bluetooth.json"];
+    if (![[NSFileManager defaultManager] createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:nil error:NULL] ||
+        ![data writeToURL:url options:NSDataWritingAtomic error:NULL]) { [self showIdentifierMessage:@"تعذر إنشاء ملف Bluetooth."]; return; }
+    UIActivityViewController *share = [[UIActivityViewController alloc] initWithActivityItems:@[url] applicationActivities:nil];
+    if (share.popoverPresentationController) {
+        share.popoverPresentationController.sourceView = self.view;
+        share.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+    }
+    share.completionWithItemsHandler = ^(__unused UIActivityType type, BOOL completed, __unused NSArray *items, NSError *error) {
+        [[NSFileManager defaultManager] removeItemAtURL:directory error:NULL];
+        if (completed && !error) [self showIdentifierMessage:@"تم تصدير ملف Bluetooth بنجاح."];
+        else if (error) [self showIdentifierMessage:@"تعذر إتمام تصدير Bluetooth."];
+    };
+    [self presentViewController:share animated:YES completion:nil];
 }
 
 - (void)addBleDeviceManually {
-    UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"إضافة جهاز يدوي" message:@"أدخل اسم الجهاز والـ UUID" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"إضافة جهاز يدوي" message:@"أدخل اسم الجهاز ومعرّف UUID للجهاز الذي تريد تطبيق الملف عليه" preferredStyle:UIAlertControllerStyleAlert];
     [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){
         tf.placeholder = @"اسم الجهاز (مثال: iPhone 13)";
         tf.textAlignment = NSTextAlignmentRight;
         tf.autocorrectionType = UITextAutocorrectionTypeNo;
     }];
     [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){
-        tf.placeholder = @"UUID (اختياري)";
+        tf.placeholder = @"UUID الجهاز (مطلوب)";
         tf.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
         tf.autocorrectionType = UITextAutocorrectionTypeNo;
     }];
@@ -1202,8 +1301,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     [ac addAction:[UIAlertAction actionWithTitle:@"حفظ" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a){
         NSString *name = [ac.textFields[0].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         NSString *uuid = [[ac.textFields[1].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] uppercaseString];
-        if (name.length == 0) { [self showToast:@"❌ الاسم مطلوب"]; return; }
-        NSUUID *validatedUUID = uuid.length ? [[NSUUID alloc] initWithUUIDString:uuid] : [NSUUID UUID];
+        if (name.length == 0 || name.length > 200) { [self showToast:@"الاسم مطلوب وبحد أقصى ٢٠٠ حرف"]; return; }
+        NSUUID *validatedUUID = uuid.length ? [[NSUUID alloc] initWithUUIDString:uuid] : nil;
         if (!validatedUUID) { [self showToast:@"❌ صيغة UUID غير صحيحة"]; return; }
         WolFoxBleProfile *p = [WolFoxBleProfile new];
         p.profileID = [[NSUUID UUID] UUIDString];
@@ -1212,8 +1311,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         p.localName = name;
         p.rssi      = -60;
         [[WolFoxProStore shared] saveBleProfile:p];
-        [self showToast:[NSString stringWithFormat:@"✅ تم إضافة: %@", name]];
-        [self switchPage:2];
+        [self finishConfirmedChange];
     }]];
     [self presentViewController:ac animated:YES completion:nil];
 }
@@ -1221,10 +1319,11 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)activateBleProfile:(UIButton *)btn {
     WolFoxBleProfile *p = objc_getAssociatedObject(btn, "bt_profile");
     if (!p) return;
-    [WolFoxProStore shared].activeBleProfileID = p.profileID;
-    [[WolFoxProStore shared] saveSettings];
-    [self showToast:[NSString stringWithFormat:@"✅ تم تفعيل: %@", p.name]];
-    [self switchPage:2];
+    [self confirmInternalChange:[NSString stringWithFormat:@"اختيار جهاز: %@", p.name] apply:^BOOL {
+        if (!p.bluetoothRecord) return NO;
+        [WolFoxProStore shared].activeBleProfileID = p.profileID;
+        return YES;
+    }];
 }
 
 - (void)deleteBleProfile:(UIButton *)btn {
@@ -1457,7 +1556,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         i:@"gearshape.fill" c:[WolFoxProTheme accent] y:cy];
     [settingsButton addTarget:self action:@selector(openSettingsPage) forControlEvents:UIControlEventTouchUpInside];
     cy += 62.0;
-    UIButton *exitButton = [self royalBtnInside:_scrollDashboard t:@"خروج من التطبيق"
+    UIButton *exitButton = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة"
         i:@"rectangle.portrait.and.arrow.right" c:[WolFoxProTheme danger] y:cy];
     [exitButton addTarget:self action:@selector(requestApplicationExit) forControlEvents:UIControlEventTouchUpInside];
     cy += 70.0;
@@ -2711,9 +2810,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (!block) return;
     if (_activePage == 4) {
         BOOL desired = s.on;
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        if (s.tag == 8210 && !desired && [defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] &&
+            ![defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"] && ![WolFoxProStore shared].volumeGestureEnabled) {
+            s.on = YES;
+            [self showIdentifierMessage:@"أبقِ طريقة إظهار واحدة متاحة: الأيقونة أو الصوت أو النقرات."];
+            return;
+        }
         [s setOn:!desired animated:YES];
-        [self confirmChangeAndClose:s.accessibilityLabel apply:^BOOL {
-            s.on = desired; block(s); return YES;
+        [self confirmInternalChange:s.accessibilityLabel apply:^BOOL {
+            s.on = desired; block(s); return s.on == desired;
         }];
     } else block(s);
 }
@@ -2899,7 +3005,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)selectSavedIdentifier:(UIButton *)btn {
     NSString *uuid = objc_getAssociatedObject(btn, "_id_uuid");
     if (!uuid.length) return;
-    [self confirmChangeAndClose:@"تفعيل المعرّف المحفوظ" apply:^BOOL {
+    [self confirmInternalChange:@"تفعيل المعرّف المحفوظ" apply:^BOOL {
         return [[WolFoxProStore shared] activateIdentifierString:uuid forBundleID:NSBundle.mainBundle.bundleIdentifier];
     }];
 }
@@ -2908,7 +3014,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *uuid = objc_getAssociatedObject(btn, "_id_uuid");
     if (!uuid.length) return;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حذف المعرّف؟"
-                                                                   message:@"سيُحذف المعرّف ويُغلق التطبيق بعد التأكيد. أعد فتحه من الأيقونة."
+                                                                   message:@"سيُحذف المعرّف من القائمة بعد التأكيد."
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حذف" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *a) {
@@ -2941,7 +3047,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         field.clearButtonMode = UITextFieldViewModeWhileEditing;
         field.textAlignment = NSTextAlignmentCenter;
     }];
-    alert.message = @"عند حفظ التعديل يُغلق التطبيق. أعد فتحه من الأيقونة.";
+    alert.message = @"سيُطبّق تعديل المعرّف داخل الأداة بعد التأكيد.";
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"حفظ التعديل" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSString *name = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -2990,7 +3096,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *validUUID = WFTransferUUID(tf.text);
     NSUUID *normalizedUUID = validUUID ? [[NSUUID alloc] initWithUUIDString:validUUID] : nil;
     if (!normalizedUUID) { [self showIdentifierMessage:@"أدخل معرّف UUID صالحًا أولاً."]; return; }
-    [self confirmChangeAndClose:@"حفظ المعرّف وتفعيله" apply:^BOOL {
+    [self confirmInternalChange:@"حفظ المعرّف وتفعيله" apply:^BOOL {
         BOOL saved = [[WolFoxProStore shared] activateIdentifierString:normalizedUUID.UUIDString forBundleID:NSBundle.mainBundle.bundleIdentifier];
         if (saved) [NSUserDefaults.standardUserDefaults setObject:normalizedUUID.UUIDString forKey:@"WF_LAST_MANUAL_IDENTIFIER"];
         return saved;
@@ -3040,15 +3146,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self presentViewController:picker animated:YES completion:nil];
 }
 
-- (void)documentPicker:(__unused UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url) return;
+    BOOL bluetooth = [objc_getAssociatedObject(controller, "WF_TRANSFER_KIND") isEqual:@"bluetooth"];
     BOOL scoped = [url startAccessingSecurityScopedResource];
     NSData *data = nil;
     NSFileHandle *handle = nil;
     @try {
         handle = [NSFileHandle fileHandleForReadingFromURL:url error:NULL];
-        data = [handle readDataOfLength:WFIdentifierTransferMaxBytes + 1];
+        data = [handle readDataOfLength:(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1];
     } @catch (__unused NSException *exception) {
         data = nil;
     } @finally {
@@ -3056,7 +3163,9 @@ static BOOL WFMasterProcessIsEligible(void) {
         if (scoped) [url stopAccessingSecurityScopedResource];
     }
     // Present results only after the document picker has dismissed.
-    [self dismissViewControllerAnimated:YES completion:^{ [self acceptIdentifierData:data]; }];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (bluetooth) [self acceptBluetoothData:data]; else [self acceptIdentifierData:data];
+    }];
 }
 
 - (void)importMosquesIdentifier {
@@ -3126,7 +3235,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)resetIDProPage {
-    [self confirmChangeAndClose:@"إعادة المعرّف للأصلي" apply:^BOOL {
+    [self confirmInternalChange:@"إعادة المعرّف للأصلي" apply:^BOOL {
         [[WolFoxProStore shared] deactivateIdentifier];
         [NSUserDefaults.standardUserDefaults removeObjectForKey:@"WF_LAST_MANUAL_IDENTIFIER"];
         return YES;
@@ -3176,7 +3285,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSInteger count = values[control.selectedSegmentIndex].integerValue;
     NSInteger previous = [NSUserDefaults.standardUserDefaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
     control.selectedSegmentIndex = previous == 2 ? 0 : previous == 5 ? 2 : 1;
-    [self confirmChangeAndClose:@"حفظ اختصار الصوت" apply:^BOOL {
+    [self confirmInternalChange:@"حفظ اختصار الصوت" apply:^BOOL {
         [NSUserDefaults.standardUserDefaults setInteger:count forKey:@"WF_VOLUME_PRESS_COUNT"];
         return YES;
     }];
@@ -3194,7 +3303,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)resetFloatingIconPosition {
-    [self confirmChangeAndClose:@"إعادة موضع الأيقونة" apply:^BOOL {
+    [self confirmInternalChange:@"إعادة موضع الأيقونة" apply:^BOOL {
         [[WolFoxController shared] resetFloatingStatusPosition]; return YES;
     }];
 }
@@ -3332,17 +3441,20 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)finishConfirmedChange {
     [[WolFoxProStore shared] saveSettings];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    // User explicitly confirmed closing the current app. iOS relaunch is manual.
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ exit(0); });
+    [self refreshSpoofHeaderStatus];
+    [self switchPage:_activePage];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showIdentifierMessage:@"تم حفظ التغيير وتطبيقه داخل الأداة."];
+    });
 }
 
-- (void)confirmChangeAndClose:(NSString *)title apply:(BOOL (^)(void))apply {
+- (void)confirmInternalChange:(NSString *)title apply:(BOOL (^)(void))apply {
     [self.view endEditing:YES];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-        message:@"عند التأكيد يُحفظ التغيير ويُغلق التطبيق. أعد فتحه من الأيقونة لتكمل الاستخدام."
+        message:@"سيُطبّق التغيير داخل الأداة بعد التأكيد."
         preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"تأكيد وإغلاق التطبيق" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
+    [alert addAction:[UIAlertAction actionWithTitle:@"تأكيد" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
         if (!apply || apply()) [self finishConfirmedChange];
         else [self showIdentifierMessage:@"لم يُحفظ التغيير. تأكد من إعداد المكوّن أولاً ثم حاول مجددًا."];
     }]];
@@ -3350,14 +3462,14 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)requestApplicationExit {
-    [self confirmChangeAndClose:@"خروج من التطبيق" apply:nil];
+    [[WolFoxController shared] dismissUI];
 }
 
 - (void)componentSwitchChanged:(UISwitch *)sender {
     BOOL desired = sender.on;
     [sender setOn:!desired animated:YES];
     NSInteger component = sender.tag;
-    [self confirmChangeAndClose:sender.accessibilityLabel apply:^BOOL {
+    [self confirmInternalChange:sender.accessibilityLabel apply:^BOOL {
         WolFoxProStore *store = [WolFoxProStore shared];
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
         if (component == 8100) {
@@ -3385,6 +3497,10 @@ static BOOL WFMasterProcessIsEligible(void) {
             [store commitScheduleDraft];
         } else if (component == 8105) {
             store.volumeGestureEnabled = desired;
+            if (!desired && ![defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"]) {
+                [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+                [[WolFoxController shared] prepareMenuRecoveryGesture];
+            }
         }
         return YES;
     }];
@@ -3399,7 +3515,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [back addTarget:self action:@selector(openGPSPage) forControlEvents:UIControlEventTouchUpInside];
     y += 62.0;
     WolFoxProStore *store = [WolFoxProStore shared];
-#if WOLFOX_LITE
+#if WOLFOX_INTERFACE_VARIANT == 4
+    NSArray *componentNames = @[@"تشغيل الموقع", @"تشغيل المعرّف", @"تشغيل البلوتوث", @"تشغيل الكاميرا", @"تشغيل الجدولة"];
+    NSArray *componentTags = @[@8100, @8101, @8102, @8103, @8104];
+    NSArray *componentStates = @[@(store.spoofActive), @(store.validatedActiveIdentifier != nil), @(store.bluetoothActive), @([WFVirtualCameraManager shared].enabled), @(store.committedScheduleEnabled)];
+#elif WOLFOX_LITE
     NSArray *componentNames = @[@"تشغيل الموقع", @"تشغيل المعرّف", @"تشغيل الجدولة", @"استعادة المنيو بأزرار الصوت"];
     NSArray *componentTags = @[@8100, @8101, @8104, @8105];
     NSArray *componentStates = @[@(store.spoofActive), @(store.validatedActiveIdentifier != nil), @(store.committedScheduleEnabled), @(store.volumeGestureEnabled)];
@@ -3448,8 +3568,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
         t:@"إظهار الأيقونة العائمة" i:@"circle.grid.cross.fill"
         isOn:floatingVisible y:48 action:^(UISwitch *toggle) {
+        if (!toggle.on && !WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) {
+            [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+            [[WolFoxController shared] prepareMenuRecoveryGesture];
+        }
         [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
-        [self showToast:toggle.on ? @"تم إظهار الأيقونة العائمة" : @"تم إخفاء الأيقونة؛ اختصار الصوت يعيد المنيو"];
+        [self showToast:toggle.on ? @"تم إظهار الأيقونة العائمة" : @"تم إخفاء الأيقونة؛ استخدم طريقة الاستعادة المحددة"];
     }]];
     [interfaceCard addSubview:[self royalSwitchInside:interfaceCard
         t:@"إظهار المنيو عند فتح التطبيق" i:@"rectangle.on.rectangle"
@@ -3461,7 +3585,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }]];
 
     UILabel *recovery = [[UILabel alloc] initWithFrame:CGRectMake(15, 198, width - 30, 54)];
-    recovery.text = @"بعد الإخفاء: ٣ نقرات وسط الشاشة، أو ضغطات الصوت حسب الاختيار أدناه خلال ثانية ونصف.";
+    recovery.text = WOLFOX_INTERFACE_VARIANT == 4 ? @"الأيقونة تفتح الأداة وتخفيها. لإعادتها بعد الإخفاء: انقر ٣ مرات وسط التطبيق." : @"يمكنك استخدام الأيقونة أو نقرات الشاشة أو أزرار الصوت. اضبط طرق الاستعادة هنا.";
     recovery.textColor = [WolFoxProTheme textSecondary];
     recovery.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
     recovery.textAlignment = NSTextAlignmentRight;
@@ -3476,6 +3600,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (@available(iOS 13.0, *)) pressCount.selectedSegmentTintColor = [WolFoxProTheme accent];
     [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
     [interfaceCard addSubview:pressCount];
+#if WOLFOX_INTERFACE_VARIANT == 4
+    pressCount.hidden = YES;
+#endif
 
     UIButton *hideMenu = [self royalBtnInside:interfaceCard t:@"إخفاء المنيو الآن"
         i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:308];
@@ -3486,6 +3613,20 @@ static BOOL WFMasterProcessIsEligible(void) {
     [resetIcon addTarget:self action:@selector(resetFloatingIconPosition)
         forControlEvents:UIControlEventTouchUpInside];
 
+#if WOLFOX_INTERFACE_VARIANT == 5
+    CGRect expanded = interfaceCard.frame; expanded.size.height += 75; interfaceCard.frame = expanded;
+    BOOL tapEnabled = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    UIView *tapRow = [self royalSwitchInside:interfaceCard t:@"الاستعادة بثلاث نقرات" i:@"hand.tap" isOn:tapEnabled y:426 action:^(UISwitch *toggle) {
+        if (!toggle.on && ![defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"] && ![WolFoxProStore shared].volumeGestureEnabled) {
+            toggle.on = YES;
+            return;
+        }
+        [defaults setBool:toggle.on forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+        [[WolFoxController shared] prepareMenuRecoveryGesture];
+    }];
+    for (UIView *view in tapRow.subviews) if ([view isKindOfClass:UISwitch.class]) view.tag = 8210;
+    [interfaceCard addSubview:tapRow];
+#endif
     y = CGRectGetMaxY(interfaceCard.frame) + 12.0;
 
     UIView *licenseCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, 76)];
@@ -4301,6 +4442,15 @@ static BOOL WFMasterProcessIsEligible(void) {
 #endif
         // Migrate the old last-hidden state once; closing the menu must not rewrite launch preferences.
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        NSString *variantKey = [NSString stringWithFormat:@"WF_INTERFACE_%d_INITIALIZED", WOLFOX_INTERFACE_VARIANT];
+        if (WOLFOX_INTERFACE_VARIANT && ![defaults boolForKey:variantKey]) {
+            [defaults setBool:WFInterfaceMenuDefault(WOLFOX_INTERFACE_VARIANT) forKey:WFMenuVisibleOnLaunchKey];
+            [defaults setBool:YES forKey:@"WF_FLOATING_STATUS_VISIBLE"];
+            [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+            [WolFoxProStore shared].volumeGestureEnabled = WOLFOX_INTERFACE_VARIANT != 4;
+            [[WolFoxProStore shared] saveSettings];
+            [defaults setBool:YES forKey:variantKey];
+        }
         if (![defaults objectForKey:WFMenuVisibleOnLaunchKey]) {
             [defaults setBool:![defaults boolForKey:WFUIHiddenOnLaunchKey] forKey:WFMenuVisibleOnLaunchKey];
         }
@@ -4420,6 +4570,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)prepareMenuRecoveryGesture {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL configured = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    if (!WFInterfaceTripleTapAllowed(WOLFOX_INTERFACE_VARIANT, configured)) {
+        [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
+        self.menuRecoveryTapGesture = nil; self.menuRecoveryHostWindow = nil; return;
+    }
     UIWindow *host = [self hostKeyWindow] ?: self.previousKeyWindow;
     if (!host || host == self.overlayWindow) return;
     if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) return;
@@ -4528,7 +4684,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)prepareHiddenVolumeListening {
-    if (![WolFoxProStore shared].volumeGestureEnabled || !self.volumeSession) return;
+    if (!WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled) || !self.volumeSession) return;
     NSError *error = nil;
     BOOL active = [self.volumeSession setActive:YES error:&error];
 #ifndef DEBUG
@@ -4543,8 +4699,11 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)enableMenuRecoveryShortcut {
-    [WolFoxProStore shared].volumeGestureEnabled = YES;
-    [[WolFoxProStore shared] saveSettings];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL icon = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] || [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
+    BOOL taps = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    if (WFInterfaceNeedsFallback(WOLFOX_INTERFACE_VARIANT, icon, [WolFoxProStore shared].volumeGestureEnabled, taps))
+        [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
     [self prepareHiddenVolumeListening];
     [self prepareMenuRecoveryGesture];
 }
@@ -4558,7 +4717,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)systemVolumeDidChange:(NSNotification *)notification {
-    if (![WolFoxProStore shared].volumeGestureEnabled) return;
+    if (!WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
     NSString *reason = [notification.userInfo[@"AVSystemController_AudioVolumeChangeReasonNotificationParameter"] description];
     if (reason.length && [reason rangeOfString:@"explicit" options:NSCaseInsensitiveSearch].location == NSNotFound) return;
 
@@ -4582,12 +4741,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)handleVolumeGesturePulse {
-    if (![WolFoxProStore shared].volumeGestureEnabled) return;
+    if (!WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
     NSTimeInterval candidateTime = NSDate.timeIntervalSinceReferenceDate;
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.18 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf || ![WolFoxProStore shared].volumeGestureEnabled) return;
+        if (!strongSelf || !WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
         if (strongSelf.lastSystemVolumeNotificationTime >= candidateTime - 0.03) return;
         NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
         if (now - strongSelf.lastFallbackVolumePulseTime < 0.18) return;
@@ -4602,7 +4761,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf recordVolumeButtonPress]; });
         return;
     }
-    if (![WolFoxProStore shared].volumeGestureEnabled) return;
+    if (!WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
     NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
     if (now - self.lastVolumePulseTime > 1.50) self.volumePulseCount = 0;
     self.lastVolumePulseTime = now;
@@ -4765,6 +4924,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)handleThreeSequentialTaps:(UITapGestureRecognizer *)gesture {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL taps = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    if (!WFInterfaceTripleTapAllowed(WOLFOX_INTERFACE_VARIANT, taps)) return;
     if (gesture.state != UIGestureRecognizerStateEnded) return;
     CGPoint point = [gesture locationInView:self.overlayWindow];
     CGRect bounds = self.overlayWindow.bounds;
@@ -4935,7 +5097,11 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)handleFloatingStatusTap:(UIButton *)sender {
+#if WOLFOX_INTERFACE_VARIANT == 4
+    [self toggleUI];
+#else
     [self toggleSpoofQuickPanel:sender];
+#endif
 }
 
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture {
@@ -4943,6 +5109,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
     [feedback impactOccurred];
     [self setFloatingStatusIconVisible:NO];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL taps = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, MAX(52, self.overlayWindow.safeAreaInsets.top + 12), self.overlayWindow.bounds.size.width - 40, 64)];
+    hint.text = WFInterfaceTripleTapAllowed(WOLFOX_INTERFACE_VARIANT, taps)
+        ? @"لإعادة الأداة: انقر ٣ مرات وسط التطبيق" : @"لإعادة الأداة: استخدم ضغطات أزرار الصوت المحددة";
+    hint.numberOfLines = 2; hint.textAlignment = NSTextAlignmentCenter;
+    hint.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    hint.textColor = [WolFoxProTheme textPrimary]; hint.backgroundColor = [WolFoxProTheme surfacePrimary];
+    hint.layer.cornerRadius = 14; hint.clipsToBounds = YES; hint.userInteractionEnabled = NO;
+    self.overlayWindow.hidden = NO;
+    [self.overlayWindow addSubview:hint];
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, hint.text);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [hint removeFromSuperview]; });
 }
 
 - (void)toggleSpoofQuickPanel:(UIButton *)sender {
