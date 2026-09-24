@@ -46,6 +46,18 @@ case "${WOLFOX_PROFILE:-}" in
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
 
+INTERFACE_VARIANT="${WOLFOX_INTERFACE_VARIANT:-0}"
+case "$INTERFACE_VARIANT" in
+    0) ;;
+    4|5)
+        [ "$WOLFOX_EDITION" = "Full" ] || { echo "Full required for Bluetooth editions"; exit 1; }
+        [ "$VERSION" = "$INTERFACE_VARIANT.0.0" ] || { echo "Version and interface do not match"; exit 1; }
+        PRODUCT_NAME="WolFox${INTERFACE_VARIANT}_Bluetooth"
+        PACKAGE_ID="com.wolfox.gpspro.v${INTERFACE_VARIANT}.bluetooth.${PROFILE_BUNDLE:-mosques}"
+        ;;
+    *) echo "Unsupported interface variant"; exit 1 ;;
+esac
+
 # Clang deployment target is 15.0; supported packaged runtime starts at 15.8.
 MIN_IOS="${MIN_IOS:-15.0}"
 MAX_TARGET_IOS="27.0"
@@ -131,6 +143,7 @@ FILES=("WFRedactedLogger.m" "WFNetworkPairingStore.m" "WFVirtualCameraManager.mm
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)
+COMMON_FLAGS+=(-DWOLFOX_INTERFACE_VARIANT="$INTERFACE_VARIANT")
 BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,dynamic_lookup -framework UIKit -framework Foundation -framework CoreLocation -framework CoreBluetooth -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework QuartzCore -framework AdSupport -framework WebKit -framework UserNotifications -lsqlite3)
 LINK_FLAGS=("${BASE_LINK_FLAGS[@]}")
 [ "$WOLFOX_EDITION" = "Lite" ] && COMMON_FLAGS+=(-DWOLFOX_LITE=1)
@@ -206,6 +219,7 @@ EOF
         else
             conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
         fi
+        conflicts="$conflicts, com.wolfox.gpspro.v4.bluetooth.${PROFILE_BUNDLE}, com.wolfox.gpspro.v5.bluetooth.${PROFILE_BUNDLE}"
         local candidate
         local -a conflict_items
         IFS=',' read -r -a conflict_items <<< "$conflicts"
@@ -255,3 +269,4 @@ EOF
 }
 make_deb rootful
 make_deb rootless
+

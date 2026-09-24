@@ -1,0 +1,74 @@
+name: Build WolFox Full Bluetooth 4 and 5
+on:
+  push:
+    branches: [codex/full-bluetooth-gpsplus]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wolfox-full-bluetooth-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-tests:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native transfer and interface tests
+        run: |
+          clang -fobjc-arc -Wall -Wextra -Werror -I. tests/test_identifier_transfer.m -framework Foundation -o /tmp/test-identifier
+          /tmp/test-identifier
+          clang -fobjc-arc -Wall -Wextra -Werror -I. tests/test_bluetooth_profile.m -framework Foundation -framework CoreBluetooth -o /tmp/test-bluetooth
+          /tmp/test-bluetooth
+          python3 tests/test_full_bluetooth_static.py
+  build:
+    needs: native-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [4, 5]
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: ${{ matrix.variant }}.0.0
+      WOLFOX_INTERFACE_VARIANT: ${{ matrix.variant }}
+      WOLFOX_EDITION: Full
+      WOLFOX_PROFILE: full-mosques
+      WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
+      WOLFOX_PROJECT_BUNDLE_ID: sa.gov.moia.mosques-2
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run Linux checks
+        run: bash ./wolfox_setup_build.sh
+      - name: Verify and collect packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          product="WolFox${WOLFOX_INTERFACE_VARIANT}_Bluetooth"
+          mkdir -p release
+          for mode in Rootful Rootless; do
+            deb="${product}_v${WOLFOX_VERSION}_iOS15.8-27.0_${mode}.deb"
+            test -s "$deb"
+            test "$(dpkg-deb -f "$deb" Version)" = "$WOLFOX_VERSION"
+            rm -rf verify
+            mkdir verify
+            dpkg-deb -x "$deb" verify
+            plist="$(find verify -name "${product}.plist" -print -quit)"
+            test -n "$plist"
+            grep -F "$WOLFOX_PROJECT_BUNDLE_ID" "$plist"
+            cp "$deb" release/
+          done
+          file "${product}.dylib" | grep -F 'Mach-O 64-bit'
+          cp "${product}.dylib" release/
+          cp FULL_BLUETOOTH_AR.md release/README_AR.md
+          printf 'VERSION=%s\nINTERFACE=%s\nTARGET=%s\nCOMMIT=%s\nRUN=%s\n' "$WOLFOX_VERSION" "$WOLFOX_INTERFACE_VARIANT" "$WOLFOX_PROJECT_BUNDLE_ID" "$GITHUB_SHA" "$GITHUB_RUN_ID" > release/BUILD_INFO.txt
+          git archive --format=zip --output=release/WolFox-Full-Source.zip HEAD
+          (cd release && sha256sum * > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WolFox-Full-Bluetooth-${{ matrix.variant }}.0.0-${{ github.run_number }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 14
+          path: release/
