@@ -48,14 +48,6 @@ jobs:
           test "$(find . -maxdepth 1 -type f \( -name '*.m' -o -name '*.mm' -o -name '*.h' \) | wc -l)" -ge 15
           ! grep -R -n -E 'CI-UNCONFIGURED|invalid\.example' --include='*.m' --include='*.mm' --include='*.h' --include='*.sh' .
 
-      - name: Check project key configuration
-        shell: bash
-        run: |
-          if [ -z "${WOLFOX_PROJECT_KEY:-}" ]; then
-            echo 'Missing WOLFOX_PROJECT_KEY. Set it in repository Settings > Secrets and variables > Actions > Repository secrets.' >&2
-            exit 1
-          fi
-
       - name: Install test dependency
         run: sudo apt-get update && sudo apt-get install -y ripgrep
 
@@ -117,8 +109,7 @@ jobs:
           RUN_ID=${GITHUB_RUN_ID}
           RUN_NUMBER=${GITHUB_RUN_NUMBER}
           API_BASE_URL=https://gps.p3nd.fun/api/v1
-          PROJECT_KEY_SOURCE=Repository Settings > Secrets and variables > Actions > Repository secrets > WOLFOX_PROJECT_KEY
-          PROJECT_KEY_BUILD_INPUT=.github/workflows/build.yml -> build_v1_deb.sh
+          PROJECT_KEY_SOURCE=GitHub Actions secret WOLFOX_PROJECT_KEY
           EOF
           git archive --format=tar.gz --prefix=WolFox-2.0.0-source/ --output release/WolFox-2.0.0-source-${GITHUB_SHA::12}.tar.gz "$GITHUB_SHA"
           (cd release && sha256sum Full/* Lite/* BUILD_INFO.txt WolFox-2.0.0-source-*.tar.gz > SHA256SUMS.txt)
