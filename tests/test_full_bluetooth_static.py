@@ -14,4 +14,20 @@ assert 'central != _btManager' in ui
 assert '(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1' in ui
 assert 'WFInterfaceNeedsFallback' in ui
 assert 'UIAccessibilityAnnouncementNotification, hint.text' in ui
-print('Bluetooth and interface integration guards passed')
+
+# Interface/settings requirements for the two independent Full variants.
+assert '#if WOLFOX_INTERFACE_VARIANT == 4' in ui
+assert '#if WOLFOX_INTERFACE_VARIANT == 5' in ui
+assert 'componentNames = @[@"تشغيل الموقع", @"تشغيل المعرّف", @"تشغيل البلوتوث", @"تشغيل الكاميرا", @"تشغيل الجدولة"]' in ui
+assert 't:@"الأيقونة العائمة والمنيو"' not in ui  # title is a label, not a duplicated action
+assert 'interfaceTitle.text = @"الأيقونة العائمة والمنيو";' in ui
+assert 'pressCount.hidden = YES;' in ui
+assert 't:@"الاستعادة بثلاث نقرات"' in ui
+assert 'WF_MENU_TRIPLE_TAP_ENABLED' in ui
+assert 'WF_FLOATING_STATUS_VISIBLE' in ui
+assert 'WF_VOLUME_PRESS_COUNT' in ui
+assert 'requestApplicationExit {\n    [[WolFoxController shared] dismissUI];\n}' in ui
+assert 'سيُطبّق التغيير داخل الأداة بعد التأكيد.' in ui
+assert 'تم حفظ التغيير وتطبيقه داخل الأداة.' in ui
+
+print('Bluetooth and interface/settings integration guards passed')
