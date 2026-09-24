@@ -632,8 +632,10 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0)) {
                                                                               NSError *error) {
         if (error || ![object isKindOfClass:UIImage.class]) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                @synchronized (weakSelf) { weakSelf->_pickerPresented = NO; }
-                [weakSelf endCameraActivity:@"image-picker"]; [weakSelf postStateChange];
+                WFVirtualCameraManager *manager = weakSelf;
+                if (!manager) return;
+                @synchronized (manager) { manager->_pickerPresented = NO; }
+                [manager endCameraActivity:@"image-picker"]; [manager postStateChange];
                 UIViewController *host = WFVirtualCameraBestPresenter();
                 if (host && !host.presentedViewController) {
                     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"WolFox" message:@"تعذر تحميل الصورة. اختر صورة أخرى." preferredStyle:UIAlertControllerStyleAlert];
