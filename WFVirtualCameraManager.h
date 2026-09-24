@@ -13,6 +13,7 @@ FOUNDATION_EXPORT NSNotificationName const WFVirtualCameraSessionDidStartNotific
 
 /// تُرسل بعد اكتمال اختيار صورة جديدة، كي تُخفى أدوات WolFox قبل الالتقاط.
 FOUNDATION_EXPORT NSNotificationName const WFVirtualCameraImageDidSelectNotification;
+FOUNDATION_EXPORT NSNotificationName const WFVirtualCameraIconStateDidChangeNotification;
 
 @interface WFVirtualCameraManager : NSObject
 
@@ -23,6 +24,13 @@ FOUNDATION_EXPORT NSNotificationName const WFVirtualCameraImageDidSelectNotifica
 @property (nonatomic, strong, readonly, nullable) UIImage *currentImage;
 
 + (instancetype)shared;
+@property (nonatomic, readonly) BOOL shouldShowPickerIcon;
+- (void)trackPreviewLayer:(AVCaptureVideoPreviewLayer *)layer;
+- (void)refreshCameraVisibility;
+- (void)setToolVisible:(BOOL)visible;
+- (void)beginCameraActivity:(NSString *)identifier;
+- (void)endCameraActivity:(NSString *)identifier;
+- (BOOL)containsCurrentPhotoData:(NSData *)data;
 
 /// يشغّل البث إذا كانت هناك صورة في الذاكرة أو صورة محفوظة صالحة.
 - (BOOL)enableUsingAvailableImage;

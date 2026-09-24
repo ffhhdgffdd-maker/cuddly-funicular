@@ -62,6 +62,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     sqlite3 *_db;
     NSMutableArray *_mutableLocations;
     NSMutableArray *_mutableIdentifiers;
+    NSMutableArray<WolFoxBleProfile *> *_bleProfiles;
 }
 
 + (instancetype)shared {
@@ -298,7 +299,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     self.bluetoothActive = [u boolForKey:@"WF_PRO_BT_ACT"];
     self.activeBleProfileID = [u stringForKey:@"WF_PRO_BT_ACTIVE_ID"];
     NSArray *rawProfiles = [u arrayForKey:@"WF_PRO_BT_PROFILES"] ?: @[];
-    self.savedBleProfiles = [NSMutableArray new];
+    _bleProfiles = [NSMutableArray new];
     for (NSDictionary *d in rawProfiles) {
         if (![d isKindOfClass:[NSDictionary class]]) continue;
         NSMutableDictionary *record = [d[@"advertisement"] isKindOfClass:NSDictionary.class]
@@ -311,8 +312,9 @@ static NSString *WFDefaultIdentifierBundleID(void) {
         if (!p) continue;
         if ([d[@"profileID"] isKindOfClass:NSString.class] && [d[@"profileID"] length]) p.profileID = d[@"profileID"];
         p.capturedAt = [d[@"capturedAt"] isKindOfClass:NSDate.class] ? d[@"capturedAt"] : nil;
-        [self.savedBleProfiles addObject:p];
+        [_bleProfiles addObject:p];
     }
+    if (!self.activeBleProfile) { self.activeBleProfileID = nil; self.bluetoothActive = NO; }
     } // @synchronized
 }
 
@@ -363,7 +365,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
         if (self.activeBleProfileID) [u setObject:self.activeBleProfileID forKey:@"WF_PRO_BT_ACTIVE_ID"];
         else [u removeObjectForKey:@"WF_PRO_BT_ACTIVE_ID"];
         NSMutableArray *rawProfiles = [NSMutableArray new];
-        for (WolFoxBleProfile *p in self.savedBleProfiles) {
+        for (WolFoxBleProfile *p in _bleProfiles) {
             [rawProfiles addObject:@{
                 @"profileID": p.profileID ?: @"",
                 @"name":      p.name ?: @"",
@@ -477,47 +479,66 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 
 - (NSArray *)identifiers { return [_mutableIdentifiers copy]; }
 
-- (void)saveBleProfile:(WolFoxBleProfile *)profile {
-    if (![profile bluetoothRecord]) return;
-    if (!profile.profileID) profile.profileID = [[NSUUID UUID] UUIDString];
-    @synchronized(self.savedBleProfiles) {
-        for (WolFoxBleProfile *p in [self.savedBleProfiles copy]) {
-            if ([p.profileID isEqualToString:profile.profileID]) {
-                [self.savedBleProfiles removeObject:p]; break;
+- (NSArray<WolFoxBleProfile *> *)savedBleProfiles {
+    @synchronized(self) {
+        NSMutableArray *snapshot = [NSMutableArray new];
+        for (WolFoxBleProfile *profile in _bleProfiles) [snapshot addObject:[profile copy]];
+        return [snapshot copy];
+    }
+}
+
+- (BOOL)saveBleProfile:(WolFoxBleProfile *)profile {
+    NSDictionary *record = profile.bluetoothRecord;
+    if (!record) return NO;
+    WolFoxBleProfile *stored = [WolFoxBleProfile profileFromBluetoothRecord:record];
+    if (!profile.profileID.length) profile.profileID = NSUUID.UUID.UUIDString;
+    stored.profileID = profile.profileID; stored.capturedAt = profile.capturedAt ?: NSDate.date;
+    @synchronized(self) {
+        NSUInteger index = [_bleProfiles indexOfObjectPassingTest:^BOOL(WolFoxBleProfile *p, NSUInteger idx, BOOL *stop) {
+            return [p.profileID isEqual:stored.profileID];
+        }];
+        if (index != NSNotFound) [_bleProfiles removeObjectAtIndex:index];
+        [_bleProfiles insertObject:stored atIndex:0];
+        [self saveSettings];
+    }
+    return YES;
+}
+
+- (BOOL)selectBleProfileID:(NSString *)profileID {
+    @synchronized(self) {
+        for (WolFoxBleProfile *profile in _bleProfiles) {
+            if ([profile.profileID isEqual:profileID] && profile.bluetoothRecord) {
+                self.activeBleProfileID = profileID;
+                [self saveSettings];
+                return YES;
             }
         }
-        [self.savedBleProfiles insertObject:profile atIndex:0];
+        return NO;
     }
-    [self saveSettings];
 }
 
 - (void)deleteBleProfileID:(NSString *)profileID {
-    @synchronized(self.savedBleProfiles) {
-        for (WolFoxBleProfile *p in [self.savedBleProfiles copy]) {
-            if ([p.profileID isEqualToString:profileID]) {
-                [self.savedBleProfiles removeObject:p]; break;
-            }
+    BOOL deactivated = NO;
+    @synchronized(self) {
+        for (WolFoxBleProfile *p in [_bleProfiles copy]) {
+            if ([p.profileID isEqualToString:profileID]) { [_bleProfiles removeObject:p]; break; }
         }
+        if (profileID.length && [self.activeBleProfileID isEqualToString:profileID]) {
+            self.activeBleProfileID = nil; self.bluetoothActive = NO; deactivated = YES;
+        }
+        [self saveSettings];
     }
-    // FIXED: إذا حُذف الملف النشط، أوقف تزييف البلوتوث تلقائياً
-    if (profileID.length && self.activeBleProfileID.length &&
-        [self.activeBleProfileID isEqualToString:profileID]) {
-        self.activeBleProfileID = nil;
-        self.bluetoothActive = NO;
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"WF_BT_PROFILE_DEACTIVATED" object:nil];
-    }
-    [self saveSettings];
+    if (deactivated) [[NSNotificationCenter defaultCenter] postNotificationName:@"WF_BT_PROFILE_DEACTIVATED" object:nil];
 }
 
 - (WolFoxBleProfile *)activeBleProfile {
-    NSString *activeID = self.activeBleProfileID;
-    if (!activeID.length) return nil;
-    @synchronized(self.savedBleProfiles) {
-        for (WolFoxBleProfile *profile in self.savedBleProfiles) {
+    @synchronized(self) {
+        NSString *activeID = self.activeBleProfileID;
+        if (!activeID.length) return nil;
+        for (WolFoxBleProfile *profile in _bleProfiles)
             if ([profile.profileID isEqualToString:activeID]) return [profile copy];
-        }
+        return nil;
     }
-    return nil;
 }
 
 - (NSString *)mediaStoragePath {

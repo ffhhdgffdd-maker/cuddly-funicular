@@ -15,9 +15,9 @@ else
     echo "❌ اسم WolFox الأساسي غير موجود"; exit 1
 fi
 reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الكاميرا محذوف من الواجهة"
-check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX LITE";' "عداد الجولة يعرض Lite الصحيح"
-check "$MASTER" 'NSString *onboardingEdition = @"WOLFOX FULL";' "عداد الجولة يعرض Full الصحيح"
-check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox %@ v%@"' "عرض الإصدار والنسخة ديناميكي"
+check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Lite الصحيح"
+check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Full الصحيح"
+check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox v%@"' "عرض الإصدار والنسخة ديناميكي"
 check "$MASTER" 'showLiveStatusPopup' "الحالة المباشرة تظهر من زر الرأس"
 check "$MASTER" 'saveLocationButton' "زر حفظ الموقع موجود قبل أدوات التشغيل"
 check "$MASTER" 'favoritesButton' "زر المفضلة موجود قبل أدوات التشغيل"

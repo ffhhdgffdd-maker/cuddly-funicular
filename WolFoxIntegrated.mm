@@ -12,10 +12,12 @@
 #import "WolFoxProHookManager.h"
 #import "WolFoxProStore.h"
 #import "WFBluetoothProfileCodec.h"
+#import "WFBluetoothDelegateProxy.h"
 #import "WFLicenseClient.h"
 #import "WFCompatibility.h"
 #import "WFHookDefaults.h"
 #import "WFVirtualCameraManager.h"
+#import "WFMediaLifecycleHooks.h"
 
 @interface WolFoxController : NSObject
 + (instancetype)shared;
@@ -213,47 +215,8 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
     return ((NSUUID *(*)(id, SEL))orig_CBPeripheral_identifier)(self, _cmd);
 }
 
-@interface WolFoxCBProxy : NSProxy <CBCentralManagerDelegate> {
-    __weak id _delegate;
-    __weak CBCentralManager *_manager;
-}
-- (instancetype)initWithDelegate:(id)delegate;
-- (void)setManager:(CBCentralManager *)manager;
-- (void)resetScan;
-@end
-
-@implementation WolFoxCBProxy
-- (instancetype)initWithDelegate:(id)delegate { _delegate = delegate; return self; }
-- (void)setManager:(CBCentralManager *)manager { _manager = manager; }
-- (void)resetScan { /* Every discovered peripheral retains its own identity. */ }
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
-    NSMethodSignature *signature = [(NSObject *)_delegate methodSignatureForSelector:selector];
-    return signature ?: [NSObject instanceMethodSignatureForSelector:@selector(init)];
-}
-
-- (void)forwardInvocation:(NSInvocation *)invocation {
-    id delegate = _delegate;
-    if ([delegate respondsToSelector:invocation.selector]) [invocation invokeWithTarget:delegate];
-    else if (invocation.methodSignature.methodReturnLength) {
-        NSMutableData *zero = [NSMutableData dataWithLength:invocation.methodSignature.methodReturnLength];
-        [invocation setReturnValue:zero.mutableBytes];
-    }
-}
-
-- (BOOL)respondsToSelector:(SEL)selector {
-    return selector == @selector(centralManager:didDiscoverPeripheral:advertisementData:RSSI:)
-        || [_delegate respondsToSelector:selector];
-}
-
-- (void)centralManager:(CBCentralManager *)central
- didDiscoverPeripheral:(CBPeripheral *)peripheral
-     advertisementData:(NSDictionary *)advertisementData
-                  RSSI:(NSNumber *)RSSI
-{
-    id delegate = _delegate;
-    if (![delegate respondsToSelector:_cmd]) return;
-
+static WolFoxCBProxy *WFCreateBluetoothProxy(id delegate) {
+    return [[WolFoxCBProxy alloc] initWithDelegate:delegate discovery:^(id delegate, CBCentralManager *central, CBPeripheral *peripheral, NSDictionary *advertisementData, NSNumber *RSSI) {
     WolFoxBleProfile *profile = WFActiveBleProfile();
     if (!profile) {
         [delegate centralManager:central didDiscoverPeripheral:peripheral advertisementData:advertisementData RSSI:RSSI];
@@ -279,8 +242,9 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
        didDiscoverPeripheral:peripheral
            advertisementData:spoofedAdvertisement
                         RSSI:spoofedRSSI ?: @(-55)];
+    }];
 }
-@end
+
 
 // FIX: hook signature must use (dispatch_queue_t _Nullable, NSDictionary * _Nullable) — matching actual Clang-visible prototype
 static id (*orig_CBCentralManager_initWithDelegate)(CBCentralManager *, SEL, id, dispatch_queue_t, NSDictionary *);
@@ -290,12 +254,11 @@ static id hook_CBCentralManager_initWithDelegate(CBCentralManager *self, SEL _cm
                                                   NSDictionary *options)
 {
     Class wolfoxClass = NSClassFromString(@"WolFoxMainViewController");
-    if (wolfoxClass && [delegate isKindOfClass:wolfoxClass]) {
+    if (!delegate || object_getClass(delegate) == WolFoxCBProxy.class || (wolfoxClass && [delegate isKindOfClass:wolfoxClass])) {
         return orig_CBCentralManager_initWithDelegate(self, _cmd, delegate, queue, options);
     }
-    WolFoxCBProxy *proxy = [[WolFoxCBProxy alloc] initWithDelegate:delegate];
+    WolFoxCBProxy *proxy = WFCreateBluetoothProxy(delegate);
     id manager = orig_CBCentralManager_initWithDelegate(self, _cmd, proxy, queue, options);
-    [proxy setManager:manager];
     objc_setAssociatedObject(manager, &kWFCBProxyKey, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return manager;
 }
@@ -310,8 +273,7 @@ static void hook_CBCentralManager_setDelegate(CBCentralManager *manager, SEL cmd
         if (!ourProxy) objc_setAssociatedObject(manager, &kWFCBProxyKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return;
     }
-    WolFoxCBProxy *proxy = [[WolFoxCBProxy alloc] initWithDelegate:delegate];
-    [proxy setManager:manager];
+    WolFoxCBProxy *proxy = WFCreateBluetoothProxy(delegate);
     objc_setAssociatedObject(manager, &kWFCBProxyKey, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     ((void (*)(id, SEL, id))orig_CBCentralManager_setDelegate)(manager, cmd, proxy);
 }
@@ -322,8 +284,6 @@ static void hook_CBCentralManager_scan(CBCentralManager *self, SEL _cmd,
                                         NSArray<CBUUID *> *services,
                                         NSDictionary *options)
 {
-    WolFoxCBProxy *proxy = objc_getAssociatedObject(self, &kWFCBProxyKey);
-    [proxy resetScan];
     if (orig_CBCentralManager_scan) {
         ((void (*)(id, SEL, id, id))orig_CBCentralManager_scan)(self, _cmd, services, options);
     }
@@ -344,6 +304,7 @@ static void WFRefreshVirtualPreviewLayer(AVCaptureVideoPreviewLayer *previewLaye
         dispatch_async(dispatch_get_main_queue(), ^{ WFRefreshVirtualPreviewLayer(previewLayer); });
         return;
     }
+    [[WFVirtualCameraManager shared] trackPreviewLayer:previewLayer];
     if (!WFTrackedPreviewLayers) WFTrackedPreviewLayers = [NSHashTable weakObjectsHashTable];
     [WFTrackedPreviewLayers addObject:previewLayer];
 
@@ -449,8 +410,39 @@ static void hook_AVCapturePhotoOutput_capturePhoto(AVCapturePhotoOutput *self,
         else dispatch_async(dispatch_get_main_queue(), hideControls);
     }
     if (orig_AVCapturePhotoOutput_capturePhoto) {
-        ((void (*)(id, SEL, id, id))orig_AVCapturePhotoOutput_capturePhoto)(self, _cmd, settings, delegate);
+        id wrappedDelegate = WFPhotoDelegateForCapture(self, settings, delegate);
+        ((void (*)(id, SEL, id, id))orig_AVCapturePhotoOutput_capturePhoto)(self, _cmd, settings, wrappedDelegate);
     }
+}
+
+// Observe camera view removal immediately; the manager also checks actual preview visibility.
+static IMP orig_UIViewController_viewDidDisappear;
+static void hook_UIViewController_viewDidDisappear(UIViewController *self, SEL cmd, BOOL animated) {
+    if (orig_UIViewController_viewDidDisappear) ((void (*)(id, SEL, BOOL))orig_UIViewController_viewDidDisappear)(self, cmd, animated);
+    [[WFVirtualCameraManager shared] refreshCameraVisibility];
+}
+static IMP orig_AVCaptureSession_stopRunning;
+static void hook_AVCaptureSession_stopRunning(AVCaptureSession *self, SEL cmd) {
+    if (orig_AVCaptureSession_stopRunning) ((void (*)(id, SEL))orig_AVCaptureSession_stopRunning)(self, cmd);
+    [[WFVirtualCameraManager shared] refreshCameraVisibility];
+}
+static IMP orig_NSURLSession_uploadData, orig_NSURLSession_uploadDataCompletion;
+static IMP orig_NSURLSession_uploadFile, orig_NSURLSession_uploadFileCompletion;
+static id hook_NSURLSession_uploadData(NSURLSession *self, SEL cmd, NSURLRequest *request, NSData *data) {
+    NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id))orig_NSURLSession_uploadData)(self, cmd, request, data);
+    WFTrackPhotoUploadTask(task, data); return task;
+}
+static id hook_NSURLSession_uploadDataCompletion(NSURLSession *self, SEL cmd, NSURLRequest *request, NSData *data, id completion) {
+    NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id, id))orig_NSURLSession_uploadDataCompletion)(self, cmd, request, data, completion);
+    WFTrackPhotoUploadTask(task, data); return task;
+}
+static id hook_NSURLSession_uploadFile(NSURLSession *self, SEL cmd, NSURLRequest *request, NSURL *file) {
+    NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id))orig_NSURLSession_uploadFile)(self, cmd, request, file);
+    WFTrackPhotoFileUploadTask(task, file); return task;
+}
+static id hook_NSURLSession_uploadFileCompletion(NSURLSession *self, SEL cmd, NSURLRequest *request, NSURL *file, id completion) {
+    NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id, id))orig_NSURLSession_uploadFileCompletion)(self, cmd, request, file, completion);
+    WFTrackPhotoFileUploadTask(task, file); return task;
 }
 
 static IMP orig_AVCapturePhoto_fileDataRepresentation;
@@ -582,6 +574,13 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                               @selector(startRunning),
                               (IMP)hook_AVCaptureSession_startRunning,
                               &orig_AVCaptureSession_startRunning);
+
+        WFInstallInstanceHook(AVCaptureSession.class, @selector(stopRunning), (IMP)hook_AVCaptureSession_stopRunning, &orig_AVCaptureSession_stopRunning);
+        WFInstallInstanceHook(UIViewController.class, @selector(viewDidDisappear:), (IMP)hook_UIViewController_viewDidDisappear, &orig_UIViewController_viewDidDisappear);
+        WFInstallInstanceHook(NSURLSession.class, @selector(uploadTaskWithRequest:fromData:), (IMP)hook_NSURLSession_uploadData, &orig_NSURLSession_uploadData);
+        WFInstallInstanceHook(NSURLSession.class, @selector(uploadTaskWithRequest:fromData:completionHandler:), (IMP)hook_NSURLSession_uploadDataCompletion, &orig_NSURLSession_uploadDataCompletion);
+        WFInstallInstanceHook(NSURLSession.class, @selector(uploadTaskWithRequest:fromFile:), (IMP)hook_NSURLSession_uploadFile, &orig_NSURLSession_uploadFile);
+        WFInstallInstanceHook(NSURLSession.class, @selector(uploadTaskWithRequest:fromFile:completionHandler:), (IMP)hook_NSURLSession_uploadFileCompletion, &orig_NSURLSession_uploadFileCompletion);
 
         WFInstallInstanceHook(AVCaptureVideoDataOutput.class,
                               @selector(setSampleBufferDelegate:queue:),
