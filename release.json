@@ -1,0 +1,16 @@
+{
+  "slug": "v2-lite",
+  "label": "V2 Lite",
+  "branch": "wolfox/v2-lite",
+  "version": "2.0.1",
+  "edition": "Lite",
+  "profile": "",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFoxLite",
+  "theme": "blue-original.m",
+  "color": "أزرق أصلي",
+  "theme_provenance": "1fad73028fd258e0d445b77923d084cb94cb572b",
+  "display_name": "WolFox",
+  "device_tested": false
+}
