@@ -1,0 +1,16 @@
+{
+  "slug": "v3-amber-lite-control",
+  "label": "V3 كهرماني — Lite التحكم",
+  "branch": "wolfox/v3-amber-lite-control",
+  "version": "3.0.1",
+  "edition": "Lite",
+  "profile": "lite-tahakom",
+  "interface_variant": 0,
+  "bundle": "com.tahakom.mytahakom",
+  "product": "WolFox3_lite_tahakom",
+  "theme": "profile-colors.m",
+  "color": "كهرماني",
+  "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+  "display_name": "WolFox",
+  "device_tested": false
+}
