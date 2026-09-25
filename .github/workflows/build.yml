@@ -1,129 +1,45 @@
-name: Build WolFox 2.0.0 — Full and Lite
-
+name: WolFox — V3 بنفسجي ليلي أصلي
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [wolfox/v3-violet-original]
   workflow_dispatch:
-    inputs:
-      bundle_ids:
-        description: "Bundle IDs مفصولة بفاصلة"
-        required: false
-        default: "sa.gov.moia.mosques-2"
-
 permissions:
   contents: read
-
 concurrency:
-  group: wolfox-unified-${{ github.ref }}
+  group: wolfox-release-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  THEOS: ${{ github.workspace }}/.theos
-  WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
-  WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY }}
-  WOLFOX_TARGET_BUNDLE_IDS: ${{ inputs.bundle_ids || 'sa.gov.moia.mosques-2' }}
-
 jobs:
-  build:
-    name: One build — Full + Lite + verification
-    runs-on: ubuntu-24.04
-    timeout-minutes: 70
+  native-tests:
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
-      - name: Validate complete source tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s WolFoxMaster.mm
-          test -s WFActivationViewController.m
-          test -s WFLicenseClient.m
-          test -s WFLicenseConfig.h
-          test -s build_v1_deb.sh
-          test -s wolfox_setup_build.sh
-          test -s build_lite_deb.sh
-          test -s Makefile
-          test "$(find . -maxdepth 1 -type f \( -name '*.m' -o -name '*.mm' -o -name '*.h' \) | wc -l)" -ge 15
-          ! grep -R -n -E 'CI-UNCONFIGURED|invalid\.example' --include='*.m' --include='*.mm' --include='*.h' --include='*.sh' .
-
-      - name: Install test dependency
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
-
-      - name: Run all Linux and security tests once
-        run: |
-          chmod +x ./*.sh tools/*.sh
-          ./run_all_linux_tests.sh
-
-      - name: Build Full 2.0.0
-        env:
-          WOLFOX_EDITION: Full
-          WOLFOX_VERSION: 2.0.0
-        run: ./wolfox_setup_build.sh
-
-      - name: Verify and stage Full
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release/Full
-          test -s WolFox.dylib
-          test -s WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb
-          test -s WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb
-          file WolFox.dylib | grep -F 'Mach-O 64-bit'
-          dpkg-deb --info WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb >/dev/null
-          dpkg-deb --info WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb >/dev/null
-          cp WolFox.dylib WolFox_v2.0.0_iOS15.8-27.0_Rootful.deb WolFox_v2.0.0_iOS15.8-27.0_Rootless.deb release/Full/
-
-      - name: Build Lite 2.0.0
-        env:
-          WOLFOX_EDITION: Lite
-          WOLFOX_VERSION: 2.0.0-Lite
-        run: ./wolfox_setup_build.sh
-
-      - name: Verify and stage Lite
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release/Lite
-          test -s WolFoxLite.dylib
-          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb
-          test -s WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb
-          file WolFoxLite.dylib | grep -F 'Mach-O 64-bit'
-          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb >/dev/null
-          dpkg-deb --info WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb >/dev/null
-          cp WolFoxLite.dylib release/Lite/WolFoxGPSLite.dylib
-          cp WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootful.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-27.0-Rootful.deb
-          cp WolFoxLite_v2.0.0-Lite_iOS15.8-27.0_Rootless.deb release/Lite/WolFoxGPS-Lite-v2.0.0-iOS15.8-27.0-Rootless.deb
-
-      - name: Create one verified delivery package
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > release/BUILD_INFO.txt <<EOF
-          PRODUCT=WolFox Full and Lite
-          VERSION=2.0.0
-          ARCHITECTURE=arm64
-          IOS_RANGE=15.8-27.0
-          COMMIT=${GITHUB_SHA}
-          RUN_ID=${GITHUB_RUN_ID}
-          RUN_NUMBER=${GITHUB_RUN_NUMBER}
-          API_BASE_URL=https://gps.p3nd.fun/api/v1
-          PROJECT_KEY_SOURCE=GitHub Actions secret WOLFOX_PROJECT_KEY
-          EOF
-          git archive --format=tar.gz --prefix=WolFox-2.0.0-source/ --output release/WolFox-2.0.0-source-${GITHUB_SHA::12}.tar.gz "$GITHUB_SHA"
-          (cd release && sha256sum Full/* Lite/* BUILD_INFO.txt WolFox-2.0.0-source-*.tar.gz > SHA256SUMS.txt)
-          zip -q -r WolFox-2.0.0-Full-and-Lite-Deploy.zip release
-          test -s WolFox-2.0.0-Full-and-Lite-Deploy.zip
-          sha256sum WolFox-2.0.0-Full-and-Lite-Deploy.zip > WolFox-2.0.0-Deploy-SHA256.txt
-
-      - name: Upload the single WolFox delivery
-        uses: actions/upload-artifact@v4
+      - run: bash run_native_tests.sh
+      - run: python3 tests/test_full_bluetooth_static.py
+  build:
+    needs: native-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: '3.0.1'
+      WOLFOX_EDITION: 'Full'
+      WOLFOX_PROFILE: ''
+      WOLFOX_INTERFACE_VARIANT: '0'
+      WOLFOX_TARGET_BUNDLE_IDS: 'sa.gov.moia.mosques-2'
+      WOLFOX_PROJECT_BUNDLE_ID: 'sa.gov.moia.mosques-2'
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check branch configuration
+        run: python3 tools/verify_release_config.py
+      - name: Build and test
+        run: bash wolfox_setup_build.sh
+      - name: Verify packages and matching source
+        run: python3 tools/collect_release.py
+      - uses: actions/upload-artifact@v4
         with:
-          name: WolFox-2.0.0-Full-and-Lite-arm64-${{ github.run_number }}
+          name: WolFox-v3-violet-original-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          path: release/
           if-no-files-found: error
           retention-days: 14
-          path: |
-            WolFox-2.0.0-Full-and-Lite-Deploy.zip
-            WolFox-2.0.0-Deploy-SHA256.txt
-            release/
