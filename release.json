@@ -1,0 +1,16 @@
+{
+  "slug": "bluetooth-v4",
+  "label": "Bluetooth V4",
+  "branch": "wolfox/bluetooth-v4",
+  "version": "4.0.1",
+  "edition": "Full",
+  "profile": "full-mosques",
+  "interface_variant": 4,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox4_Bluetooth",
+  "theme": "calm-blue.m",
+  "color": "أزرق هادئ",
+  "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+  "display_name": "WolFox",
+  "device_tested": false
+}
