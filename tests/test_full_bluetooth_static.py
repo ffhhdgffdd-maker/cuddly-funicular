@@ -21,7 +21,11 @@ assert '- (void)toggleSpoofQuickPanel:(__unused UIButton *)sender { [self showUI
 assert 'self.spoofQuickPanel = [[' not in ui
 interface = ui.split('- (void)setupInterfacePage {')[1].split('- (void)changeRecoveryMethod')[0]
 assert 'تشغيل الموقع' not in interface and 'Bluetooth' not in interface and 'إعدادات الكاميرا' not in interface
-assert 'اختيار طريقة الإخفاء والاستعادة' in interface
+assert 'الإخفاء والاستعادة' in interface
+assert 'WF_RECOVERY_ICON_ENABLED' in interface
+assert 'WF_RECOVERY_VOLUME_ENABLED' in interface
+assert 'WF_RECOVERY_SCREENSHOT_ENABLED' in interface
+assert 'WF_FLOATING_TAP_COUNT' in interface
 bt = ui.split('- (void)setupBluetoothPage {')[1].split('- (void)btProfileDeactivated')[0]
 for token in ['tag:8102', 'tag:8120', 'startBTScan', 'importBluetoothFile', 'exportBluetoothFile']:
     assert token in bt, token
