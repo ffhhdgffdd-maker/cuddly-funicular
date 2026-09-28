@@ -2829,8 +2829,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     [save addTarget:self action:@selector(saveIDProPage) forControlEvents:UIControlEventTouchUpInside];
     UIButton *import = [self mapsActionButtonIn:idCard title:@"استيراد" icon:@"square.and.arrow.down" color:[WolFoxProTheme accent] frame:CGRectMake(28 + cellWidth, gridY, cellWidth, 48) filled:NO];
     [import addTarget:self action:@selector(importIDProPage) forControlEvents:UIControlEventTouchUpInside];
-    UIButton *export = [self mapsActionButtonIn:idCard title:@"تصدير" icon:@"square.and.arrow.up" color:[WolFoxProTheme accent] frame:CGRectMake(16, gridY + 60, cellWidth, 48) filled:NO];
-    [export addTarget:self action:@selector(exportIDProPage) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *exportButton = [self mapsActionButtonIn:idCard title:@"تصدير" icon:@"square.and.arrow.up" color:[WolFoxProTheme accent] frame:CGRectMake(16, gridY + 60, cellWidth, 48) filled:NO];
+    [exportButton addTarget:self action:@selector(exportIDProPage) forControlEvents:UIControlEventTouchUpInside];
     UIButton *reset = [self mapsActionButtonIn:idCard title:@"إعادة للأصلي" icon:@"arrow.counterclockwise" color:[WolFoxProTheme danger] frame:CGRectMake(28 + cellWidth, gridY + 60, cellWidth, 48) filled:NO];
     [reset addTarget:self action:@selector(resetIDProPage) forControlEvents:UIControlEventTouchUpInside];
 
