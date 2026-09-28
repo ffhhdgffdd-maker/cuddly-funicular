@@ -4453,7 +4453,6 @@ static BOOL WFMasterProcessIsEligible(void) {
         strongSelf.mainVC.view.hidden = YES;
         strongSelf.mainVC.view.alpha = 0;
         if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey]) {
-            [strongSelf closeSpoofQuickPanel:nil];
             strongSelf.overlayWindow.hidden = strongSelf.floatingIcon.hidden;
             [strongSelf restoreHostKeyWindow];
             [strongSelf prepareHiddenVolumeListening];
@@ -4857,7 +4856,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     // This flag tracks current visibility only; the launch preference has its own key.
     [[NSUserDefaults standardUserDefaults] setBool:NO forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    [self closeSpoofQuickPanel:nil];
     [self makeOverlayKey];
         [self.mainVC refreshSpoofHeaderStatus];
         self.mainVC.view.hidden = NO; 
@@ -4884,7 +4882,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:WFUIHiddenOnLaunchKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [self prepareHiddenVolumeListening];
-    [self closeSpoofQuickPanel:nil];
     [self closeFloatingControlPanel:nil];
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0;
@@ -4908,7 +4905,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] synchronize];
     self.floatingIcon.hidden = !visible;
     if (!visible) {
-        [self closeSpoofQuickPanel:nil];
         [self enableMenuRecoveryShortcut];
     }
     if (visible) {
@@ -4990,7 +4986,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)handleFloatingStatusPan:(UIPanGestureRecognizer *)gesture {
     UIView *icon = gesture ? gesture.view : self.floatingIcon;
     if (!icon) return;
-    if (gesture && gesture.state == UIGestureRecognizerStateBegan) [self closeSpoofQuickPanel:nil];
     CGPoint translation = gesture ? [gesture translationInView:self.overlayWindow] : CGPointZero;
     icon.center = CGPointMake(icon.center.x + translation.x, icon.center.y + translation.y);
     if (gesture) [gesture setTranslation:CGPointZero inView:self.overlayWindow];
