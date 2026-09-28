@@ -1,7 +1,7 @@
 name: WolFox — التحكم
 on:
   push:
-    branches: [wolfox/control]
+    branches: [WC2]
   workflow_dispatch:
 permissions:
   contents: read
