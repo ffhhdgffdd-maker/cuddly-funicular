@@ -18,7 +18,7 @@ reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الك
 check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Lite الصحيح"
 check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Full الصحيح"
 check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox v%@"' "عرض الإصدار والنسخة ديناميكي"
-check "$MASTER" 'showLiveStatusPopup' "الحالة المباشرة تظهر من زر الرأس"
+check "$MASTER" 'versionLabel.text = [NSString stringWithFormat:@"الإصدار %@", version];' "رأس الصفحة يعرض رقم الإصدار"
 check "$MASTER" 'saveLocationButton' "زر حفظ الموقع موجود قبل أدوات التشغيل"
 check "$MASTER" 'favoritesButton' "زر المفضلة موجود قبل أدوات التشغيل"
 check "$MASTER" '[kbCard addSubview:saveLocationButton]' "زر الحفظ خارج مساحة الخريطة"

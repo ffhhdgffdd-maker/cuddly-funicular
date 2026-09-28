@@ -128,11 +128,14 @@ static BOOL WFMasterProcessIsEligible(void) {
 @interface WolFoxOverlayWindow : UIWindow
 @end
 
-@interface WolFoxMainViewController : UIViewController <MKMapViewDelegate, UITextFieldDelegate, UISearchBarDelegate, CBCentralManagerDelegate, CLLocationManagerDelegate, UIDocumentPickerDelegate>
+@interface WolFoxMainViewController : UIViewController <MKMapViewDelegate, UITextFieldDelegate, UISearchBarDelegate, CBCentralManagerDelegate, CLLocationManagerDelegate, UIDocumentPickerDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) MKMapView *mapView;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) MKPointAnnotation *realLocPin;
 - (void)refreshSpoofHeaderStatus;
+- (void)handleMapTap:(UITapGestureRecognizer *)gesture;
+- (void)showLocationHistory;
+- (void)recordLocationHistory:(CLLocationCoordinate2D)coordinate title:(NSString *)title;
 - (UIView *)liveStatusCardWithFrame:(CGRect)frame title:(NSString *)title labelKey:(const void *)labelKey dotKey:(const void *)dotKey;
 - (void)refreshLiveStatusCards;
 - (void)closeExpandedMapIfNeeded;
@@ -422,7 +425,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                         [profile isEqualToString:@"mosques-full"] ? 2 :
                         [profile hasPrefix:@"lite-"] ? 3 :
                         [profile hasPrefix:@"full-"] ? 4 : 0;
-    CGFloat headerHeight = safeTop + 58.0;
+    CGFloat headerHeight = safeTop + 78.0;
     CGFloat tabsHeight = edition == 3 ? 62.0 : (edition ? 70.0 : 58.0);
     CGFloat tabsInset = edition ? 12.0 : 0.0;
     CGFloat tabsGap = edition ? 9.0 : 0.0;
@@ -431,36 +434,31 @@ static BOOL WFMasterProcessIsEligible(void) {
     _blurView.frame = self.view.bounds;
     [self.view addSubview:_blurView];
     
-    // 1. Header — respects the status area and keeps every SF Symbol aligned.
+    // Header contains only the product name, build version and license state.
     _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, headerHeight)];
     _header.backgroundColor = [WolFoxProTheme surfacePrimary];
-    _header.layer.borderWidth = 1.0;
-    _header.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.28].CGColor;
     [self.view addSubview:_header];
-    
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(64, safeTop + 2, MAX(120.0, w - 128.0), 26)];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop, w - 32, 26)];
     _titleLabel.text = @"WolFox";
     _titleLabel.textAlignment = NSTextAlignmentCenter;
-    _titleLabel.font = [WolFoxProTheme fontOfSize:21 weight:UIFontWeightBlack];
-    _titleLabel.textColor = [WolFoxProTheme textPrimary];
+    _titleLabel.font = [WolFoxProTheme fontOfSize:21 weight:UIFontWeightBold];
+    _titleLabel.textColor = UIColor.whiteColor;
     [_header addSubview:_titleLabel];
 
-    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(64, safeTop + 29, MAX(120.0, w - 128.0), 18)];
+    UILabel *versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop + 28, w - 32, 18)];
+    NSString *version = [[WF_APP_VERSION stringByReplacingOccurrencesOfString:@"-Full" withString:@""] stringByReplacingOccurrencesOfString:@"-Lite" withString:@""];
+    versionLabel.text = [NSString stringWithFormat:@"الإصدار %@", version];
+    versionLabel.textAlignment = NSTextAlignmentCenter;
+    versionLabel.textColor = [WolFoxProTheme textSecondary];
+    versionLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
+    [_header addSubview:versionLabel];
+
+    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop + 49, w - 32, 18)];
     _spoofStatusLabel.textAlignment = NSTextAlignmentCenter;
-    _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
+    _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
     _spoofStatusLabel.isAccessibilityElement = YES;
     [_header addSubview:_spoofStatusLabel];
     [self refreshSpoofHeaderStatus];
-    
-    UIButton *closeBtn = [self headerCircleBtn:@"xmark" color:[WolFoxProTheme danger] x:w - 58];
-    [closeBtn addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
-    closeBtn.accessibilityLabel = @"إخفاء الأداة مع إبقاء طريقة الاستعادة المحددة";
-    [_header addSubview:closeBtn];
-    
-    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme accent] x:14];
-    [crownBtn addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
-    crownBtn.accessibilityLabel = @"معلومات الاشتراك";
-    [_header addSubview:crownBtn];
 
     // 2. Top Tabs Bar
     _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
@@ -474,7 +472,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #if WOLFOX_LITE
     UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 4.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 5.0, 3)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -485,9 +483,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"WolFox"];
     NSArray *tabPages = @[@0, @1, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"camera.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"WolFox"];
-    NSArray *tabPages = @[@0, @1, @3, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"camera.fill", @"antenna.radiowaves.left.and.right", @"slider.horizontal.3"];
+    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"Bluetooth", @"WolFox"];
+    NSArray *tabPages = @[@0, @1, @3, @2, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -639,15 +637,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)refreshSpoofHeaderStatus {
-    WolFoxProStore *store = [WolFoxProStore shared];
-#if WOLFOX_LITE
-    BOOL active = store.spoofActive;
-#else
-    BOOL active = store.spoofActive || store.bluetoothActive || store.mediaUploadActive || [store validatedActiveIdentifier] != nil;
-#endif
-    _spoofStatusLabel.text = active ? @"● نشط • التزييف مفعّل" : @"○ متوقف • الوضع الحقيقي";
-    _spoofStatusLabel.textColor = active ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
-    _spoofStatusLabel.accessibilityLabel = active ? @"حالة التزييف: نشط" : @"حالة التزييف: متوقف";
+    BOOL licensed = [WFLicenseClient isRuntimeLicenseValid];
+    _spoofStatusLabel.text = licensed ? @"التفعيل: مفعّل" : @"التفعيل: غير مفعّل";
+    _spoofStatusLabel.textColor = licensed ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
+    _spoofStatusLabel.accessibilityLabel = _spoofStatusLabel.text;
     [self refreshLocationModeNotice];
     [self refreshLiveStatusCards];
 }
@@ -722,77 +715,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     else if (page == 2) [self setupBluetoothPage];
     else if (page == 3) [self setupCameraPage];
     else if (page == 4) [self setupInterfacePage];
-    else if (page == 5) [self setupGPSPage];
 }
 
 #pragma mark - Saudi Schools & Mosques Map (Lite)
-
-- (void)setupSaudiPlacesMapPage {
-    CGFloat w = _scrollDashboard.bounds.size.width;
-    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(12, 10, w - 24, MAX(_scrollDashboard.bounds.size.height - 24, 430))];
-    card.backgroundColor = [WolFoxProTheme surfacePrimary];
-    card.layer.cornerRadius = 18;
-    card.clipsToBounds = YES;
-    [_scrollDashboard addSubview:card];
-    _scrollDashboard.contentSize = CGSizeMake(w, CGRectGetMaxY(card.frame) + 12);
-
-    self.mapView = [[MKMapView alloc] initWithFrame:card.bounds];
-    self.mapView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.mapView.delegate = self;
-    self.mapView.mapType = (MKMapType)[WolFoxProStore shared].mapStyle;
-    [card addSubview:self.mapView];
-
-    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(8, 8, card.bounds.size.width - 16, 44)];
-    self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"ابحث عن مدرسة، مسجد، مركز صحي أو مستشفى";
-    self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
-    self.searchBar.returnKeyType = UIReturnKeySearch;
-    self.searchBar.accessibilityLabel = @"البحث في خريطة المدارس والمساجد";
-    if (@available(iOS 13.0, *)) {
-        self.searchBar.searchTextField.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.94];
-        self.searchBar.searchTextField.textColor = [WolFoxProTheme textPrimary];
-        [self configureKeyboardToolbarForTextField:self.searchBar.searchTextField searchMode:YES];
-    }
-    [card addSubview:self.searchBar];
-
-    UIView *legend = [[UIView alloc] initWithFrame:CGRectMake(10, 60, card.bounds.size.width - 20, 62)];
-    legend.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    legend.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.92];
-    legend.layer.cornerRadius = 12;
-    [card addSubview:legend];
-    UILabel *legendTitle = [[UILabel alloc] initWithFrame:CGRectMake(10, 5, legend.bounds.size.width - 20, 25)];
-    legendTitle.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    legendTitle.text = @"🏫 مدرسة  •  🕌 مسجد  •  🏥 مركز صحي  •  H مستشفى حكومي";
-    legendTitle.textColor = [WolFoxProTheme textPrimary];
-    legendTitle.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    legendTitle.textAlignment = NSTextAlignmentCenter;
-    [legend addSubview:legendTitle];
-    _saudiPlacesStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(8, 31, legend.bounds.size.width - 16, 23)];
-    _saudiPlacesStatusLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس والمنشآت الصحية والمساجد";
-    _saudiPlacesStatusLabel.textColor = [WolFoxProTheme textSecondary];
-    _saudiPlacesStatusLabel.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightSemibold];
-    _saudiPlacesStatusLabel.textAlignment = NSTextAlignmentCenter;
-    [legend addSubview:_saudiPlacesStatusLabel];
-
-    UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:card.bounds.size.height - 54];
-    styleBtn.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin;
-    styleBtn.accessibilityLabel = @"تغيير نمط الخريطة: عادي أو قمر صناعي أو هجين";
-    [styleBtn addTarget:self action:@selector(toggleMapStyle) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:styleBtn];
-
-    UIButton *realLocBtn = [self mapCircleBtn:@"location.fill" x:card.bounds.size.width - 54 y:card.bounds.size.height - 54];
-    realLocBtn.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin;
-    realLocBtn.accessibilityLabel = @"التمركز على موقعي";
-    [realLocBtn addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:realLocBtn];
-
-    CLLocationCoordinate2D center = CLLocationCoordinate2DMake(23.8859, 45.0792);
-    [self.mapView setRegion:MKCoordinateRegionMake(center, MKCoordinateSpanMake(17.0, 18.0)) animated:NO];
-    [self scheduleSaudiPlacesReload];
-}
 
 - (void)scheduleSaudiPlacesReload {
     if (!_saudiPlacesPageActive || !self.mapView) return;
@@ -1418,7 +1343,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     // Real Location Button
     UIButton *realLocBtn = [self mapCircleBtn:@"person.fill" x:62 y:mapCard.bounds.size.height - 54];
     realLocBtn.tintColor = [UIColor colorWithRed:0.27 green:0.80 blue:0.65 alpha:1.0];
-    realLocBtn.accessibilityLabel = @"عرض الموقع الحقيقي";
+    realLocBtn.accessibilityLabel = @"الموقع الحالي";
     [realLocBtn addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:realLocBtn];
 
@@ -1458,7 +1383,23 @@ static BOOL WFMasterProcessIsEligible(void) {
         }
     }
     UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    lp.delegate = self;
     [self.mapView addGestureRecognizer:lp];
+    UITapGestureRecognizer *mapTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleMapTap:)];
+    mapTap.delegate = self;
+    mapTap.cancelsTouchesInView = NO;
+    [mapTap requireGestureRecognizerToFail:lp];
+    // Defer to MapKit's double tap so zooming does not select a new coordinate.
+    NSMutableArray<UIView *> *mapViews = [NSMutableArray arrayWithObject:self.mapView];
+    for (NSUInteger index = 0; index < mapViews.count; index++) {
+        UIView *view = mapViews[index];
+        for (UIGestureRecognizer *recognizer in view.gestureRecognizers) {
+            if ([recognizer isKindOfClass:UITapGestureRecognizer.class] && ((UITapGestureRecognizer *)recognizer).numberOfTapsRequired > 1)
+                [mapTap requireGestureRecognizerToFail:recognizer];
+        }
+        [mapViews addObjectsFromArray:view.subviews];
+    }
+    [self.mapView addGestureRecognizer:mapTap];
     if ([WolFoxProStore shared].spoofActive) [self updateMapPin:[WolFoxProStore shared].currentFakeCoords];
     else [self showRealLocation];
     
@@ -1503,17 +1444,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     [saveLocationButton setTitleColor:saveColor forState:UIControlStateNormal];
     [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
     saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
+    saveLocationButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightSemibold];
     [kbCard addSubview:saveLocationButton];
 
     UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
     favoritesButton.frame = CGRectMake(CGRectGetMaxX(saveLocationButton.frame) + 15, 12, saveLocationButton.bounds.size.width, 40);
-    UIColor *favoritesColor = [UIColor colorWithRed:1.0 green:0.70 blue:0.28 alpha:1.0];
+    UIColor *favoritesColor = [WolFoxProTheme accent];
     favoritesButton.backgroundColor = [favoritesColor colorWithAlphaComponent:0.17];
     favoritesButton.layer.cornerRadius = 11;
     [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
     [favoritesButton setTitleColor:favoritesColor forState:UIControlStateNormal];
     [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
     favoritesButton.accessibilityLabel = @"عرض المواقع المحفوظة";
+    favoritesButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightSemibold];
     [kbCard addSubview:favoritesButton];
 
     CGFloat cy = CGRectGetMaxY(kbCard.frame) + 15.0;
@@ -1542,6 +1485,28 @@ static BOOL WFMasterProcessIsEligible(void) {
     [scheduleCard addSubview:scheduleButton];
     cy += 87;
 
+    UIView *gpsSettings = [self settingsCard:@"إعدادات GPS" y:cy height:132];
+    UILabel *intervalLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, gpsSettings.bounds.size.width - 30, 26)];
+    intervalLabel.text = [NSString stringWithFormat:@"معدل التحديث: %.2f ث", WFClampGPSUpdateInterval([WolFoxProStore shared].updateIntervalSeconds)];
+    intervalLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium];
+    intervalLabel.textColor = [WolFoxProTheme textSecondary];
+    intervalLabel.textAlignment = NSTextAlignmentRight;
+    [gpsSettings addSubview:intervalLabel];
+    objc_setAssociatedObject(self, "_interval_label", intervalLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    UISlider *interval = [[UISlider alloc] initWithFrame:CGRectMake(15, 80, gpsSettings.bounds.size.width - 30, 36)];
+    interval.minimumValue = WFMinimumGPSUpdateIntervalSeconds;
+    interval.maximumValue = WFMaximumGPSUpdateIntervalSeconds;
+    interval.value = WFClampGPSUpdateInterval([WolFoxProStore shared].updateIntervalSeconds);
+    interval.minimumTrackTintColor = [WolFoxProTheme accent];
+    interval.continuous = NO;
+    interval.accessibilityLabel = @"الفاصل بين تحديثات GPS بالثواني";
+    [interval addTarget:self action:@selector(updateIntervalChanged:) forControlEvents:UIControlEventValueChanged];
+    [gpsSettings addSubview:interval];
+    cy += 144;
+    UIButton *history = [self royalBtnInside:_scrollDashboard t:@"سجل المواقع" i:@"clock.arrow.circlepath" c:[WolFoxProTheme accent] y:cy];
+    [history addTarget:self action:@selector(showLocationHistory) forControlEvents:UIControlEventTouchUpInside];
+    cy += 72;
+
     _scrollDashboard.contentSize = CGSizeMake(w, cy + 30);
 }
 
@@ -1549,7 +1514,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #pragma mark - Unified virtual camera
 
 - (void)setupVirtualCameraCardAtY:(CGFloat)y width:(CGFloat)w {
-    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 450)];
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 526)];
     card.backgroundColor = [WolFoxProTheme surfacePrimary];
     card.layer.cornerRadius = 18.0;
     card.layer.borderWidth = 1.0;
@@ -1635,6 +1600,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     clearButton.accessibilityLabel = @"الخطوة الرابعة: حذف الصورة المختارة وإيقاف البث";
     [clearButton addTarget:self action:@selector(clearSpoofedImage) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:clearButton];
+    [card addSubview:[self royalSwitchInside:card t:@"إظهار أيقونة الكاميرا" i:@"camera.fill" isOn:[WFVirtualCameraManager shared].pickerIconEnabled y:445 action:^(UISwitch *toggle) {
+        [WFVirtualCameraManager shared].pickerIconEnabled = toggle.on;
+    }]];
 
     [self refreshVirtualCameraPage];
 }
@@ -2509,8 +2477,13 @@ static BOOL WFMasterProcessIsEligible(void) {
         [self showToast:@"الإحداثيات خارج النطاق المسموح ❌"];
         return;
     }
+    if ([WolFoxProStore shared].routeActive) [[WolFoxProHookManager shared] stopRoute];
+    MKPointAnnotation *targetPin = objc_getAssociatedObject(self, "_target_pin");
+    if (targetPin) [self.mapView removeAnnotation:targetPin];
+    objc_setAssociatedObject(self, "_target_pin", nil, OBJC_ASSOCIATION_ASSIGN);
     [WolFoxProStore shared].currentFakeCoords = coordinate;
     [[WolFoxProStore shared] saveSettings];
+    [self recordLocationHistory:coordinate title:title];
     [self updateMapPin:coordinate];
     _currentPin.title = title.length ? title : @"الموقع المحدد";
     if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", coordinate.latitude];
@@ -3229,11 +3202,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupCameraPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIButton *back = [self royalBtnInside:_scrollDashboard t:@"العودة إلى الموقع" i:@"arrow.right" c:[WolFoxProTheme accent] y:10];
-    [back addTarget:self action:@selector(openGPSPage) forControlEvents:UIControlEventTouchUpInside];
-    [self setupVirtualCameraCardAtY:76.0 width:w];
-    _scrollDashboard.backgroundColor = UIColor.clearColor;
-    _scrollDashboard.contentSize = CGSizeMake(w, 550.0);
+    [self setupVirtualCameraCardAtY:12.0 width:w];
+    _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
+    _scrollDashboard.contentSize = CGSizeMake(w, 554.0);
 }
 
 
@@ -3428,8 +3399,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 232, card.bounds.size.width - 30, 28)];
     NSInteger tapCount = [defaults integerForKey:@"WF_FLOATING_TAP_COUNT"]; tapCount = MAX(1, MIN(50, tapCount ?: 1));
     tapLabel.text = [NSString stringWithFormat:@"عدد ضغطات الأيقونة لفتح WolFox: %ld", (long)tapCount];
+    tapLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium]; tapLabel.adjustsFontSizeToFitWidth = YES;
     tapLabel.textColor = [WolFoxProTheme textSecondary]; tapLabel.textAlignment = NSTextAlignmentRight; tapLabel.tag = 4051; [card addSubview:tapLabel];
     UISlider *tapSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 266, card.bounds.size.width - 30, 34)];
+    tapSlider.minimumTrackTintColor = [WolFoxProTheme accent]; tapSlider.accessibilityLabel = @"عدد ضغطات الأيقونة من 1 إلى 50";
     tapSlider.minimumValue = 1; tapSlider.maximumValue = 50; tapSlider.value = tapCount; tapSlider.continuous = NO;
     [tapSlider addTarget:self action:@selector(floatingTapCountChanged:) forControlEvents:UIControlEventValueChanged]; [card addSubview:tapSlider];
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
@@ -3443,6 +3416,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:432];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
     y += 514;
+    UIButton *subscription = [self royalBtnInside:_scrollDashboard t:@"معلومات التفعيل" i:@"checkmark.seal" c:[WolFoxProTheme accent] y:y];
+    [subscription addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
+    y += 72;
     UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y]; [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
 }
@@ -3696,7 +3672,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.view.backgroundColor = [WolFoxProTheme windowBackground];
     self->_dashboard.backgroundColor = [WolFoxProTheme windowBackground];
     self->_scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
-    self->_header.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.16];
+    self->_header.backgroundColor = [WolFoxProTheme surfacePrimary];
     self->_tabsBar.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.10];
     self->_titleLabel.textColor = [WolFoxProTheme textPrimary];
     self->_spoofStatusLabel.textColor = [WolFoxProStore shared].spoofActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
@@ -3721,34 +3697,65 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)dismiss { [self requestHideTool]; }
 
-- (void)handleLongPress:(UILongPressGestureRecognizer *)g {
-    if (g.state != UIGestureRecognizerStateBegan) return;
-    // أوقف أي مسار نشط قبل تحديد إحداثية جديدة عبر الضغط الطويل
-    if ([WolFoxProStore shared].routeActive) {
-        [[WolFoxProHookManager shared] stopRoute];
-        UIButton *routeBtn = objc_getAssociatedObject(self, "_route_btn");
-        if (routeBtn) {
-            [routeBtn setTitle:@"بدء محاكاة المسار" forState:UIControlStateNormal];
-            routeBtn.backgroundColor = [WolFoxProTheme accent];
-        }
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    for (UIView *view = touch.view; view && view != self.mapView; view = view.superview) {
+        if ([view isKindOfClass:UIControl.class] || [view isKindOfClass:MKAnnotationView.class]) return NO;
     }
-    CGPoint p = [g locationInView:self.mapView];
-    CLLocationCoordinate2D c = [self.mapView convertPoint:p toCoordinateFromView:self.mapView];
-    WolFoxProStore *store = [WolFoxProStore shared];
+    return YES;
+}
 
-    // Each long press selects one location after the route controls were removed.
-    MKPointAnnotation *oldTarget = objc_getAssociatedObject(self, "_target_pin");
-    if (oldTarget) {
-        [self.mapView removeAnnotation:oldTarget];
-        objc_setAssociatedObject(self, "_target_pin", nil, OBJC_ASSOCIATION_ASSIGN);
+- (void)handleMapTap:(UITapGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateEnded) return;
+    CLLocationCoordinate2D coordinate = [self.mapView convertPoint:[gesture locationInView:self.mapView] toCoordinateFromView:self.mapView];
+    [self selectMapSearchCoordinate:coordinate title:@"موقع من الخريطة" toast:@"تم تحديد الموقع على الخريطة"];
+}
+
+- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateBegan) return;
+    CLLocationCoordinate2D coordinate = [self.mapView convertPoint:[gesture locationInView:self.mapView] toCoordinateFromView:self.mapView];
+    [self selectMapSearchCoordinate:coordinate title:@"موقع من الخريطة" toast:@"تم تحديد الموقع على الخريطة"];
+}
+
+- (void)recordLocationHistory:(CLLocationCoordinate2D)coordinate title:(NSString *)title {
+    if (!CLLocationCoordinate2DIsValid(coordinate)) return;
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSMutableArray *history = [NSMutableArray new];
+    [history addObject:@{@"latitude":@(coordinate.latitude), @"longitude":@(coordinate.longitude), @"title":title.length ? title : @"موقع محفوظ في السجل"}];
+    for (id item in [defaults arrayForKey:@"WF_LOCATION_HISTORY"]) {
+        if (![item isKindOfClass:NSDictionary.class] || ![item[@"latitude"] isKindOfClass:NSNumber.class] || ![item[@"longitude"] isKindOfClass:NSNumber.class] || ![item[@"title"] isKindOfClass:NSString.class]) continue;
+        CLLocationCoordinate2D previous = CLLocationCoordinate2DMake([item[@"latitude"] doubleValue], [item[@"longitude"] doubleValue]);
+        if (!CLLocationCoordinate2DIsValid(previous)) continue;
+        if (fabs(previous.latitude - coordinate.latitude) < 0.000001 && fabs(previous.longitude - coordinate.longitude) < 0.000001) continue;
+        [history addObject:item];
+        if (history.count == 20) break;
     }
-    store.currentFakeCoords = c;
-    [store saveSettings];
-    [self updateMapPin:c];
-    [[WolFoxProHookManager shared] deliverFakeUpdate];
-    if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", c.latitude];
-    if (_lonInput) _lonInput.text = [NSString stringWithFormat:@"%.6f", c.longitude];
-    [self showToast:@"تم تحديد الموقع على الخريطة"];
+    [defaults setObject:history forKey:@"WF_LOCATION_HISTORY"];
+}
+
+- (void)showLocationHistory {
+    NSArray *history = [NSUserDefaults.standardUserDefaults arrayForKey:@"WF_LOCATION_HISTORY"] ?: @[];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"سجل المواقع" message:@"آخر المواقع المحددة من الخريطة والبحث" preferredStyle:UIAlertControllerStyleActionSheet];
+    for (id item in history) {
+        if (![item isKindOfClass:NSDictionary.class] || ![item[@"latitude"] isKindOfClass:NSNumber.class] || ![item[@"longitude"] isKindOfClass:NSNumber.class] || ![item[@"title"] isKindOfClass:NSString.class]) continue;
+        CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake([item[@"latitude"] doubleValue], [item[@"longitude"] doubleValue]);
+        if (!CLLocationCoordinate2DIsValid(coordinate)) continue;
+        NSString *name = item[@"title"];
+        NSString *label = [NSString stringWithFormat:@"%@ (%.4f, %.4f)", name, coordinate.latitude, coordinate.longitude];
+        [sheet addAction:[UIAlertAction actionWithTitle:label style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+            [self selectMapSearchCoordinate:coordinate title:name toast:@"تم اختيار الموقع من السجل"];
+            [self centerMapOnPin];
+        }]];
+        if (sheet.actions.count == 20) break;
+    }
+    if (sheet.actions.count == 0) { [self showToast:@"سجل المواقع فارغ؛ اختر موقعًا من الخريطة أو البحث"]; return; }
+    [sheet addAction:[UIAlertAction actionWithTitle:@"مسح السجل" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
+        [NSUserDefaults.standardUserDefaults removeObjectForKey:@"WF_LOCATION_HISTORY"];
+        [self showToast:@"تم مسح سجل المواقع"];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"إغلاق" style:UIAlertActionStyleCancel handler:nil]];
+    sheet.popoverPresentationController.sourceView = self.view;
+    sheet.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+    [self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (void)updateMapPin:(CLLocationCoordinate2D)c {

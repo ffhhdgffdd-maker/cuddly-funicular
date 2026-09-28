@@ -14,7 +14,22 @@ assert 'setReturnValue:zero.mutableBytes' in proxy
 assert 'central != _btManager' in ui
 assert '(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1' in ui
 assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
-assert 'statusBtn' not in ui and '@"crown.fill"' in ui
+assert 'statusBtn' not in ui
+header = ui.split('// Header contains only')[1].split('// 2. Top Tabs Bar')[0]
+assert 'UIButton' not in header
+assert 'versionLabel' in header and '_spoofStatusLabel' in header
+status = ui.split('- (void)refreshSpoofHeaderStatus {')[1].split('- (void)tabBtnPressed:')[0]
+assert 'isRuntimeLicenseValid' in status and 'bluetoothActive' not in status
+gps = ui.split('- (void)setupGPSPage {')[1].split('#pragma mark - Unified virtual camera')[0]
+assert 'Bluetooth' not in gps and 'tag:8102' not in gps
+assert 'اختيار هذا الموقع' not in ui
+assert 'handleMapTap:' in gps and 'showLocationHistory' in gps
+assert 'updateIntervalChanged:' in gps
+assert '@[@0, @1, @3, @2, @4]' in ui  # Bluetooth section stays reachable in Full.
+assert 'setupSaudiPlacesMapPage' not in ui
+camera_page = ui.split('- (void)setupVirtualCameraCardAtY:')[1].split('- (void)selectVirtualCameraImage')[0]
+assert 'pickerIconEnabled' in camera_page
+assert 'self.pickerIconEnabled && _iconLifecycle.shouldShowIcon' in camera
 assert '_titleLabel.text = @"WolFox";' in ui
 assert 'chooseRecoveryMethodAndHide:YES' in ui and 'applyRecoveryMethod:method' in ui
 assert 'toggleSpoofQuickPanel:' not in ui
