@@ -6,13 +6,15 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: wolfox-review-${{ github.ref }}
+  group: wolfox-new-design-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   native-tests:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - name: Validate new-design source
+        run: test -f WolFoxMaster.mm && test -f WFInterfacePolicy.h && test -f Makefile
       - run: bash run_native_tests.sh
       - run: python3 tests/test_full_bluetooth_static.py
   build:
