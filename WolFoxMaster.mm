@@ -163,6 +163,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)presentOnboardingIfNeeded;
 - (void)refreshVirtualCameraPage;
 - (void)openGPSPage;
+- (void)presentLocationSearch;
+- (void)mapModeChanged:(UISegmentedControl *)control;
+- (void)openBluetoothPage;
+- (void)chooseLocationFromMap;
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar;
 - (void)volumePressCountChanged:(UISegmentedControl *)control;
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
@@ -458,12 +462,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_header addSubview:_spoofStatusLabel];
     [self refreshSpoofHeaderStatus];
     
-    UIButton *closeBtn = [self headerCircleBtn:@"xmark" color:[WolFoxProTheme danger] x:w - 58];
+    UIButton *closeBtn = [self headerCircleBtn:@"xmark" color:[WolFoxProTheme accent] x:w - 58];
     [closeBtn addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
     closeBtn.accessibilityLabel = @"إخفاء الأداة مع إبقاء طريقة الاستعادة المحددة";
     [_header addSubview:closeBtn];
     
-    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme accent] x:w - 110];
+    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme favorite] x:w - 110];
     [crownBtn addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
@@ -507,7 +511,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         if (@available(iOS 13.0, *)) {
             [b setImage:[UIImage systemImageNamed:icons[i] withConfiguration:tabConfig] forState:UIControlStateNormal];
         }
-        b.tintColor = [UIColor whiteColor];
+        b.tintColor = [WolFoxProTheme textSecondary];
         b.adjustsImageWhenHighlighted = NO;
         b.tag = [tabPages[i] integerValue];
         b.accessibilityLabel = tabLabels[i];
@@ -688,7 +692,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         }];
     }
     for (UIButton *b in _tabBtns) {
-        b.tintColor = (b.tag == page) ? [WolFoxProTheme accent] : [UIColor whiteColor];
+        b.tintColor = (b.tag == page) ? [WolFoxProTheme accent] : [WolFoxProTheme textSecondary];
         b.accessibilityTraits = (b.tag == page) ? UIAccessibilityTraitSelected : UIAccessibilityTraitNone;
     }
 
@@ -1350,26 +1354,93 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupGPSPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
+    CGFloat y = 12.0;
+    _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
 
-    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(10, 10, w - 20, 64)];
-    servicesCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.13];
-    servicesCard.layer.cornerRadius = 13;
-    servicesCard.layer.borderWidth = 1.0;
-    servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
-    [_scrollDashboard addSubview:servicesCard];
-    // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 260)];
+    // Map-first layout for the independent WolFox Maps edition.
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(12, y, w - 24, 286)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    mapCard.layer.cornerRadius = 20; mapCard.clipsToBounds = YES;
+    mapCard.layer.cornerRadius = 20;
+    mapCard.layer.borderWidth = 1.0;
+    mapCard.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.72].CGColor;
+    mapCard.clipsToBounds = YES;
     [_scrollDashboard addSubview:mapCard];
-    
+
     self.mapView = [[MKMapView alloc] initWithFrame:mapCard.bounds];
     self.mapView.delegate = self;
     self.mapView.mapType = (MKMapType)[WolFoxProStore shared].mapStyle;
     [mapCard addSubview:self.mapView];
-    
-    // يظهر الموقع الحقيقي أولاً، ولا تظهر دبوس الإحداثيات الوهمية قبل تفعيل التزييف.
+
+    // A readable top mode control replaces the previous icon-only map style action.
+    UISegmentedControl *mapMode = [[UISegmentedControl alloc] initWithItems:@[@"خريطة", @"قمر صناعي"]];
+    mapMode.frame = CGRectMake(16, 14, mapCard.bounds.size.width - 32, 36);
+    mapMode.selectedSegmentIndex = [WolFoxProStore shared].mapStyle == MKMapTypeSatellite ? 1 : 0;
+    mapMode.backgroundColor = [[WolFoxProTheme controlSurface] colorWithAlphaComponent:0.96];
+    if (@available(iOS 13.0, *)) mapMode.selectedSegmentTintColor = [WolFoxProTheme surfaceSecondary];
+    [mapMode setTitleTextAttributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textPrimary], NSFontAttributeName: [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold]} forState:UIControlStateNormal];
+    [mapMode addTarget:self action:@selector(mapModeChanged:) forControlEvents:UIControlEventValueChanged];
+    mapMode.accessibilityLabel = @"نمط الخريطة";
+    [mapCard addSubview:mapMode];
+
+    UIView *gpsBadge = [[UIView alloc] initWithFrame:CGRectMake(16, 60, 52, 36)];
+    gpsBadge.backgroundColor = [WolFoxProTheme success];
+    gpsBadge.layer.cornerRadius = 18;
+    gpsBadge.layer.shadowColor = [WolFoxProTheme success].CGColor;
+    gpsBadge.layer.shadowOpacity = 0.34;
+    gpsBadge.layer.shadowRadius = 8.0;
+    gpsBadge.layer.shadowOffset = CGSizeMake(0, 3);
+    [mapCard addSubview:gpsBadge];
+    UILabel *gpsLabel = [[UILabel alloc] initWithFrame:gpsBadge.bounds];
+    gpsLabel.text = @"GPS";
+    gpsLabel.textColor = UIColor.whiteColor;
+    gpsLabel.textAlignment = NSTextAlignmentCenter;
+    gpsLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBlack];
+    [gpsBadge addSubview:gpsLabel];
+
+    UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:12 y:mapCard.bounds.size.height - 56];
+    styleBtn.tintColor = [WolFoxProTheme accent];
+    styleBtn.accessibilityLabel = @"تبديل نمط الخريطة المتقدم";
+    [styleBtn addTarget:self action:@selector(toggleMapStyle) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:styleBtn];
+
+    UIButton *realLocBtn = [self mapCircleBtn:@"person.fill" x:64 y:mapCard.bounds.size.height - 56];
+    realLocBtn.tintColor = [WolFoxProTheme success];
+    realLocBtn.accessibilityLabel = @"عرض الموقع الحقيقي";
+    [realLocBtn addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:realLocBtn];
+
+    UIButton *locateBtn = [self mapCircleBtn:@"location.fill" x:mapCard.bounds.size.width - 56 y:mapCard.bounds.size.height - 56];
+    locateBtn.tintColor = [WolFoxProTheme danger];
+    locateBtn.accessibilityLabel = @"التمركز على الموقع المحدد";
+    [locateBtn addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:locateBtn];
+
+    // The search field is presented on demand or in the full-screen map, preserving
+    // the original search implementation while keeping the compact maps layout clean.
+    self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
+    self.searchBar.delegate = self;
+    self.searchBar.placeholder = @"ابحث عن موقع";
+    self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    self.searchBar.barTintColor = UIColor.clearColor;
+    self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
+    self.searchBar.returnKeyType = UIReturnKeySearch;
+    self.searchBar.accessibilityLabel = @"البحث عن موقع";
+    self.searchBar.accessibilityHint = @"ابحث باسم المكان أو العنوان أو الإحداثيات";
+    if (@available(iOS 13.0, *)) {
+        UITextField *searchField = self.searchBar.searchTextField;
+        searchField.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightMedium];
+        searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.searchBar.placeholder attributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textSecondary]}];
+        searchField.backgroundColor = [[WolFoxProTheme controlSurface] colorWithAlphaComponent:0.97];
+        searchField.textColor = [WolFoxProTheme textPrimary];
+        searchField.tintColor = [WolFoxProTheme accent];
+        searchField.layer.cornerRadius = 12;
+        searchField.clipsToBounds = YES;
+        [self configureKeyboardToolbarForTextField:searchField searchMode:YES];
+    }
+    self.searchBar.hidden = YES;
+    objc_setAssociatedObject(self, "_map_search_host", mapCard, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
     CLLocation *real = [WolFoxProHookManager shared].lastRealLocation;
     if (real && ![WolFoxProStore shared].spoofActive) {
         self.realLocPin = [MKPointAnnotation new];
@@ -1377,190 +1448,119 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.realLocPin.title = @"REAL_LOC";
         [self.mapView addAnnotation:self.realLocPin];
     }
-    
-    // Search Bar
-    self.searchBar = [[UISearchBar alloc] initWithFrame:servicesCard.bounds];
-    self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"ابحث باسم المكان أو العنوان";
-    self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    self.searchBar.barTintColor = [UIColor clearColor];
-    self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
-    self.searchBar.returnKeyType = UIReturnKeySearch;
-    self.searchBar.accessibilityLabel = @"البحث عن موقع";
-    self.searchBar.accessibilityHint = @"أدخل اسم مكان أو عنوانًا أو إحداثيات أو رابط خريطة";
-    if (@available(iOS 13.0, *)) {
-        UITextField *searchField = self.searchBar.searchTextField;
-        searchField.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightMedium];
-        searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.searchBar.placeholder
-            attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
-        NSLayoutConstraint *searchHeight = [searchField.heightAnchor constraintEqualToConstant:48.0];
-        searchHeight.priority = UILayoutPriorityDefaultHigh;
-        searchHeight.active = YES;
-        UIImageSymbolConfiguration *searchSymbol = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightSemibold];
-        UIImage *searchImage = [[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:searchSymbol] imageWithTintColor:[WolFoxProTheme accent] renderingMode:UIImageRenderingModeAlwaysOriginal];
-        [self.searchBar setImage:searchImage forSearchBarIcon:UISearchBarIconSearch state:UIControlStateNormal];
-        searchField.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.92];
-        searchField.textColor = [WolFoxProTheme textPrimary];
-        searchField.tintColor = [WolFoxProTheme accent];
-        searchField.layer.cornerRadius = 12;
-        searchField.clipsToBounds = YES;
-        [self configureKeyboardToolbarForTextField:searchField searchMode:YES];
-    } else {
-        // iOS 12 fallback: ضبط ألوان الـ search bar مباشرة
-        self.searchBar.tintColor = [WolFoxProTheme accent];
-        [[UITextField appearanceWhenContainedInInstancesOfClasses:@[UISearchBar.class]]
-            setDefaultTextAttributes:@{NSForegroundColorAttributeName: [WolFoxProTheme textPrimary]}];
-    }
-    [servicesCard addSubview:self.searchBar];
-    objc_setAssociatedObject(self, "_map_search_host", servicesCard, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    // Style Toggle Button
-    UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
-    styleBtn.tintColor = [UIColor colorWithRed:0.35 green:0.74 blue:1.0 alpha:1.0];
-    styleBtn.accessibilityLabel = @"تغيير نمط الخريطة";
-    [styleBtn addTarget:self action:@selector(toggleMapStyle) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:styleBtn];
-    
-    // Real Location Button
-    UIButton *realLocBtn = [self mapCircleBtn:@"person.fill" x:62 y:mapCard.bounds.size.height - 54];
-    realLocBtn.tintColor = [UIColor colorWithRed:0.27 green:0.80 blue:0.65 alpha:1.0];
-    realLocBtn.accessibilityLabel = @"عرض الموقع الحقيقي";
-    [realLocBtn addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:realLocBtn];
-
-    // A full-width action keeps expansion discoverable on narrow screens.
-    UIButton *expandBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    expandBtn.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 48);
-    expandBtn.backgroundColor = [WolFoxProTheme surfacePrimary];
-    expandBtn.layer.cornerRadius = 12;
-    expandBtn.layer.borderWidth = 1.0;
-    expandBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
-    [expandBtn setTitle:@"  توسيع الخريطة" forState:UIControlStateNormal];
-    [expandBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
-    expandBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightSemibold];
-    if (@available(iOS 13.0, *)) [expandBtn setImage:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"] forState:UIControlStateNormal];
-    expandBtn.tintColor = [WolFoxProTheme accent];
-    expandBtn.accessibilityLabel = @"توسيع الخريطة إلى ملء الشاشة";
-    [expandBtn addTarget:self action:@selector(expandMap) forControlEvents:UIControlEventTouchUpInside];
-    [_scrollDashboard addSubview:expandBtn];
-
-    UIButton *searchButton = [self mapCircleBtn:@"magnifyingglass" x:114 y:mapCard.bounds.size.height - 54];
-    searchButton.tintColor = [UIColor colorWithRed:1.0 green:0.75 blue:0.33 alpha:1.0];
-    searchButton.accessibilityLabel = @"تنفيذ البحث في الخريطة";
-    [searchButton addTarget:self action:@selector(searchFromKeyboard) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:searchButton];
-    
-    // Locate Me Button (Fake Pin)
-    UIButton *locateBtn = [self mapCircleBtn:@"location.fill" x:mapCard.bounds.size.width - 54 y:mapCard.bounds.size.height - 54];
-    locateBtn.tintColor = [UIColor colorWithRed:1.0 green:0.52 blue:0.48 alpha:1.0];
-    locateBtn.accessibilityLabel = @"التمركز على الموقع الوهمي";
-    [locateBtn addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:locateBtn];
-    
-    // Remove any existing long press recognizers to prevent accumulation on tab switch
     for (UIGestureRecognizer *gr in [self.mapView.gestureRecognizers copy]) {
-        if ([gr isKindOfClass:[UILongPressGestureRecognizer class]]) {
-            [self.mapView removeGestureRecognizer:gr];
-        }
+        if ([gr isKindOfClass:[UILongPressGestureRecognizer class]]) [self.mapView removeGestureRecognizer:gr];
     }
-    UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-    [self.mapView addGestureRecognizer:lp];
+    [self.mapView addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)]];
     if ([WolFoxProStore shared].spoofActive) [self updateMapPin:[WolFoxProStore shared].currentFakeCoords];
     else [self showRealLocation];
-    
-    // Real-location notice placed between the map and coordinate inputs.
-    UIView *realNotice = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(expandBtn.frame) + 12, w - 30, 54)];
-    realNotice.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.12];
-    realNotice.layer.cornerRadius = 12;
-    realNotice.layer.borderWidth = 1.0;
-    realNotice.layer.borderColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.50].CGColor;
-    [_scrollDashboard addSubview:realNotice];
-    _realLocationNoticeIcon = [[UIImageView alloc] initWithFrame:CGRectMake(realNotice.bounds.size.width - 34, 5, 20, 20)];
-    if (@available(iOS 13.0, *)) _realLocationNoticeIcon.image = [UIImage systemImageNamed:@"checkmark.circle.fill"];
-    _realLocationNoticeIcon.tintColor = [WolFoxProTheme success];
-    _realLocationNoticeIcon.contentMode = UIViewContentModeScaleAspectFit;
-    [realNotice addSubview:_realLocationNoticeIcon];
-    _realLocationNoticeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 0, realNotice.bounds.size.width - 58, 30)];
-    _realLocationNoticeLabel.text = @"الموقع الحقيقي: جاهز للعرض";
-    _realLocationNoticeLabel.textColor = [WolFoxProTheme success];
-    _realLocationNoticeLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    _realLocationNoticeLabel.textAlignment = NSTextAlignmentRight;
-    [realNotice addSubview:_realLocationNoticeLabel];
 
-    UILabel *mapLegend = [[UILabel alloc] initWithFrame:CGRectMake(16, 30, realNotice.bounds.size.width - 32, 20)];
-    mapLegend.text = @"النقطة الزرقاء: موقعك الحقيقي  •  الدبوس الأحمر: الموقع المزيّف";
-    mapLegend.textColor = [WolFoxProTheme textSecondary];
-    mapLegend.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightSemibold];
-    mapLegend.textAlignment = NSTextAlignmentCenter;
-    [realNotice addSubview:mapLegend];
-
-    // Keyboard Input Area
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(realNotice.frame) + 12, w - 30, 66)];
-    kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
+    y = CGRectGetMaxY(mapCard.frame) + 14.0;
+    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(12, y, w - 24, 116)];
+    kbCard.backgroundColor = UIColor.clearColor;
     [_scrollDashboard addSubview:kbCard];
-    
-    // الحفظ والمفضلة يظهران قبل أدوات التشغيل، وخارج مساحة الخريطة.
+    CGFloat actionWidth = (kbCard.bounds.size.width - 12) / 2.0;
+
+    UIButton *searchAction = [UIButton buttonWithType:UIButtonTypeSystem];
+    searchAction.frame = CGRectMake(0, 0, actionWidth, 52);
+    searchAction.backgroundColor = [WolFoxProTheme controlSurface];
+    searchAction.layer.cornerRadius = 12;
+    searchAction.layer.borderWidth = 1.0;
+    searchAction.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.7].CGColor;
+    [searchAction setTitle:@"ابحث عن موقع" forState:UIControlStateNormal];
+    [searchAction setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
+    searchAction.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [searchAction setImage:[UIImage systemImageNamed:@"magnifyingglass"] forState:UIControlStateNormal];
+    searchAction.tintColor = [WolFoxProTheme textPrimary];
+    [searchAction addTarget:self action:@selector(presentLocationSearch) forControlEvents:UIControlEventTouchUpInside];
+    [kbCard addSubview:searchAction];
+
+    UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    favoritesButton.frame = CGRectMake(actionWidth + 12, 0, actionWidth, 52);
+    favoritesButton.backgroundColor = [WolFoxProTheme favorite];
+    favoritesButton.layer.cornerRadius = 12;
+    [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
+    [favoritesButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    favoritesButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [favoritesButton setImage:[UIImage systemImageNamed:@"heart.fill"] forState:UIControlStateNormal];
+    favoritesButton.tintColor = UIColor.whiteColor;
+    [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
+    [kbCard addSubview:favoritesButton];
+
     UIButton *saveLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveLocationButton.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 40);
-    UIColor *saveColor = [UIColor colorWithRed:0.24 green:0.78 blue:0.53 alpha:1.0];
-    saveLocationButton.backgroundColor = [saveColor colorWithAlphaComponent:0.17];
-    saveLocationButton.layer.cornerRadius = 11;
-    [saveLocationButton setTitle:@"حفظ الموقع" forState:UIControlStateNormal];
-    [saveLocationButton setTitleColor:saveColor forState:UIControlStateNormal];
+    saveLocationButton.frame = CGRectMake(0, 64, kbCard.bounds.size.width, 52);
+    saveLocationButton.backgroundColor = [[WolFoxProTheme favorite] colorWithAlphaComponent:0.18];
+    saveLocationButton.layer.cornerRadius = 12;
+    saveLocationButton.layer.borderWidth = 1.0;
+    saveLocationButton.layer.borderColor = [[WolFoxProTheme favorite] colorWithAlphaComponent:0.60].CGColor;
+    [saveLocationButton setTitle:@"حفظ الموقع الحالي" forState:UIControlStateNormal];
+    [saveLocationButton setTitleColor:[WolFoxProTheme favorite] forState:UIControlStateNormal];
+    saveLocationButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [saveLocationButton setImage:[UIImage systemImageNamed:@"bookmark.fill"] forState:UIControlStateNormal];
+    saveLocationButton.tintColor = [WolFoxProTheme favorite];
     [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
     saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
     [kbCard addSubview:saveLocationButton];
 
-    UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    favoritesButton.frame = CGRectMake(CGRectGetMaxX(saveLocationButton.frame) + 15, 12, saveLocationButton.bounds.size.width, 40);
-    UIColor *favoritesColor = [UIColor colorWithRed:1.0 green:0.70 blue:0.28 alpha:1.0];
-    favoritesButton.backgroundColor = [favoritesColor colorWithAlphaComponent:0.17];
-    favoritesButton.layer.cornerRadius = 11;
-    [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
-    [favoritesButton setTitleColor:favoritesColor forState:UIControlStateNormal];
-    [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
-    favoritesButton.accessibilityLabel = @"عرض المواقع المحفوظة";
-    [kbCard addSubview:favoritesButton];
-
-    CGFloat cy = CGRectGetMaxY(kbCard.frame) + 15.0;
-
-    UIView *locationControls = [self settingsCard:@"التزييف" y:cy height:122];
-    [self addComponentSwitch:@"تشغيل / إيقاف الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
-    cy += 134;
-#if !WOLFOX_LITE
-    UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا" : @"تشغيل الكاميرا" i:@"camera.fill" c:[WolFoxProTheme accent] y:cy];
-    cameraToggle.accessibilityLabel = @"تشغيل / إيقاف الكاميرا";
-    [cameraToggle addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
-    cy += 64;
-#endif
-
-    UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
-    scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    scheduleCard.layer.cornerRadius = 18;
-    [_scrollDashboard addSubview:scheduleCard];
-    UIButton *scheduleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    scheduleButton.frame = scheduleCard.bounds;
-    [scheduleButton setTitle:@"جدولة التزييف   " forState:UIControlStateNormal];
-    [scheduleButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
-    scheduleButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
-    scheduleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    scheduleButton.contentEdgeInsets = UIEdgeInsetsMake(0, 18, 0, 18);
-#pragma clang diagnostic pop
-    if (@available(iOS 13.0, *)) [scheduleButton setImage:[UIImage systemImageNamed:@"calendar.badge.clock"] forState:UIControlStateNormal];
-    scheduleButton.tintColor = [WolFoxProTheme accent];
-    scheduleButton.accessibilityLabel = @"فتح قسم جدولة التزييف";
-    [scheduleButton addTarget:self action:@selector(showSpoofSchedulePage) forControlEvents:UIControlEventTouchUpInside];
-    [scheduleCard addSubview:scheduleButton];
-    cy += 87;
-
-    UIButton *hideButton = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة"
-        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:cy];
+    y = CGRectGetMaxY(kbCard.frame) + 12.0;
+    UIButton *hideButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    hideButton.frame = CGRectMake(12, y, w - 24, 52);
+    hideButton.backgroundColor = [WolFoxProTheme danger];
+    hideButton.layer.cornerRadius = 12;
+    [hideButton setTitle:@"إخفاء زر الأداة" forState:UIControlStateNormal];
+    [hideButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    hideButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [hideButton setImage:[UIImage systemImageNamed:@"eye.slash.fill"] forState:UIControlStateNormal];
+    hideButton.tintColor = UIColor.whiteColor;
     hideButton.accessibilityIdentifier = @"map.hide-tool";
     [hideButton addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
-    cy += 62.0;
-    _scrollDashboard.contentSize = CGSizeMake(w, cy + 30);
+    [_scrollDashboard addSubview:hideButton];
+
+    y = CGRectGetMaxY(hideButton.frame) + 12.0;
+    UIView *locationControls = [self settingsCard:@"الموقع" y:y height:110];
+    [self addComponentSwitch:@"تفعيل تغيير الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:36];
+    y = CGRectGetMaxY(locationControls.frame) + 12.0;
+
+#if !WOLFOX_LITE
+    UIButton *bluetoothButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    bluetoothButton.frame = CGRectMake(12, y, w - 24, 52);
+    bluetoothButton.backgroundColor = [WolFoxProTheme bluetooth];
+    bluetoothButton.layer.cornerRadius = 12;
+    [bluetoothButton setTitle:@"إدارة البلوتوث والـ Beacons" forState:UIControlStateNormal];
+    [bluetoothButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    bluetoothButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [bluetoothButton setImage:[UIImage systemImageNamed:@"dot.radiowaves.left.and.right"] forState:UIControlStateNormal];
+    bluetoothButton.tintColor = UIColor.whiteColor;
+    [bluetoothButton addTarget:self action:@selector(openBluetoothPage) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:bluetoothButton];
+    y = CGRectGetMaxY(bluetoothButton.frame) + 12.0;
+#endif
+
+    UIButton *chooseLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    chooseLocationButton.frame = CGRectMake(12, y, w - 24, 52);
+    chooseLocationButton.backgroundColor = [WolFoxProTheme accent];
+    chooseLocationButton.layer.cornerRadius = 12;
+    [chooseLocationButton setTitle:@"اختر هذا الموقع" forState:UIControlStateNormal];
+    [chooseLocationButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    chooseLocationButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [chooseLocationButton setImage:[UIImage systemImageNamed:@"mappin.and.ellipse"] forState:UIControlStateNormal];
+    chooseLocationButton.tintColor = UIColor.whiteColor;
+    [chooseLocationButton addTarget:self action:@selector(chooseLocationFromMap) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:chooseLocationButton];
+    y = CGRectGetMaxY(chooseLocationButton.frame) + 16.0;
+
+#if !WOLFOX_LITE
+    UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا الافتراضية" : @"تشغيل الكاميرا الافتراضية" i:@"camera.fill" c:[WolFoxProTheme accent] y:y];
+    cameraToggle.accessibilityLabel = @"تشغيل أو إيقاف الكاميرا الافتراضية";
+    [cameraToggle addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
+    y += 62.0;
+#endif
+
+    UIButton *scheduleButton = [self royalBtnInside:_scrollDashboard t:@"جدولة التزييف" i:@"calendar.badge.clock" c:[WolFoxProTheme favorite] y:y];
+    scheduleButton.accessibilityLabel = @"فتح جدولة التزييف";
+    [scheduleButton addTarget:self action:@selector(showSpoofSchedulePage) forControlEvents:UIControlEventTouchUpInside];
+    y += 68.0;
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 26.0);
 }
 
 
@@ -2131,6 +2131,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [container addSubview:self.mapView];
 
     [self.searchBar removeFromSuperview];
+    self.searchBar.hidden = NO;
     self.searchBar.tag = 6201;
     [container addSubview:self.searchBar];
 
@@ -2214,12 +2215,60 @@ static BOOL WFMasterProcessIsEligible(void) {
         UIView *searchHost = objc_getAssociatedObject(self, "_map_search_host");
         if (!searchHost) searchHost = _mapCard;
         self.searchBar.frame = searchHost.bounds;
+        self.searchBar.hidden = YES;
         [searchHost addSubview:self.searchBar];
     }
     [_expandedMapContainer removeFromSuperview];
     _expandedMapContainer = nil;
     _expandedMapCloseButton = nil;
     UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, _mapCard);
+}
+
+- (void)presentLocationSearch {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"ابحث عن موقع"
+                                                                   message:@"اكتب اسم المكان أو العنوان أو الإحداثيات."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.placeholder = @"مثال: الرياض أو 24.7136, 46.6753";
+        field.textAlignment = NSTextAlignmentRight;
+        field.text = self.searchBar.text;
+        field.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"بحث" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        NSString *query = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (!self || !query.length) {
+            [self showToast:@"اكتب موقعًا أو إحداثيات أولاً"];
+            return;
+        }
+        self.searchBar.text = query;
+        [self searchFromKeyboard];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)mapModeChanged:(UISegmentedControl *)control {
+    NSInteger mapStyle = control.selectedSegmentIndex == 1 ? MKMapTypeSatellite : MKMapTypeStandard;
+    [WolFoxProStore shared].mapStyle = mapStyle;
+    [[WolFoxProStore shared] saveSettings];
+    self.mapView.mapType = (MKMapType)mapStyle;
+}
+
+- (void)openBluetoothPage {
+#if WOLFOX_LITE
+    [self showToast:@"إدارة البلوتوث متاحة في نسخة WolFox الكاملة"];
+#else
+    [self switchPage:2];
+#endif
+}
+
+- (void)chooseLocationFromMap {
+    [self expandMap];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showToast:@"اضغط مطولاً على الخريطة لتحديد الموقع"];
+    });
 }
 
 - (void)toggleMapStyle {

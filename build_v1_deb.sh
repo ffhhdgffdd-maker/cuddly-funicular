@@ -23,10 +23,11 @@ fi
 # Standard Full variants in the four-edition release.
 case "${WOLFOX_PROFILE:-}" in
     "") ;;
-    control-full|mosques-full|lite-tahakom|lite-mosques|full-tahakom|full-mosques)
+    control-full|mosques-full|lite-tahakom|lite-mosques|full-tahakom|full-mosques|new-app)
         PROFILE="${WOLFOX_PROFILE}"
         case "$PROFILE" in
             *tahakom|control-full) PROFILE_BUNDLE="com.tahakom.mytahakom" ;;
+            new-app) PROFILE_BUNDLE="${WOLFOX_NEW_APP_TARGET_BUNDLE:-sa.gov.moia.mosques-2}" ;;
             *) PROFILE_BUNDLE="sa.gov.moia.mosques-2" ;;
         esac
         if [ -n "${WOLFOX_TARGET_BUNDLE_IDS:-}" ] && [ "$WOLFOX_TARGET_BUNDLE_IDS" != "$PROFILE_BUNDLE" ]; then
@@ -39,9 +40,15 @@ case "${WOLFOX_PROFILE:-}" in
         WOLFOX_PROJECT_BUNDLE_ID="$PROFILE_BUNDLE"
         VERSION="${WOLFOX_VERSION:-3.0.0}"
         case "$PROFILE" in lite-*) WOLFOX_EDITION="Lite" ;; *) WOLFOX_EDITION="Full" ;; esac
-        PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
-        PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
-        PACKAGE_TITLE="WolFox"
+        if [ "$PROFILE" = "new-app" ]; then
+            PRODUCT_NAME="WolFoxMaps"
+            PACKAGE_ID="com.wolfox.gpspro.maps"
+            PACKAGE_TITLE="WolFox Maps"
+        else
+            PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
+            PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
+            PACKAGE_TITLE="WolFox"
+        fi
         ;;
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
@@ -269,4 +276,3 @@ EOF
 }
 make_deb rootful
 make_deb rootless
-

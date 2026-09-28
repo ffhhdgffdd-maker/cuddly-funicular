@@ -80,7 +80,7 @@
 
     UILabel *titleLabel = [UILabel new];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.text = @"WolFox";
+    titleLabel.text = @"WolFox Maps";
     titleLabel.textColor = [UIColor whiteColor];
     titleLabel.font = [UIFont systemFontOfSize:19 weight:UIFontWeightBold];
     titleLabel.textAlignment = NSTextAlignmentCenter;
@@ -113,7 +113,7 @@
 
     UILabel *subtitle = [UILabel new];
     subtitle.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitle.text = @"WolFox";
+    subtitle.text = @"WolFox Maps";
     subtitle.textColor = [WolFoxProTheme textPrimary];
     subtitle.font = [UIFont systemFontOfSize:23 weight:UIFontWeightBlack];
     subtitle.textAlignment = NSTextAlignmentCenter;

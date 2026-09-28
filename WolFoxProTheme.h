@@ -18,6 +18,10 @@
 + (UIColor *)royalField;
 + (UIColor *)royalBlue;
 + (UIColor *)accentSoft;
++ (UIColor *)favorite;
++ (UIColor *)bluetooth;
++ (UIColor *)controlSurface;
++ (UIColor *)outline;
 + (NSTimeInterval)transitionDuration;
 + (BOOL)reduceMotionEnabled;
 
