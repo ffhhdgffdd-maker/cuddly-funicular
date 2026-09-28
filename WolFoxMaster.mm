@@ -471,7 +471,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
 
-    _bluetoothHeaderButton = [self headerCircleBtn:@"point.3.connected.trianglepath.dotted" color:[WolFoxProTheme success] x:w - 162];
+    _bluetoothHeaderButton = [self headerCircleBtn:@"shareplay" color:[WolFoxProTheme success] x:w - 162];
     [_bluetoothHeaderButton addTarget:self action:@selector(openBluetoothFromHeader:) forControlEvents:UIControlEventTouchUpInside];
     [_header addSubview:_bluetoothHeaderButton];
     [self refreshBluetoothHeaderButton];
@@ -678,7 +678,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     _bluetoothHeaderButton.accessibilityLabel = ready ? @"Bluetooth وBeacons مفعّلة؛ افتح الإدارة" : @"فتح إدارة Bluetooth وBeacons";
     _bluetoothHeaderButton.accessibilityHint = @"يفتح قسم Bluetooth لإدارة الأجهزة وBeacons";
     if (@available(iOS 13.0, *)) {
-        NSString *symbol = ready ? @"point.3.connected.trianglepath.dotted" : @"point.3.connected.trianglepath.dotted";
+        NSString *symbol = ready ? @"shareplay" : @"shareplay";
         UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold];
         [_bluetoothHeaderButton setImage:[UIImage systemImageNamed:symbol withConfiguration:config] forState:UIControlStateNormal];
     }
