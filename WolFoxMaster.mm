@@ -167,6 +167,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)mapModeChanged:(UISegmentedControl *)control;
 - (void)openBluetoothPage;
 - (void)chooseLocationFromMap;
+- (void)refreshGPSStatusBadge;
+- (UIButton *)mapsActionButtonIn:(UIView *)container title:(NSString *)title icon:(NSString *)icon color:(UIColor *)color frame:(CGRect)frame filled:(BOOL)filled;
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar;
 - (void)volumePressCountChanged:(UISegmentedControl *)control;
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
@@ -242,6 +244,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UILabel *_spoofStatusLabel;
     MKPointAnnotation *_currentPin;
     UIView *_mapCard;
+    UIView *_gpsStatusBadge;
+    UILabel *_gpsStatusLabel;
     UILabel *_realLocationNoticeLabel;
     UIImageView *_realLocationNoticeIcon;
     NSString *_lastToastKey;
@@ -660,6 +664,17 @@ static BOOL WFMasterProcessIsEligible(void) {
     _spoofStatusLabel.accessibilityLabel = active ? @"حالة التزييف: نشط" : @"حالة التزييف: متوقف";
     [self refreshLocationModeNotice];
     [self refreshLiveStatusCards];
+    [self refreshGPSStatusBadge];
+}
+
+- (void)refreshGPSStatusBadge {
+    if (!_gpsStatusBadge || !_gpsStatusLabel) return;
+    BOOL enabled = [WolFoxProStore shared].spoofActive;
+    UIColor *stateColor = enabled ? [WolFoxProTheme success] : [WolFoxProTheme danger];
+    _gpsStatusBadge.backgroundColor = stateColor;
+    _gpsStatusBadge.layer.shadowColor = stateColor.CGColor;
+    _gpsStatusLabel.text = @"GPS";
+    _gpsStatusBadge.accessibilityLabel = enabled ? @"GPS أخضر: تغيير الموقع يعمل" : @"GPS أحمر: تغيير الموقع متوقف";
 }
 
 - (void)tabBtnPressed:(UIButton *)b { [self switchPage:b.tag]; }
@@ -987,14 +1002,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard addSubview:addBtn];
     y += 65;
 
-    UIButton *importFile = [self royalBtnInside:_scrollDashboard t:@"استيراد ملف بلوتوث"
-        i:@"square.and.arrow.down" c:[WolFoxProTheme accent] y:y];
+    UIView *fileActions = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 50)];
+    [_scrollDashboard addSubview:fileActions];
+    CGFloat fileActionWidth = (fileActions.bounds.size.width - 12) / 2.0;
+    UIButton *importFile = [self mapsActionButtonIn:fileActions title:@"استيراد" icon:@"square.and.arrow.down" color:[WolFoxProTheme accent] frame:CGRectMake(0, 0, fileActionWidth, 50) filled:NO];
     [importFile addTarget:self action:@selector(importBluetoothFile) forControlEvents:UIControlEventTouchUpInside];
-    y += 62;
-    UIButton *exportFile = [self royalBtnInside:_scrollDashboard t:@"تصدير الجهاز المختار"
-        i:@"square.and.arrow.up" c:[WolFoxProTheme accent] y:y];
+    UIButton *exportFile = [self mapsActionButtonIn:fileActions title:@"تصدير المختار" icon:@"square.and.arrow.up" color:[WolFoxProTheme accent] frame:CGRectMake(fileActionWidth + 12, 0, fileActionWidth, 50) filled:NO];
     [exportFile addTarget:self action:@selector(exportBluetoothFile) forControlEvents:UIControlEventTouchUpInside];
-    y += 62;
+    y += 64;
     WolFoxBleProfile *selected = [WolFoxProStore shared].activeBleProfile;
     if (selected) {
         NSDictionary *record = selected.bluetoothRecord;
@@ -1357,7 +1372,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat y = 12.0;
     _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
 
-    // Map-first layout for the independent WolFox Maps edition.
     UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(12, y, w - 24, 286)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -1372,7 +1386,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.mapView.mapType = (MKMapType)[WolFoxProStore shared].mapStyle;
     [mapCard addSubview:self.mapView];
 
-    // A readable top mode control replaces the previous icon-only map style action.
     UISegmentedControl *mapMode = [[UISegmentedControl alloc] initWithItems:@[@"خريطة", @"قمر صناعي"]];
     mapMode.frame = CGRectMake(16, 14, mapCard.bounds.size.width - 32, 36);
     mapMode.selectedSegmentIndex = [WolFoxProStore shared].mapStyle == MKMapTypeSatellite ? 1 : 0;
@@ -1383,20 +1396,19 @@ static BOOL WFMasterProcessIsEligible(void) {
     mapMode.accessibilityLabel = @"نمط الخريطة";
     [mapCard addSubview:mapMode];
 
-    UIView *gpsBadge = [[UIView alloc] initWithFrame:CGRectMake(16, 60, 52, 36)];
-    gpsBadge.backgroundColor = [WolFoxProTheme success];
-    gpsBadge.layer.cornerRadius = 18;
-    gpsBadge.layer.shadowColor = [WolFoxProTheme success].CGColor;
-    gpsBadge.layer.shadowOpacity = 0.34;
-    gpsBadge.layer.shadowRadius = 8.0;
-    gpsBadge.layer.shadowOffset = CGSizeMake(0, 3);
-    [mapCard addSubview:gpsBadge];
-    UILabel *gpsLabel = [[UILabel alloc] initWithFrame:gpsBadge.bounds];
-    gpsLabel.text = @"GPS";
-    gpsLabel.textColor = UIColor.whiteColor;
-    gpsLabel.textAlignment = NSTextAlignmentCenter;
-    gpsLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBlack];
-    [gpsBadge addSubview:gpsLabel];
+    _gpsStatusBadge = [[UIView alloc] initWithFrame:CGRectMake(16, 60, 52, 36)];
+    _gpsStatusBadge.layer.cornerRadius = 18;
+    _gpsStatusBadge.layer.shadowOpacity = 0.30;
+    _gpsStatusBadge.layer.shadowRadius = 8.0;
+    _gpsStatusBadge.layer.shadowOffset = CGSizeMake(0, 3);
+    [mapCard addSubview:_gpsStatusBadge];
+    _gpsStatusLabel = [[UILabel alloc] initWithFrame:_gpsStatusBadge.bounds];
+    _gpsStatusLabel.text = @"GPS";
+    _gpsStatusLabel.textColor = UIColor.whiteColor;
+    _gpsStatusLabel.textAlignment = NSTextAlignmentCenter;
+    _gpsStatusLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBlack];
+    [_gpsStatusBadge addSubview:_gpsStatusLabel];
+    [self refreshGPSStatusBadge];
 
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:12 y:mapCard.bounds.size.height - 56];
     styleBtn.tintColor = [WolFoxProTheme accent];
@@ -1410,14 +1422,18 @@ static BOOL WFMasterProcessIsEligible(void) {
     [realLocBtn addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:realLocBtn];
 
+    UIButton *saveLocationButton = [self mapCircleBtn:@"bookmark.fill" x:116 y:mapCard.bounds.size.height - 56];
+    saveLocationButton.tintColor = [WolFoxProTheme favorite];
+    saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
+    [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:saveLocationButton];
+
     UIButton *locateBtn = [self mapCircleBtn:@"location.fill" x:mapCard.bounds.size.width - 56 y:mapCard.bounds.size.height - 56];
     locateBtn.tintColor = [WolFoxProTheme danger];
     locateBtn.accessibilityLabel = @"التمركز على الموقع المحدد";
     [locateBtn addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside];
     [mapCard addSubview:locateBtn];
 
-    // The search field is presented on demand or in the full-screen map, preserving
-    // the original search implementation while keeping the compact maps layout clean.
     self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
     self.searchBar.delegate = self;
     self.searchBar.placeholder = @"ابحث عن موقع";
@@ -1456,206 +1472,37 @@ static BOOL WFMasterProcessIsEligible(void) {
     else [self showRealLocation];
 
     y = CGRectGetMaxY(mapCard.frame) + 14.0;
-    UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(12, y, w - 24, 116)];
-    kbCard.backgroundColor = UIColor.clearColor;
-    [_scrollDashboard addSubview:kbCard];
-    CGFloat actionWidth = (kbCard.bounds.size.width - 12) / 2.0;
-
-    UIButton *searchAction = [UIButton buttonWithType:UIButtonTypeSystem];
-    searchAction.frame = CGRectMake(0, 0, actionWidth, 52);
-    searchAction.backgroundColor = [WolFoxProTheme controlSurface];
-    searchAction.layer.cornerRadius = 12;
-    searchAction.layer.borderWidth = 1.0;
-    searchAction.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.7].CGColor;
-    [searchAction setTitle:@"ابحث عن موقع" forState:UIControlStateNormal];
-    [searchAction setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
-    searchAction.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [searchAction setImage:[UIImage systemImageNamed:@"magnifyingglass"] forState:UIControlStateNormal];
-    searchAction.tintColor = [WolFoxProTheme textPrimary];
+    UIView *actionsRow = [[UIView alloc] initWithFrame:CGRectMake(12, y, w - 24, 52)];
+    [_scrollDashboard addSubview:actionsRow];
+    CGFloat actionWidth = (actionsRow.bounds.size.width - 12) / 2.0;
+    UIButton *searchAction = [self mapsActionButtonIn:actionsRow title:@"ابحث عن موقع" icon:@"magnifyingglass" color:[WolFoxProTheme textPrimary] frame:CGRectMake(0, 0, actionWidth, 52) filled:NO];
     [searchAction addTarget:self action:@selector(presentLocationSearch) forControlEvents:UIControlEventTouchUpInside];
-    [kbCard addSubview:searchAction];
-
-    UIButton *favoritesButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    favoritesButton.frame = CGRectMake(actionWidth + 12, 0, actionWidth, 52);
-    favoritesButton.backgroundColor = [WolFoxProTheme favorite];
-    favoritesButton.layer.cornerRadius = 12;
-    [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
-    [favoritesButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    favoritesButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [favoritesButton setImage:[UIImage systemImageNamed:@"heart.fill"] forState:UIControlStateNormal];
-    favoritesButton.tintColor = UIColor.whiteColor;
+    UIButton *favoritesButton = [self mapsActionButtonIn:actionsRow title:@"المفضلة" icon:@"heart.fill" color:[WolFoxProTheme favorite] frame:CGRectMake(actionWidth + 12, 0, actionWidth, 52) filled:YES];
     [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
-    [kbCard addSubview:favoritesButton];
 
-    UIButton *saveLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveLocationButton.frame = CGRectMake(0, 64, kbCard.bounds.size.width, 52);
-    saveLocationButton.backgroundColor = [[WolFoxProTheme favorite] colorWithAlphaComponent:0.18];
-    saveLocationButton.layer.cornerRadius = 12;
-    saveLocationButton.layer.borderWidth = 1.0;
-    saveLocationButton.layer.borderColor = [[WolFoxProTheme favorite] colorWithAlphaComponent:0.60].CGColor;
-    [saveLocationButton setTitle:@"حفظ الموقع الحالي" forState:UIControlStateNormal];
-    [saveLocationButton setTitleColor:[WolFoxProTheme favorite] forState:UIControlStateNormal];
-    saveLocationButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [saveLocationButton setImage:[UIImage systemImageNamed:@"bookmark.fill"] forState:UIControlStateNormal];
-    saveLocationButton.tintColor = [WolFoxProTheme favorite];
-    [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
-    saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
-    [kbCard addSubview:saveLocationButton];
-
-    y = CGRectGetMaxY(kbCard.frame) + 12.0;
-    UIButton *hideButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    hideButton.frame = CGRectMake(12, y, w - 24, 52);
-    hideButton.backgroundColor = [WolFoxProTheme danger];
-    hideButton.layer.cornerRadius = 12;
-    [hideButton setTitle:@"إخفاء زر الأداة" forState:UIControlStateNormal];
-    [hideButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    hideButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [hideButton setImage:[UIImage systemImageNamed:@"eye.slash.fill"] forState:UIControlStateNormal];
-    hideButton.tintColor = UIColor.whiteColor;
+    y = CGRectGetMaxY(actionsRow.frame) + 12.0;
+    UIButton *hideButton = [self mapsActionButtonIn:_scrollDashboard title:@"إخفاء لوحة WolFox" icon:@"eye.slash.fill" color:[WolFoxProTheme danger] frame:CGRectMake(12, y, w - 24, 52) filled:YES];
     hideButton.accessibilityIdentifier = @"map.hide-tool";
     [hideButton addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
-    [_scrollDashboard addSubview:hideButton];
 
     y = CGRectGetMaxY(hideButton.frame) + 12.0;
-    UIView *locationControls = [self settingsCard:@"الموقع" y:y height:110];
+    UIView *locationControls = [self settingsCard:@"حالة الموقع" y:y height:110];
     [self addComponentSwitch:@"تفعيل تغيير الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:36];
     y = CGRectGetMaxY(locationControls.frame) + 12.0;
 
 #if !WOLFOX_LITE
-    UIButton *bluetoothButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    bluetoothButton.frame = CGRectMake(12, y, w - 24, 52);
-    bluetoothButton.backgroundColor = [WolFoxProTheme bluetooth];
-    bluetoothButton.layer.cornerRadius = 12;
-    [bluetoothButton setTitle:@"إدارة البلوتوث والـ Beacons" forState:UIControlStateNormal];
-    [bluetoothButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    bluetoothButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [bluetoothButton setImage:[UIImage systemImageNamed:@"dot.radiowaves.left.and.right"] forState:UIControlStateNormal];
-    bluetoothButton.tintColor = UIColor.whiteColor;
+    UIButton *bluetoothButton = [self mapsActionButtonIn:_scrollDashboard title:@"إدارة البلوتوث والـ Beacons" icon:@"dot.radiowaves.left.and.right" color:[WolFoxProTheme bluetooth] frame:CGRectMake(12, y, w - 24, 52) filled:YES];
     [bluetoothButton addTarget:self action:@selector(openBluetoothPage) forControlEvents:UIControlEventTouchUpInside];
-    [_scrollDashboard addSubview:bluetoothButton];
     y = CGRectGetMaxY(bluetoothButton.frame) + 12.0;
 #endif
 
-    UIButton *chooseLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    chooseLocationButton.frame = CGRectMake(12, y, w - 24, 52);
-    chooseLocationButton.backgroundColor = [WolFoxProTheme accent];
-    chooseLocationButton.layer.cornerRadius = 12;
-    [chooseLocationButton setTitle:@"اختر هذا الموقع" forState:UIControlStateNormal];
-    [chooseLocationButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    chooseLocationButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [chooseLocationButton setImage:[UIImage systemImageNamed:@"mappin.and.ellipse"] forState:UIControlStateNormal];
-    chooseLocationButton.tintColor = UIColor.whiteColor;
+    UIButton *chooseLocationButton = [self mapsActionButtonIn:_scrollDashboard title:@"اختر هذا الموقع" icon:@"mappin.and.ellipse" color:[WolFoxProTheme accent] frame:CGRectMake(12, y, w - 24, 52) filled:YES];
     [chooseLocationButton addTarget:self action:@selector(chooseLocationFromMap) forControlEvents:UIControlEventTouchUpInside];
-    [_scrollDashboard addSubview:chooseLocationButton];
-    y = CGRectGetMaxY(chooseLocationButton.frame) + 16.0;
-
-#if !WOLFOX_LITE
-    UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا الافتراضية" : @"تشغيل الكاميرا الافتراضية" i:@"camera.fill" c:[WolFoxProTheme accent] y:y];
-    cameraToggle.accessibilityLabel = @"تشغيل أو إيقاف الكاميرا الافتراضية";
-    [cameraToggle addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
-    y += 62.0;
-#endif
-
-    UIButton *scheduleButton = [self royalBtnInside:_scrollDashboard t:@"جدولة التزييف" i:@"calendar.badge.clock" c:[WolFoxProTheme favorite] y:y];
-    scheduleButton.accessibilityLabel = @"فتح جدولة التزييف";
-    [scheduleButton addTarget:self action:@selector(showSpoofSchedulePage) forControlEvents:UIControlEventTouchUpInside];
-    y += 68.0;
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 26.0);
+    _scrollDashboard.contentSize = CGSizeMake(w, CGRectGetMaxY(chooseLocationButton.frame) + 26.0);
 }
 
 
 #pragma mark - Unified virtual camera
-
-- (void)setupVirtualCameraCardAtY:(CGFloat)y width:(CGFloat)w {
-    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 450)];
-    card.backgroundColor = [WolFoxProTheme surfacePrimary];
-    card.layer.cornerRadius = 18.0;
-    card.layer.borderWidth = 1.0;
-    card.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.30].CGColor;
-    [_scrollDashboard addSubview:card];
-
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 12, card.bounds.size.width - 36, 26)];
-    title.text = @"الكاميرا الافتراضية";
-    title.textAlignment = NSTextAlignmentCenter;
-    title.textColor = [WolFoxProTheme textPrimary];
-    title.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBlack];
-    [card addSubview:title];
-
-    _cameraStateLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 41, card.bounds.size.width - 36, 22)];
-    _cameraStateLabel.textAlignment = NSTextAlignmentCenter;
-    _cameraStateLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
-    _cameraStateLabel.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
-    [card addSubview:_cameraStateLabel];
-
-    _cameraPreviewImageView = [[UIImageView alloc] initWithFrame:CGRectMake(18, 70, card.bounds.size.width - 36, 145)];
-    _cameraPreviewImageView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.38];
-    _cameraPreviewImageView.contentMode = UIViewContentModeScaleAspectFit;
-    _cameraPreviewImageView.clipsToBounds = YES;
-    _cameraPreviewImageView.layer.cornerRadius = 13.0;
-    _cameraPreviewImageView.isAccessibilityElement = YES;
-    [card addSubview:_cameraPreviewImageView];
-
-    UILabel *placeholder = [[UILabel alloc] initWithFrame:_cameraPreviewImageView.bounds];
-    placeholder.tag = 2742;
-    placeholder.text = @"اختر صورة لعرضها مكان بث الكاميرا";
-    placeholder.textAlignment = NSTextAlignmentCenter;
-    placeholder.numberOfLines = 2;
-    placeholder.textColor = [WolFoxProTheme textSecondary];
-    placeholder.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
-    [_cameraPreviewImageView addSubview:placeholder];
-
-    UIButton *selectButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    selectButton.frame = CGRectMake(18, 226, card.bounds.size.width - 36, 44);
-    selectButton.backgroundColor = [WolFoxProTheme accent];
-    selectButton.layer.cornerRadius = 12.0;
-    [selectButton setTitle:@"١. اختيار صورة وتشغيل البث" forState:UIControlStateNormal];
-    [selectButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    selectButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [selectButton setImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"] forState:UIControlStateNormal];
-    selectButton.tintColor = UIColor.whiteColor;
-    selectButton.accessibilityLabel = @"الخطوة الأولى: اختيار صورة وتشغيل الكاميرا الافتراضية";
-    [selectButton addTarget:self action:@selector(selectVirtualCameraImage) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:selectButton];
-
-    _cameraToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _cameraToggleButton.frame = CGRectMake(18, 280, card.bounds.size.width - 36, 44);
-    _cameraToggleButton.layer.cornerRadius = 12.0;
-    [_cameraToggleButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    _cameraToggleButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    [_cameraToggleButton addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:_cameraToggleButton];
-
-    UIView *rememberRow = [[UIView alloc] initWithFrame:CGRectMake(18, 334, card.bounds.size.width - 36, 48)];
-    rememberRow.backgroundColor = [WolFoxProTheme surfaceSecondary];
-    rememberRow.layer.cornerRadius = 12.0;
-    [card addSubview:rememberRow];
-    UILabel *rememberLabel = [[UILabel alloc] initWithFrame:CGRectMake(70, 0, rememberRow.bounds.size.width - 84, 48)];
-    rememberLabel.text = @"٣. الاحتفاظ بآخر صورة للاستخدام القادم";
-    rememberLabel.textAlignment = NSTextAlignmentRight;
-    rememberLabel.textColor = [WolFoxProTheme textPrimary];
-    rememberLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
-    [rememberRow addSubview:rememberLabel];
-    _cameraRememberSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(10, 8, 52, 32)];
-    _cameraRememberSwitch.onTintColor = [WolFoxProTheme accent];
-    _cameraRememberSwitch.accessibilityLabel = @"الخطوة الثالثة: الاحتفاظ بآخر صورة";
-    [_cameraRememberSwitch addTarget:self action:@selector(rememberVirtualCameraChanged:) forControlEvents:UIControlEventValueChanged];
-    [rememberRow addSubview:_cameraRememberSwitch];
-
-    UIButton *clearButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    clearButton.frame = CGRectMake(18, 393, card.bounds.size.width - 36, 40);
-    clearButton.backgroundColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.14];
-    clearButton.layer.cornerRadius = 11.0;
-    clearButton.layer.borderWidth = 1.0;
-    clearButton.layer.borderColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.55].CGColor;
-    [clearButton setTitle:@"٤. حذف الصورة وإيقاف البث" forState:UIControlStateNormal];
-    [clearButton setTitleColor:[WolFoxProTheme danger] forState:UIControlStateNormal];
-    clearButton.titleLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
-    clearButton.accessibilityLabel = @"الخطوة الرابعة: حذف الصورة المختارة وإيقاف البث";
-    [clearButton addTarget:self action:@selector(clearSpoofedImage) forControlEvents:UIControlEventTouchUpInside];
-    [card addSubview:clearButton];
-
-    [self refreshVirtualCameraPage];
-}
 
 - (void)selectVirtualCameraImage {
     [[WFVirtualCameraManager shared] presentImagePickerFromViewController:self];
@@ -1695,15 +1542,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (manager.enabled) {
         _cameraStateLabel.text = @"● البث الافتراضي يعمل الآن";
         _cameraStateLabel.textColor = [WolFoxProTheme success];
-        [_cameraToggleButton setTitle:@"٢. إيقاف البث الافتراضي مؤقتاً" forState:UIControlStateNormal];
-        _cameraToggleButton.accessibilityLabel = @"الخطوة الثانية: إيقاف البث الافتراضي";
+        [_cameraToggleButton setTitle:@"إيقاف البث" forState:UIControlStateNormal];
+        _cameraToggleButton.accessibilityLabel = @"إيقاف البث الافتراضي";
         _cameraToggleButton.backgroundColor = [WolFoxProTheme success];
     } else {
         _cameraStateLabel.text = image ? @"○ توجد صورة جاهزة — البث متوقف" : @"○ لم يتم اختيار صورة";
         _cameraStateLabel.textColor = [WolFoxProTheme textSecondary];
-        [_cameraToggleButton setTitle:@"٢. تشغيل البث الافتراضي" forState:UIControlStateNormal];
-        _cameraToggleButton.accessibilityLabel = @"الخطوة الثانية: تشغيل البث الافتراضي";
-        _cameraToggleButton.backgroundColor = [UIColor colorWithRed:0.16 green:0.24 blue:0.34 alpha:1.0];
+        [_cameraToggleButton setTitle:@"تشغيل البث" forState:UIControlStateNormal];
+        _cameraToggleButton.accessibilityLabel = @"تشغيل البث الافتراضي";
+        _cameraToggleButton.backgroundColor = [WolFoxProTheme accent];
     }
 }
 
@@ -2837,7 +2684,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (UIView *)royalSwitch:(NSString *)t icon:(NSString *)i isOn:(BOOL)on y:(CGFloat)y action:(void(^)(UISwitch *))block {
     UIView *v = [[UIView alloc] initWithFrame:CGRectMake(15, y, _scrollDashboard.bounds.size.width - 30, 65)];
-    v.backgroundColor = [WolFoxProTheme surfacePrimary]; v.layer.cornerRadius = 15;
+    v.backgroundColor = [WolFoxProTheme controlSurface];
+    v.layer.cornerRadius = 15;
+    v.layer.borderWidth = 1.0;
+    v.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.70].CGColor;
     
     UIImageView *iv = [[UIImageView alloc] initWithFrame:CGRectMake(v.bounds.size.width - 45, 17, 30, 30)];
     if (@available(iOS 13.0, *)) iv.image = [UIImage systemImageNamed:i];
@@ -2892,22 +2742,44 @@ static BOOL WFMasterProcessIsEligible(void) {
     return b;
 }
 
+- (UIButton *)mapsActionButtonIn:(UIView *)container title:(NSString *)title icon:(NSString *)icon color:(UIColor *)color frame:(CGRect)frame filled:(BOOL)filled {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.frame = frame;
+    button.backgroundColor = filled ? color : [WolFoxProTheme controlSurface];
+    button.layer.cornerRadius = 12.0;
+    button.layer.borderWidth = filled ? 0.0 : 1.0;
+    button.layer.borderColor = [color colorWithAlphaComponent:0.58].CGColor;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setTitleColor:filled ? UIColor.whiteColor : color forState:UIControlStateNormal];
+    button.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [button setImage:[UIImage systemImageNamed:icon] forState:UIControlStateNormal];
+    button.tintColor = filled ? UIColor.whiteColor : color;
+    button.accessibilityLabel = title;
+    [container addSubview:button];
+    return button;
+}
+
 #pragma mark - ID & Camera Pages (Stubs for linking)
 
 - (void)setupIDPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 10, w - 30, 550)];
-    idCard.backgroundColor = [WolFoxProTheme surfacePrimary]; idCard.layer.cornerRadius = 20;
+    UIView *idCard = [[UIView alloc] initWithFrame:CGRectMake(15, 12, w - 30, 455)];
+    idCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    idCard.layer.cornerRadius = 18;
+    idCard.layer.borderWidth = 1.0;
+    idCard.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.72].CGColor;
     [_scrollDashboard addSubview:idCard];
-    
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 15, idCard.bounds.size.width, 30)];
-    title.text = @"المعرّف وUDID • IDFA • IDFV • Web"; title.textColor = [WolFoxProTheme textPrimary]; title.textAlignment = NSTextAlignmentCenter; title.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, idCard.bounds.size.width - 32, 28)];
+    title.text = @"المعرّف الموحد";
+    title.textColor = [WolFoxProTheme textPrimary];
+    title.textAlignment = NSTextAlignmentRight;
+    title.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBlack];
     [idCard addSubview:title];
 
     UIButton *udidButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    udidButton.frame = CGRectMake(15, 48, idCard.bounds.size.width - 30, 30);
-    NSString *deviceUDID = [WFLicenseClient deviceIdentifier];
-    if (!deviceUDID.length) deviceUDID = @"غير متوفر";
+    udidButton.frame = CGRectMake(16, 45, idCard.bounds.size.width - 32, 30);
+    NSString *deviceUDID = [WFLicenseClient deviceIdentifier] ?: @"غير متوفر";
     [udidButton setTitle:[NSString stringWithFormat:@"UDID الجهاز: %@  •  نسخ", deviceUDID] forState:UIControlStateNormal];
     [udidButton setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
     udidButton.titleLabel.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightBold];
@@ -2915,70 +2787,78 @@ static BOOL WFMasterProcessIsEligible(void) {
     udidButton.accessibilityLabel = @"نسخ UDID الجهاز";
     [udidButton addTarget:self action:@selector(copyDeviceUDID) forControlEvents:UIControlEventTouchUpInside];
     [idCard addSubview:udidButton];
-    
-    UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(15, 82, idCard.bounds.size.width - 30, 50)];
-    tf.backgroundColor = [WolFoxProTheme surfaceSecondary]; tf.layer.cornerRadius = 12; tf.textColor = [WolFoxProTheme textPrimary]; tf.textAlignment = NSTextAlignmentCenter;
-    tf.layer.borderWidth = 1.0; tf.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.32].CGColor; tf.tintColor = [WolFoxProTheme accent]; tf.delegate = self;
-    tf.text = @"";
+
+    UITextField *tf = [[UITextField alloc] initWithFrame:CGRectMake(16, 82, idCard.bounds.size.width - 32, 50)];
+    tf.backgroundColor = [WolFoxProTheme controlSurface];
+    tf.layer.cornerRadius = 12;
+    tf.layer.borderWidth = 1.0;
+    tf.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.82].CGColor;
+    tf.textColor = [WolFoxProTheme textPrimary];
+    tf.textAlignment = NSTextAlignmentCenter;
+    tf.tintColor = [WolFoxProTheme accent];
+    tf.delegate = self;
     tf.placeholder = @"أدخل كود المعرّف UUID هنا";
     tf.attributedPlaceholder = [[NSAttributedString alloc] initWithString:tf.placeholder attributes:@{NSForegroundColorAttributeName:[WolFoxProTheme textSecondary]}];
     tf.accessibilityLabel = @"كود معرّف التطبيق UUID";
     tf.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     objc_setAssociatedObject(self, "_id_tf_page", tf, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [idCard addSubview:tf];
-    
-    UIView *layersCard = [[UIView alloc] initWithFrame:CGRectMake(15, 142, idCard.bounds.size.width - 30, 54)];
+
+    UIView *layersCard = [[UIView alloc] initWithFrame:CGRectMake(16, 142, idCard.bounds.size.width - 32, 54)];
     layersCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
     layersCard.layer.cornerRadius = 12;
     [idCard addSubview:layersCard];
     UILabel *layersTitle = [[UILabel alloc] initWithFrame:CGRectMake(10, 6, layersCard.bounds.size.width - 20, 17)];
-    layersTitle.text = @"طبقات المعرّف الموحدة"; layersTitle.textAlignment = NSTextAlignmentRight;
-    layersTitle.textColor = [WolFoxProTheme textPrimary]; layersTitle.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
+    layersTitle.text = @"طبقات المعرّف الموحدة";
+    layersTitle.textAlignment = NSTextAlignmentRight;
+    layersTitle.textColor = [WolFoxProTheme textPrimary];
+    layersTitle.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBlack];
     [layersCard addSubview:layersTitle];
     UILabel *layersValue = [[UILabel alloc] initWithFrame:CGRectMake(10, 25, layersCard.bounds.size.width - 20, 22)];
     BOOL identifierEnabled = [WolFoxProStore shared].validatedActiveIdentifier != nil;
-    layersValue.text = identifierEnabled ? @"IDFA  •  IDFV  •  WebView  •  UIDevice" : @"فعّل معرّفاً واحداً لتطبيقه على كل الطبقات";
-    layersValue.textAlignment = NSTextAlignmentCenter; layersValue.textColor = identifierEnabled ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
+    layersValue.text = identifierEnabled ? @"IDFA • IDFV • WebView • UIDevice" : @"فعّل معرّفاً واحداً لتطبيقه على كل الطبقات";
+    layersValue.textAlignment = NSTextAlignmentCenter;
+    layersValue.textColor = identifierEnabled ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
     layersValue.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     [layersCard addSubview:layersValue];
 
-    UIButton *sav = [self royalBtnInside:idCard t:@"حفظ وتفعيل" i:@"checkmark" c:[WolFoxProTheme success] y:207];
-    [sav addTarget:self action:@selector(saveIDProPage) forControlEvents:UIControlEventTouchUpInside];
-    
-    UIButton *imp = [self royalBtnInside:idCard t:@"استيراد" i:@"arrow.down" c:[WolFoxProTheme accent] y:272];
-    [imp addTarget:self action:@selector(importIDProPage) forControlEvents:UIControlEventTouchUpInside];
-    
-    UIButton *exp = [self royalBtnInside:idCard t:@"تصدير" i:@"arrow.up" c:[WolFoxProTheme accent] y:337];
-    [exp addTarget:self action:@selector(exportIDProPage) forControlEvents:UIControlEventTouchUpInside];
-    
-    UIButton *res = [self royalBtnInside:idCard t:@"إعادة تعيين للأصلي" i:@"arrow.clockwise" c:[WolFoxProTheme danger] y:402];
-    [res addTarget:self action:@selector(resetIDProPage) forControlEvents:UIControlEventTouchUpInside];
+    CGFloat gridY = 208;
+    CGFloat cellWidth = (idCard.bounds.size.width - 44) / 2.0;
+    UIButton *save = [self mapsActionButtonIn:idCard title:@"حفظ وتفعيل" icon:@"checkmark" color:[WolFoxProTheme success] frame:CGRectMake(16, gridY, cellWidth, 48) filled:YES];
+    [save addTarget:self action:@selector(saveIDProPage) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *import = [self mapsActionButtonIn:idCard title:@"استيراد" icon:@"square.and.arrow.down" color:[WolFoxProTheme accent] frame:CGRectMake(28 + cellWidth, gridY, cellWidth, 48) filled:NO];
+    [import addTarget:self action:@selector(importIDProPage) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *export = [self mapsActionButtonIn:idCard title:@"تصدير" icon:@"square.and.arrow.up" color:[WolFoxProTheme accent] frame:CGRectMake(16, gridY + 60, cellWidth, 48) filled:NO];
+    [export addTarget:self action:@selector(exportIDProPage) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *reset = [self mapsActionButtonIn:idCard title:@"إعادة للأصلي" icon:@"arrow.counterclockwise" color:[WolFoxProTheme danger] frame:CGRectMake(28 + cellWidth, gridY + 60, cellWidth, 48) filled:NO];
+    [reset addTarget:self action:@selector(resetIDProPage) forControlEvents:UIControlEventTouchUpInside];
 
-    UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(15, 462, idCard.bounds.size.width - 30, 40)];
+    UILabel *idStatus = [[UILabel alloc] initWithFrame:CGRectMake(16, 333, idCard.bounds.size.width - 32, 36)];
     BOOL identifierActive = [WolFoxProStore shared].validatedActiveIdentifier != nil;
-    idStatus.text = identifierActive ? @"🔵 المعرّف نشط" : @"أدخل المعرّف واضغط حفظ وتفعيل";
-    idStatus.textColor = identifierActive ? [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0] : [WolFoxProTheme textSecondary];
-    idStatus.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.10];
-    idStatus.layer.cornerRadius = 10; idStatus.clipsToBounds = YES;
+    idStatus.text = identifierActive ? @"المعرّف نشط" : @"أدخل المعرّف ثم اختر حفظ وتفعيل";
+    idStatus.textColor = identifierActive ? [WolFoxProTheme success] : [WolFoxProTheme textSecondary];
+    idStatus.backgroundColor = [[WolFoxProTheme controlSurface] colorWithAlphaComponent:0.92];
+    idStatus.layer.cornerRadius = 10;
+    idStatus.clipsToBounds = YES;
     idStatus.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
     idStatus.textAlignment = NSTextAlignmentCenter;
     [idCard addSubview:idStatus];
     objc_setAssociatedObject(self, "_id_status_label", idStatus, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(15, 502, idCard.bounds.size.width - 30, 38)];
-    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier;
-    NSString *savedSerial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString;
-    targetBundle.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", bundleID.length ? bundleID : @"غير متوفر", savedSerial.length ? savedSerial : @"لم يُضف بعد"];
+    UILabel *targetBundle = [[UILabel alloc] initWithFrame:CGRectMake(16, 381, idCard.bounds.size.width - 32, 50)];
+    NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: @"غير متوفر";
+    NSString *savedSerial = [WolFoxProStore shared].validatedActiveIdentifier.UUIDString ?: @"لم يُضف بعد";
+    targetBundle.text = [NSString stringWithFormat:@"التطبيق: %@\nالسيريال: %@", bundleID, savedSerial];
     targetBundle.numberOfLines = 2;
-    objc_setAssociatedObject(self, "_id_serial_label", targetBundle, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     targetBundle.textColor = [WolFoxProTheme textSecondary];
     targetBundle.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightMedium];
     targetBundle.textAlignment = NSTextAlignmentCenter;
     targetBundle.adjustsFontSizeToFitWidth = YES;
     [idCard addSubview:targetBundle];
+    objc_setAssociatedObject(self, "_id_serial_label", targetBundle, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
     NSArray<WolFoxProIdentifier *> *savedIDs = [WolFoxProStore shared].identifiers;
-    CGFloat cy = 575;
+    CGFloat cy = CGRectGetMaxY(idCard.frame) + 12.0;
     if (savedIDs.count > 0) {
         UILabel *listTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, cy, w - 30, 26)];
         listTitle.text = [NSString stringWithFormat:@"المعرّفات المحفوظة (%lu)", (unsigned long)savedIDs.count];
@@ -2986,15 +2866,13 @@ static BOOL WFMasterProcessIsEligible(void) {
         listTitle.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
         [_scrollDashboard addSubview:listTitle];
         cy += 32;
-
         for (WolFoxProIdentifier *ident in savedIDs) {
             BOOL isActive = [ident.uuid isEqualToString:[WolFoxProStore shared].activeIdentifierUUID];
             UIView *row = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 60)];
-            row.backgroundColor = isActive
-                ? [[WolFoxProTheme accent] colorWithAlphaComponent:0.13]
-                : [WolFoxProTheme surfacePrimary];
+            row.backgroundColor = isActive ? [[WolFoxProTheme accent] colorWithAlphaComponent:0.13] : [WolFoxProTheme surfacePrimary];
             row.layer.cornerRadius = 13;
-            if (isActive) { row.layer.borderColor = [WolFoxProTheme accent].CGColor; row.layer.borderWidth = 1.5; }
+            row.layer.borderWidth = 1.0;
+            row.layer.borderColor = (isActive ? [WolFoxProTheme accent] : [WolFoxProTheme outline]).CGColor;
             [_scrollDashboard addSubview:row];
 
             UILabel *nl = [[UILabel alloc] initWithFrame:CGRectMake(50, 8, row.bounds.size.width - 100, 20)];
@@ -3003,7 +2881,6 @@ static BOOL WFMasterProcessIsEligible(void) {
             nl.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
             nl.textAlignment = NSTextAlignmentRight;
             [row addSubview:nl];
-
             UILabel *ul = [[UILabel alloc] initWithFrame:CGRectMake(50, 30, row.bounds.size.width - 100, 18)];
             NSString *shortUUID = ident.uuid.length > 18 ? [ident.uuid substringToIndex:18] : ident.uuid;
             ul.text = [shortUUID stringByAppendingString:@"…"];
@@ -3012,47 +2889,33 @@ static BOOL WFMasterProcessIsEligible(void) {
             ul.textAlignment = NSTextAlignmentRight;
             [row addSubview:ul];
 
-            if (isActive) {
-                UILabel *checkL = [[UILabel alloc] initWithFrame:CGRectMake(10, 18, 32, 24)];
-                checkL.text = @"✓"; checkL.textColor = [WolFoxProTheme accent];
-                checkL.font = [WolFoxProTheme fontOfSize:18 weight:UIFontWeightBlack];
-                checkL.textAlignment = NSTextAlignmentCenter;
-                [row addSubview:checkL];
-            }
-
-            // تفعيل الصف مع إبقاء أزرار التعديل والحذف مستقلة.
-            UIButton *selB = [UIButton buttonWithType:UIButtonTypeCustom];
-            selB.frame = CGRectMake(44, 0, row.bounds.size.width - 88, row.bounds.size.height);
-            objc_setAssociatedObject(selB, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
-            [selB addTarget:self action:@selector(selectSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
-            [row addSubview:selB];
-
-            // زر تعديل الاسم أو UUID مع تحقق قبل استبدال السجل.
-            UIButton *editB = [UIButton buttonWithType:UIButtonTypeSystem];
-            editB.frame = CGRectMake(4, 8, 38, 44);
-            if (@available(iOS 13.0, *)) [editB setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
-            editB.tintColor = [WolFoxProTheme accent];
-            objc_setAssociatedObject(editB, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
-            [editB addTarget:self action:@selector(editSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
-            editB.accessibilityLabel = @"تعديل المعرّف المحفوظ";
-            [row addSubview:editB];
-
-            // زر حذف
-            UIButton *delB = [UIButton buttonWithType:UIButtonTypeSystem];
-            delB.frame = CGRectMake(row.bounds.size.width - 44, 8, 38, 44);
-            if (@available(iOS 13.0, *)) [delB setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
-            delB.tintColor = [WolFoxProTheme danger];
-            objc_setAssociatedObject(delB, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
-            [delB addTarget:self action:@selector(deleteSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
-            delB.accessibilityLabel = @"حذف المعرّف المحفوظ";
-            [row addSubview:delB];
-
+            UIButton *select = [UIButton buttonWithType:UIButtonTypeCustom];
+            select.frame = CGRectMake(44, 0, row.bounds.size.width - 88, row.bounds.size.height);
+            objc_setAssociatedObject(select, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
+            [select addTarget:self action:@selector(selectSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
+            [row addSubview:select];
+            UIButton *edit = [UIButton buttonWithType:UIButtonTypeSystem];
+            edit.frame = CGRectMake(4, 8, 38, 44);
+            if (@available(iOS 13.0, *)) [edit setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
+            edit.tintColor = [WolFoxProTheme accent];
+            objc_setAssociatedObject(edit, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
+            [edit addTarget:self action:@selector(editSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
+            edit.accessibilityLabel = @"تعديل المعرّف المحفوظ";
+            [row addSubview:edit];
+            UIButton *delete = [UIButton buttonWithType:UIButtonTypeSystem];
+            delete.frame = CGRectMake(row.bounds.size.width - 44, 8, 38, 44);
+            if (@available(iOS 13.0, *)) [delete setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
+            delete.tintColor = [WolFoxProTheme danger];
+            objc_setAssociatedObject(delete, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
+            [delete addTarget:self action:@selector(deleteSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
+            delete.accessibilityLabel = @"حذف المعرّف المحفوظ";
+            [row addSubview:delete];
             cy += 68;
         }
     }
-
     _scrollDashboard.contentSize = CGSizeMake(w, cy + 20);
 }
+
 
 - (void)selectSavedIdentifier:(UIButton *)btn {
     NSString *uuid = objc_getAssociatedObject(btn, "_id_uuid");
@@ -3296,11 +3159,101 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupCameraPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UIButton *back = [self royalBtnInside:_scrollDashboard t:@"العودة إلى الموقع" i:@"arrow.right" c:[WolFoxProTheme accent] y:10];
-    [back addTarget:self action:@selector(openGPSPage) forControlEvents:UIControlEventTouchUpInside];
-    [self setupVirtualCameraCardAtY:76.0 width:w];
-    _scrollDashboard.backgroundColor = UIColor.clearColor;
-    _scrollDashboard.contentSize = CGSizeMake(w, 550.0);
+    [self setupVirtualCameraCardAtY:12.0 width:w];
+    _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
+    _scrollDashboard.contentSize = CGSizeMake(w, 438.0);
+}
+
+- (void)setupVirtualCameraCardAtY:(CGFloat)y width:(CGFloat)w {
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 400)];
+    card.backgroundColor = [WolFoxProTheme surfacePrimary];
+    card.layer.cornerRadius = 18.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.72].CGColor;
+    [_scrollDashboard addSubview:card];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 12, card.bounds.size.width - 36, 26)];
+    title.text = @"الكاميرا الافتراضية";
+    title.textAlignment = NSTextAlignmentRight;
+    title.textColor = [WolFoxProTheme textPrimary];
+    title.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBlack];
+    [card addSubview:title];
+
+    _cameraStateLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 41, card.bounds.size.width - 36, 22)];
+    _cameraStateLabel.textAlignment = NSTextAlignmentRight;
+    _cameraStateLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
+    _cameraStateLabel.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
+    [card addSubview:_cameraStateLabel];
+
+    _cameraPreviewImageView = [[UIImageView alloc] initWithFrame:CGRectMake(18, 70, card.bounds.size.width - 36, 145)];
+    _cameraPreviewImageView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.38];
+    _cameraPreviewImageView.contentMode = UIViewContentModeScaleAspectFit;
+    _cameraPreviewImageView.clipsToBounds = YES;
+    _cameraPreviewImageView.layer.cornerRadius = 13.0;
+    _cameraPreviewImageView.isAccessibilityElement = YES;
+    [card addSubview:_cameraPreviewImageView];
+
+    UILabel *placeholder = [[UILabel alloc] initWithFrame:_cameraPreviewImageView.bounds];
+    placeholder.tag = 2742;
+    placeholder.text = @"اختر صورة لعرضها مكان بث الكاميرا";
+    placeholder.textAlignment = NSTextAlignmentCenter;
+    placeholder.numberOfLines = 2;
+    placeholder.textColor = [WolFoxProTheme textSecondary];
+    placeholder.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
+    [_cameraPreviewImageView addSubview:placeholder];
+
+    CGFloat actionWidth = (card.bounds.size.width - 48) / 2.0;
+    UIButton *selectButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    selectButton.frame = CGRectMake(18, 226, actionWidth, 44);
+    selectButton.backgroundColor = [WolFoxProTheme accent];
+    selectButton.layer.cornerRadius = 12.0;
+    [selectButton setTitle:@"اختيار صورة" forState:UIControlStateNormal];
+    [selectButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    selectButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
+    if (@available(iOS 13.0, *)) [selectButton setImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"] forState:UIControlStateNormal];
+    selectButton.tintColor = UIColor.whiteColor;
+    selectButton.accessibilityLabel = @"اختيار صورة للكاميرا الافتراضية";
+    [selectButton addTarget:self action:@selector(selectVirtualCameraImage) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:selectButton];
+
+    _cameraToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _cameraToggleButton.frame = CGRectMake(30 + actionWidth, 226, actionWidth, 44);
+    _cameraToggleButton.layer.cornerRadius = 12.0;
+    [_cameraToggleButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    _cameraToggleButton.titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
+    [_cameraToggleButton addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:_cameraToggleButton];
+
+    UIView *rememberRow = [[UIView alloc] initWithFrame:CGRectMake(18, 282, card.bounds.size.width - 36, 48)];
+    rememberRow.backgroundColor = [WolFoxProTheme controlSurface];
+    rememberRow.layer.cornerRadius = 12.0;
+    [card addSubview:rememberRow];
+    UILabel *rememberLabel = [[UILabel alloc] initWithFrame:CGRectMake(70, 0, rememberRow.bounds.size.width - 84, 48)];
+    rememberLabel.text = @"الاحتفاظ بآخر صورة للاستخدام القادم";
+    rememberLabel.textAlignment = NSTextAlignmentRight;
+    rememberLabel.textColor = [WolFoxProTheme textPrimary];
+    rememberLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
+    [rememberRow addSubview:rememberLabel];
+    _cameraRememberSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(10, 8, 52, 32)];
+    _cameraRememberSwitch.onTintColor = [WolFoxProTheme accent];
+    _cameraRememberSwitch.accessibilityLabel = @"الاحتفاظ بآخر صورة";
+    [_cameraRememberSwitch addTarget:self action:@selector(rememberVirtualCameraChanged:) forControlEvents:UIControlEventValueChanged];
+    [rememberRow addSubview:_cameraRememberSwitch];
+
+    UIButton *clearButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    clearButton.frame = CGRectMake(18, 342, card.bounds.size.width - 36, 40);
+    clearButton.backgroundColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.14];
+    clearButton.layer.cornerRadius = 11.0;
+    clearButton.layer.borderWidth = 1.0;
+    clearButton.layer.borderColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.55].CGColor;
+    [clearButton setTitle:@"حذف الصورة وإيقاف البث" forState:UIControlStateNormal];
+    [clearButton setTitleColor:[WolFoxProTheme danger] forState:UIControlStateNormal];
+    clearButton.titleLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightBold];
+    clearButton.accessibilityLabel = @"حذف الصورة المختارة وإيقاف البث";
+    [clearButton addTarget:self action:@selector(clearSpoofedImage) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:clearButton];
+
+    [self refreshVirtualCameraPage];
 }
 
 
@@ -3319,7 +3272,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (UIView *)royalSwitchInside:(UIView *)p t:(NSString *)t i:(NSString *)i isOn:(BOOL)on y:(CGFloat)y action:(void(^)(UISwitch *))block {
     UIView *v = [[UIView alloc] initWithFrame:CGRectMake(15, y, p.bounds.size.width - 30, 65)];
-    v.backgroundColor = [WolFoxProTheme surfaceSecondary]; v.layer.cornerRadius = 15;
+    v.backgroundColor = [WolFoxProTheme controlSurface];
+    v.layer.cornerRadius = 15;
+    v.layer.borderWidth = 1.0;
+    v.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.70].CGColor;
     UIImageView *iv = [[UIImageView alloc] initWithFrame:CGRectMake(v.bounds.size.width - 45, 17, 30, 30)];
     if (@available(iOS 13.0, *)) iv.image = [UIImage systemImageNamed:i];
     iv.tintColor = [WolFoxProTheme accent]; iv.contentMode = UIViewContentModeScaleAspectFit; [v addSubview:iv];
@@ -3373,9 +3329,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] synchronize];
     [self refreshSpoofHeaderStatus];
     [self switchPage:_activePage];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self showIdentifierMessage:@"تم حفظ التغيير وتطبيقه داخل الأداة."];
-    });
+    [self showToast:@"تم حفظ التغيير وتطبيقه"];
 }
 
 - (void)confirmInternalChange:(NSString *)title apply:(BOOL (^)(void))apply {
@@ -3392,7 +3346,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)requestHideTool {
-    [self cancelBTScan];
     [[WolFoxController shared] chooseRecoveryMethodAndHide:YES];
 }
 
@@ -3447,7 +3400,10 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (UIView *)settingsCard:(NSString *)title y:(CGFloat)y height:(CGFloat)height {
     CGFloat width = _scrollDashboard.bounds.size.width - 30;
     UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, width, height)];
-    card.backgroundColor = [WolFoxProTheme surfacePrimary]; card.layer.cornerRadius = 16;
+    card.backgroundColor = [WolFoxProTheme surfacePrimary];
+    card.layer.cornerRadius = 16;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [[WolFoxProTheme outline] colorWithAlphaComponent:0.72].CGColor;
     [_scrollDashboard addSubview:card];
     UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, width - 30, 28)];
     label.text = title; label.textColor = [WolFoxProTheme textPrimary];
@@ -3467,34 +3423,45 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)setupInterfacePage {
-    CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
+    CGFloat w = _scrollDashboard.bounds.size.width;
+    CGFloat y = 12.0;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:368];
-    UILabel *current = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, card.bounds.size.width - 30, 60)];
+    UIView *card = [self settingsCard:@"الواجهة والاستعادة" y:y height:356];
+    UILabel *current = [[UILabel alloc] initWithFrame:CGRectMake(16, 44, card.bounds.size.width - 32, 52)];
     current.text = WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"]);
-    current.textColor = [WolFoxProTheme textSecondary]; current.numberOfLines = 3;
-    current.textAlignment = NSTextAlignmentRight; current.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium];
+    current.textColor = [WolFoxProTheme textSecondary];
+    current.numberOfLines = 2;
+    current.textAlignment = NSTextAlignmentRight;
+    current.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium];
     [card addSubview:current];
-    UIButton *method = [self royalBtnInside:card t:@"اختيار طريقة الإخفاء والاستعادة" i:@"hand.tap" c:[WolFoxProTheme accent] y:112];
+
+    UIButton *method = [self mapsActionButtonIn:card title:@"طريقة الإخفاء والاستعادة" icon:@"hand.tap" color:[WolFoxProTheme accent] frame:CGRectMake(16, 106, card.bounds.size.width - 32, 48) filled:NO];
     [method addTarget:self action:@selector(changeRecoveryMethod) forControlEvents:UIControlEventTouchUpInside];
+
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
-    pressCount.frame = CGRectMake(15, 182, card.bounds.size.width - 30, 38);
+    pressCount.frame = CGRectMake(16, 166, card.bounds.size.width - 32, 36);
+    pressCount.backgroundColor = [WolFoxProTheme controlSurface];
+    if (@available(iOS 13.0, *)) pressCount.selectedSegmentTintColor = [WolFoxProTheme surfaceSecondary];
     NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
     pressCount.selectedSegmentIndex = count == 2 ? 0 : count == 5 ? 2 : 1;
     pressCount.accessibilityLabel = @"عدد ضغطات الصوت لاستعادة WolFox";
     [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
     [card addSubview:pressCount];
-    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:232 action:^(UISwitch *toggle) {
+
+    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:214 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
-        [self showToast:toggle.on ? @"تم حفظ فتح WolFox عند تشغيل التطبيق" : @"تم إيقاف الفتح التلقائي لـ WolFox"];
+        [self showToast:toggle.on ? @"تم حفظ الفتح التلقائي" : @"تم إيقاف الفتح التلقائي"];
     }]];
-    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:306];
+
+    CGFloat actionWidth = (card.bounds.size.width - 44) / 2.0;
+    UIButton *reset = [self mapsActionButtonIn:card title:@"إعادة موضع الأيقونة" icon:@"arrow.counterclockwise" color:[WolFoxProTheme accent] frame:CGRectMake(16, 294, actionWidth, 48) filled:NO];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    y += 380;
-    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
-    [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
+    UIButton *schedule = [self mapsActionButtonIn:card title:@"جدولة التزييف" icon:@"calendar.badge.clock" color:[WolFoxProTheme favorite] frame:CGRectMake(28 + actionWidth, 294, actionWidth, 48) filled:NO];
+    [schedule addTarget:self action:@selector(showSpoofSchedulePage) forControlEvents:UIControlEventTouchUpInside];
+
+    _scrollDashboard.contentSize = CGSizeMake(w, CGRectGetMaxY(card.frame) + 24.0);
 }
+
 
 - (void)changeRecoveryMethod { [[WolFoxController shared] chooseRecoveryMethodAndHide:NO]; }
 
@@ -4565,34 +4532,39 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)chooseRecoveryMethodAndHide:(BOOL)hide {
     if (!self.mainVC || self.mainVC.presentedViewController) return;
     [self.mainVC cancelBTScan];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    WFRecoveryMethod savedMethod = (WFRecoveryMethod)[defaults integerForKey:@"WF_RECOVERY_METHOD"];
+    if (hide && WFRecoveryMethodValid(savedMethod)) {
+        [self applyRecoveryMethod:savedMethod];
+        [self dismissUI];
+        return;
+    }
+
     self.overlayWindow.hidden = NO;
     [self makeOverlayKey];
-    self.mainVC.view.hidden = NO; self.mainVC.view.alpha = 1;
+    self.mainVC.view.hidden = NO;
+    self.mainVC.view.alpha = 1;
     [[WFVirtualCameraManager shared] setToolVisible:YES];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"كيف ستعيد إظهار WolFox؟"
-        message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"طريقة الاستعادة"
+        message:@"اختر طريقة واحدة لإظهار WolFox لاحقاً. سيُحفظ الاختيار فوراً."
         preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"الأيقونة وأزرار الصوت معًا"];
+    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"الأيقونة وأزرار الصوت معاً"];
     for (NSInteger i = 0; i < titles.count; i++) {
         WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
-            [alert dismissViewControllerAnimated:YES completion:^{
-                NSString *message = [NSString stringWithFormat:@"تم حفظ طريقة الاستعادة.\n%@", WFRecoveryDescription(method)];
-                UIAlertController *saved = [UIAlertController alertControllerWithTitle:@"تم الحفظ" message:message preferredStyle:UIAlertControllerStyleAlert];
-                [saved addAction:[UIAlertAction actionWithTitle:hide ? @"إخفاء الأداة الآن" : @"حسنًا" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
-                    [saved dismissViewControllerAnimated:YES completion:^{
-                        if (hide) [self dismissUI];
-                        else [self.mainVC switchPage:4];
-                    }];
-                }]];
-                [self.mainVC presentViewController:saved animated:YES completion:nil];
-            }];
+            if (hide) {
+                [self dismissUI];
+            } else {
+                [self.mainVC switchPage:4];
+                [self.mainVC showToast:@"تم حفظ طريقة الاستعادة"];
+            }
         }]];
     }
     [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [self.mainVC presentViewController:alert animated:YES completion:nil];
 }
+
 
 - (void)enableMenuRecoveryShortcut {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;

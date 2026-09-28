@@ -46,6 +46,8 @@ typedef NS_ENUM(NSInteger, WFLicenseStatus) {
 + (void)markAsActivated;
 + (void)clearStoredLicense;
 + (nullable NSString *)storedCode;
++ (void)storeActivationDraftCode:(NSString *)code;
++ (nullable NSString *)storedActivationDraftCode;
 + (nullable WFLicenseResult *)storedLicenseInfo;
 + (NSString *)deviceIdentifier;
 

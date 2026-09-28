@@ -153,7 +153,7 @@
     self.codeField.accessibilityLabel = @"كود تفعيل WolFox";
     self.codeField.accessibilityHint = @"اكتب الكود أو استخدم زر اللصق ثم اضغط تحقق وتفعيل";
     [self.codeField addTarget:self action:@selector(activationCodeEditingChanged:) forControlEvents:UIControlEventEditingChanged];
-    self.codeField.text = [WFLicenseClient storedCode] ?: @"";
+    self.codeField.text = [WFLicenseClient storedCode] ?: [WFLicenseClient storedActivationDraftCode] ?: @"";
     self.codeField.leftView = nil;
 
     // زر النسخ داخل خانة الكود كما طلب المستخدم، ويبقى زر اللصق واضحاً خارجها.
@@ -412,6 +412,7 @@
     NSString *normalized = [self normalizedActivationCode:field.text];
     if (![field.text isEqualToString:normalized]) field.text = normalized;
     BOOL hasCode = normalized.length > 0;
+    if (hasCode) [WFLicenseClient storeActivationDraftCode:normalized];
     self.activateButton.alpha = hasCode ? 1.0 : 0.55;
     self.activateButton.accessibilityValue = hasCode ? @"الكود جاهز للتحقق" : @"أدخل الكود أولاً";
     if (!self.activateButton.enabled && !self.loadingOverlay.hidden) return;
@@ -459,6 +460,7 @@
     if (!self.activateButton.enabled) return;
     NSString *code = [self normalizedActivationCode:self.codeField.text];
     self.codeField.text = code;
+    [WFLicenseClient storeActivationDraftCode:code];
     WFLog(@"[WolFox][ACT] activation_submitted length=%lu", (unsigned long)code.length);
     if (code.length == 0) {
         [self showActivationError:@"أدخل كود التفعيل أولاً ثم حاول مرة أخرى."];

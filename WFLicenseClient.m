@@ -9,6 +9,7 @@
 
 static NSString * const kKeychainService = @"fun.p3nd.wolfox.license";
 static NSString * const kCodeKey = @"wf_license_code";
+static NSString * const kPendingActivationCodeKey = @"wf_pending_activation_code";
 static NSString * const kTokenKey = @"wf_access_token";
 static NSString * const kCacheKey = @"wf_license_cache";
 static NSString * const kActivatedKey = @"wf_is_activated";
@@ -197,6 +198,7 @@ static const NSUInteger kMaximumRequestAttempts = 2;
             if (stored && token.length) stored = [self saveToKeychain:token key:kTokenKey];
             if (stored && !token.length) [self deleteKeychainKey:kTokenKey];
             if (stored) {
+                [self deleteKeychainKey:kPendingActivationCodeKey];
                 [self clearSuspendedState];
                 [self saveCacheFromResponse:json code:trimmed];
             } else {
@@ -353,6 +355,11 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     if ([self saveToKeychain:@"YES" key:kActivatedKey]) [self clearSuspendedState];
 }
 + (NSString *)storedCode { return [self loadFromKeychain:kCodeKey]; }
++ (void)storeActivationDraftCode:(NSString *)code {
+    NSString *draft = [[code ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] uppercaseString];
+    if (draft.length) [self saveToKeychain:draft key:kPendingActivationCodeKey];
+}
++ (NSString *)storedActivationDraftCode { return [self loadFromKeychain:kPendingActivationCodeKey]; }
 
 + (WFLicenseResult *)storedLicenseInfo {
     NSString *cached = [self loadFromKeychain:kCacheKey];

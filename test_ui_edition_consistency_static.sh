@@ -14,22 +14,15 @@ if grep -Fq '_titleLabel.text = @"WolFox";' "$MASTER"; then
 else
     echo "❌ اسم WolFox الأساسي غير موجود"; exit 1
 fi
-reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الكاميرا محذوف من الواجهة"
+reject "$MASTER" '@"الكاميرا", @"الإعدادات"' "تبويب الكاميرا لم يُخف من الواجهة"
 check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Lite الصحيح"
-check "$MASTER" 'NSString *onboardingEdition = @"WolFox";' "عداد الجولة يعرض Full الصحيح"
 check "$MASTER" 'displayVersion = [NSString stringWithFormat:@"WolFox v%@"' "عرض الإصدار والنسخة ديناميكي"
 check "$MASTER" 'showLiveStatusPopup' "الحالة المباشرة تظهر من زر الرأس"
-check "$MASTER" 'saveLocationButton' "زر حفظ الموقع موجود قبل أدوات التشغيل"
-check "$MASTER" 'favoritesButton' "زر المفضلة موجود قبل أدوات التشغيل"
-check "$MASTER" '[kbCard addSubview:saveLocationButton]' "زر الحفظ خارج مساحة الخريطة"
-check "$MASTER" '[kbCard addSubview:favoritesButton]' "زر المفضلة خارج مساحة الخريطة"
-reject "$MASTER" 'favoritesCard' "بطاقة المفضلة القديمة المكررة محذوفة"
-if rg -q '\[mapCard addSubview:(saveLocationButton|favoritesButton|quickSaveFavorite|quickShowFavorites)\]' "$MASTER"; then
-    echo "❌ أزرار الحفظ أو المفضلة ما زالت داخل الخريطة"
-    exit 1
-else
-    echo "✅ أزرار الحفظ والمفضلة أزيلت من الخريطة ووُضعت قبل التشغيل"
-fi
+check "$MASTER" 'UIButton *saveLocationButton = [self mapCircleBtn:@"bookmark.fill"' "حفظ الموقع أصبح إجراء خريطة مضغوطاً"
+check "$MASTER" 'mapsActionButtonIn:actionsRow title:@"المفضلة"' "المفضلة ضمن صف الإجراءات الموحد"
+check "$MASTER" 'mapsActionButtonIn:actionsRow title:@"ابحث عن موقع"' "البحث ضمن صف الإجراءات الموحد"
+reject "$MASTER" 'UIView *kbCard' "بطاقة الإجراءات العمودية القديمة أزيلت"
+reject "$MASTER" 'favoritesCard' "بطاقة المفضلة القديمة المكررة أزيلت"
 check "$MASTER" 'coordinateFromSharedMapText' "البحث يدعم روابط مشاركة الخرائط"
 reject "$MASTER" 'countrycodes=sa' "بحث العناوين يدعم المواقع خارج السعودية"
 check "$MASTER" 'moveFakeLocationByMeters' "دعم حركة الموقع 5 و10 أمتار"
@@ -40,4 +33,4 @@ check "$ACTIVATION" 'presentResultAlertForResult' "الإشعار المستقل
 reject "$ACTIVATION" 'تعذّر تفعيل الكود' "لا توجد رسالة فشل ثابتة داخل الصفحة"
 check "$CONFIG" 'WF_TWEAK_VERSION @"2.0.0-Full"' "الإصدار الأساسي 2.0.0"
 
-echo "✅ اجتاز اتساق واجهة Full/Lite اختبارات الحماية."
+echo "✅ اجتاز اتساق واجهة WolFox Maps اختبارات الحماية."
