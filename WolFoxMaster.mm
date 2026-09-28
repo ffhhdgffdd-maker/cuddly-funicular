@@ -286,6 +286,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(btProfileDeactivated) name:@"WF_BT_PROFILE_DEACTIVATED" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toolWillResignActive:) name:UIApplicationDidEnterBackgroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraStateChanged:) name:WFVirtualCameraStateDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wolfoxScreenshotTaken:) name:UIApplicationUserDidTakeScreenshotNotification object:nil];
 }
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"WF_ROUTE_FINISHED" object:nil];
@@ -293,6 +294,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"WF_BT_PROFILE_DEACTIVATED" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:WFVirtualCameraStateDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationUserDidTakeScreenshotNotification object:nil];
     [_activeMapSearch cancel];
     [_saudiPlacesTask cancel];
     [_saudiPlacesReloadTimer invalidate];
@@ -300,6 +302,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     _realLocManager.delegate = nil;
     [_btManager stopScan];
     _btManager.delegate = nil;
+}
+
+- (void)wolfoxScreenshotTaken:(NSNotification *)notification {
+    (void)notification;
+    if ([[NSUserDefaults standardUserDefaults] integerForKey:@"WF_RECOVERY_METHOD"] != WFRecoveryScreenshot) return;
+    dispatch_async(dispatch_get_main_queue(), ^{ [[WolFoxController shared] toggleUI]; });
 }
 
 - (void)viewDidLayoutSubviews {
@@ -4523,7 +4531,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"كيف ستعيد إظهار WolFox؟"
         message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
         preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"الأيقونة وأزرار الصوت معًا"];
+    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"تصوير الشاشة"];
     for (NSInteger i = 0; i < titles.count; i++) {
         WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
@@ -4714,7 +4722,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                            forState:UIControlStateNormal];
     }
     self.floatingIcon.tintColor = UIColor.whiteColor;
-    self.floatingIcon.accessibilityHint = @"اضغط لفتح التحكم السريع وإظهار المنيو، أو اسحب لتحريك الأيقونة";
+    self.floatingIcon.accessibilityHint = @"اضغط لفتح واجهة WolFox الكاملة مباشرة، أو اسحب لتحريك الأيقونة";
     [self.floatingIcon addTarget:self action:@selector(handleFloatingStatusTap:) forControlEvents:UIControlEventTouchUpInside];
     [self.floatingIcon addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusPan:)]];
     UILongPressGestureRecognizer *hidePress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingStatusLongPress:)];
@@ -5086,10 +5094,8 @@ static BOOL WFMasterProcessIsEligible(void) {
             }
             self.cameraIcon.tintColor = [UIColor whiteColor];
             self.cameraIcon.accessibilityLabel = @"فتح الاستديو واختيار صورة للبث";
-            self.cameraIcon.accessibilityHint = @"اضغط لاختيار صورة من الاستوديو أو اسحب لتغيير الموضع";
+            self.cameraIcon.accessibilityHint = @"اضغط لاختيار صورة من الاستوديو";
             [self.cameraIcon addTarget:self action:@selector(openVirtualCameraImagePicker:) forControlEvents:UIControlEventTouchUpInside];
-            UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleCameraIconPan:)];
-            [self.cameraIcon addGestureRecognizer:pan];
             [self.overlayWindow addSubview:self.cameraIcon];
             
             // Shadow
@@ -5098,6 +5104,9 @@ static BOOL WFMasterProcessIsEligible(void) {
             self.cameraIcon.layer.shadowOpacity = 0.5;
             self.cameraIcon.layer.shadowRadius = 8;
         }
+        CGFloat cameraSize = CGRectGetWidth(self.cameraIcon.bounds);
+        CGFloat leftInset = MAX(12.0, self.overlayWindow.safeAreaInsets.left + 8.0);
+        self.cameraIcon.frame = CGRectMake(leftInset, floor((CGRectGetHeight(self.overlayWindow.bounds) - cameraSize) * 0.5), cameraSize, cameraSize);
         self.cameraIcon.hidden = NO;
         [self.overlayWindow bringSubviewToFront:self.cameraIcon];
         self.cameraIcon.alpha = 0;
