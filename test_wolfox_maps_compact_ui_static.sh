@@ -14,6 +14,12 @@ check "$MASTER" '- (void)refreshGPSStatusBadge' "مُحدّث حالة GPS مو�
 check "$MASTER" 'BOOL enabled = [WolFoxProStore shared].spoofActive;' "لون GPS مرتبط بتشغيل تغيير الموقع"
 check "$MASTER" 'enabled ? [WolFoxProTheme success] : [WolFoxProTheme danger]' "GPS أخضر عند التشغيل وأحمر عند الإيقاف"
 check "$MASTER" '[self refreshGPSStatusBadge];' "تحديث GPS يحدث مع تحديث حالة الأداة"
+check "$MASTER" 'UIButton *beaconStatusBtn = [self headerCircleBtn:@"shareplay"' "مؤشر Beacons الأخضر يظهر في الرأس"
+check "$MASTER" 'beaconStatusBtn.accessibilityLabel = @"إدارة البلوتوث والـ Beacons";' "مؤشر Beacons يفتح إدارة البلوتوث"
+reject "$MASTER" 'UIButton *crownBtn = [self headerCircleBtn' "زر التاج غير المراجع أزيل من الرأس"
+check "$MASTER" 'title:@"إدارة البلوتوث والـ Beacons" icon:nil' "زر Bluetooth وBeacons لا يكرر الأيقونة"
+reject "$MASTER" 'title:@"إدارة البلوتوث والـ Beacons" icon:@"dot.radiowaves.left.and.right"' "أيقونة Bluetooth المكررة أزيلت"
+check "$MASTER" 'if (icon.length > 0)' "إجراءات الخريطة تدعم زرًا بلا أيقونة بأمان"
 check "$MASTER" 'UIButton *saveLocationButton = [self mapCircleBtn:@"bookmark.fill"' "حفظ الموقع إجراء خريطة مضغوط"
 check "$MASTER" 'UIView *fileActions' "استيراد وتصدير Bluetooth في صف واحد"
 reject "$MASTER" 'royalBtnInside:_scrollDashboard t:@"استيراد ملف بلوتوث"' "تكديس استيراد Bluetooth أزيل"
@@ -38,6 +44,7 @@ source = Path(sys.argv[1]).read_text()
 assert source.count('- (void)setupVirtualCameraCardAtY:') == 1, 'duplicate virtual camera card implementation'
 assert source.count('- (void)setupGPSPage {') == 1, 'duplicate GPS page implementation'
 assert source.count('- (void)setupIDPage {') == 1, 'duplicate identifier page implementation'
+assert source.count('[self addComponentSwitch:@"تفعيل تغيير الموقع"') == 1, 'duplicate location toggles'
 print('✅ لا توجد تعريفات أقسام مكررة')
 PY
 

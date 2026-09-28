@@ -471,11 +471,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [closeBtn addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
     closeBtn.accessibilityLabel = @"إخفاء الأداة مع إبقاء طريقة الاستعادة المحددة";
     [_header addSubview:closeBtn];
-    
-    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme favorite] x:w - 110];
-    [crownBtn addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
-    crownBtn.accessibilityLabel = @"معلومات الاشتراك";
-    [_header addSubview:crownBtn];
+
+    UIButton *beaconStatusBtn = [self headerCircleBtn:@"shareplay" color:[WolFoxProTheme success] x:102.0];
+    [beaconStatusBtn addTarget:self action:@selector(openBluetoothPage) forControlEvents:UIControlEventTouchUpInside];
+    beaconStatusBtn.accessibilityLabel = @"إدارة البلوتوث والـ Beacons";
+    [_header addSubview:beaconStatusBtn];
 
     // 2. Top Tabs Bar
     _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
@@ -1492,7 +1492,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     y = CGRectGetMaxY(locationControls.frame) + 12.0;
 
 #if !WOLFOX_LITE
-    UIButton *bluetoothButton = [self mapsActionButtonIn:_scrollDashboard title:@"إدارة البلوتوث والـ Beacons" icon:@"dot.radiowaves.left.and.right" color:[WolFoxProTheme bluetooth] frame:CGRectMake(12, y, w - 24, 52) filled:YES];
+    UIButton *bluetoothButton = [self mapsActionButtonIn:_scrollDashboard title:@"إدارة البلوتوث والـ Beacons" icon:nil color:[WolFoxProTheme bluetooth] frame:CGRectMake(12, y, w - 24, 52) filled:YES];
     [bluetoothButton addTarget:self action:@selector(openBluetoothPage) forControlEvents:UIControlEventTouchUpInside];
     y = CGRectGetMaxY(bluetoothButton.frame) + 12.0;
 #endif
@@ -2753,7 +2753,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     [button setTitle:title forState:UIControlStateNormal];
     [button setTitleColor:filled ? UIColor.whiteColor : color forState:UIControlStateNormal];
     button.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
-    if (@available(iOS 13.0, *)) [button setImage:[UIImage systemImageNamed:icon] forState:UIControlStateNormal];
+    if (icon.length > 0) {
+        if (@available(iOS 13.0, *)) [button setImage:[UIImage systemImageNamed:icon] forState:UIControlStateNormal];
+    }
     button.tintColor = filled ? UIColor.whiteColor : color;
     button.accessibilityLabel = title;
     [container addSubview:button];
