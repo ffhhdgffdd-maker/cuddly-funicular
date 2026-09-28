@@ -1,7 +1,7 @@
-name: WolFox runtime review
+name: WolFox New Design Build
 on:
   push:
-    branches: [codex/wolfox-runtime-review]
+    branches: [WN1]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,7 +25,7 @@ jobs:
         edition: [Full, Lite]
     env:
       THEOS: ${{ github.workspace }}/.theos
-      WOLFOX_VERSION: 2.0.1
+      WOLFOX_VERSION: 3.0.0
       WOLFOX_EDITION: ${{ matrix.edition }}
       WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
       WOLFOX_PROJECT_BUNDLE_ID: sa.gov.moia.mosques-2
@@ -43,7 +43,7 @@ jobs:
           (cd release && sha256sum * > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: WolFox-review-${{ matrix.edition }}-${{ github.run_number }}
+          name: WolFox-New-Design-${{ matrix.edition }}-${{ github.run_number }}
           path: release/
           if-no-files-found: error
           retention-days: 14
