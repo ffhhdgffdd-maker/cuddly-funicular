@@ -339,7 +339,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"هذه جولة إرشادية قصيرة لشرح وظائف WolFox. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"ابحث عن مكان أو إحداثيات أو رابط مشاركة من شريط البحث.",
-        @"من قسم الواجهة والتحكم اختر طريقة الإخفاء والاستعادة. التفعيل والاشتراك من زر التاج."
+        @"من قسم الإخفاء والاستعادة اختر طريقة الإخفاء والاستعادة. التفعيل والاشتراك من زر التاج."
     ];
     NSString *onboardingEdition = @"WolFox";
 #else
@@ -349,7 +349,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"احفظ المواقع واستخدم الجدولة لتحديد الأيام ووقت البداية والنهاية حسب إعداداتك.",
         @"بعد فتح كاميرا التطبيق اضغط مطولاً في منتصف الشاشة لإظهار الأيقونة؛ اسحبها لأكثر من ثانيتين للتبديل السريع.",
-        @"كل إعداد داخل قسمه: الكاميرا في قسم الكاميرا، والإخفاء والاستعادة في الواجهة والتحكم. التفعيل والاشتراك من زر التاج."
+        @"كل إعداد داخل قسمه: الكاميرا في قسم الكاميرا، والإخفاء والاستعادة في الإخفاء والاستعادة. التفعيل والاشتراك من زر التاج."
     ];
     NSString *onboardingEdition = @"WolFox";
 #endif
@@ -422,7 +422,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                         [profile isEqualToString:@"mosques-full"] ? 2 :
                         [profile hasPrefix:@"lite-"] ? 3 :
                         [profile hasPrefix:@"full-"] ? 4 : 0;
-    CGFloat headerHeight = safeTop + (edition ? 78.0 : 58.0);
+    CGFloat headerHeight = safeTop + 66.0;
     CGFloat tabsHeight = edition == 3 ? 62.0 : (edition ? 70.0 : 58.0);
     CGFloat tabsInset = edition ? 12.0 : 0.0;
     CGFloat tabsGap = edition ? 9.0 : 0.0;
@@ -438,15 +438,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     _header.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.28].CGColor;
     [self.view addSubview:_header];
     
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, edition ? MAX(120.0, w - 190.0) : 135, 26)];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(72, safeTop + 5, MAX(120.0, w - 144.0), 28)];
     _titleLabel.text = @"WolFox";
-    _titleLabel.textAlignment = NSTextAlignmentLeft;
-    _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
+    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.font = [WolFoxProTheme fontOfSize:22 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
     [_header addSubview:_titleLabel];
 
-    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + (edition ? 48 : 34), edition ? MAX(160.0, w - 36.0) : 190, 16)];
-    _spoofStatusLabel.textAlignment = NSTextAlignmentLeft;
+    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(72, safeTop + 35, MAX(120.0, w - 144.0), 18)];
+    _spoofStatusLabel.textAlignment = NSTextAlignmentCenter;
     _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     _spoofStatusLabel.isAccessibilityElement = YES;
     [_header addSubview:_spoofStatusLabel];
@@ -457,7 +457,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     closeBtn.accessibilityLabel = @"إخفاء الأداة مع إبقاء طريقة الاستعادة المحددة";
     [_header addSubview:closeBtn];
     
-    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme accent] x:w - 110];
+    UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme accent] x:14];
     [crownBtn addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
@@ -474,7 +474,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #if WOLFOX_LITE
     UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 5.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 4.0, 3)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -482,12 +482,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     
 #if WOLFOX_LITE
     NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الواجهة والتحكم"];
+    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الإخفاء"];
     NSArray *tabPages = @[@0, @1, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"antenna.radiowaves.left.and.right", @"camera.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"البلوتوث", @"الكاميرا", @"الواجهة والتحكم"];
-    NSArray *tabPages = @[@0, @1, @2, @3, @4];
+    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"camera.fill", @"slider.horizontal.3"];
+    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"الإخفاء"];
+    NSArray *tabPages = @[@0, @1, @3, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
@@ -1521,13 +1521,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIView *locationControls = [self settingsCard:@"التزييف" y:cy height:122];
     [self addComponentSwitch:@"تشغيل / إيقاف الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
     cy += 134;
-#if !WOLFOX_LITE
-    UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا" : @"تشغيل الكاميرا" i:@"camera.fill" c:[WolFoxProTheme accent] y:cy];
-    cameraToggle.accessibilityLabel = @"تشغيل / إيقاف الكاميرا";
-    [cameraToggle addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
-    cy += 64;
-#endif
-
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     scheduleCard.layer.cornerRadius = 18;
@@ -4325,7 +4318,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)spoofStateChangedForController:(__unused NSNotification *)notification {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self refreshFloatingStatusIcon];
-        [self refreshSpoofQuickPanel];
         [self.mainVC refreshSpoofHeaderStatus];
     });
 }
