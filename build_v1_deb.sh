@@ -43,7 +43,7 @@ case "${WOLFOX_PROFILE:-}" in
         if [ "$PROFILE" = "new-app" ]; then
             PRODUCT_NAME="WolFoxMaps"
             PACKAGE_ID="com.wolfox.gpspro.maps"
-            PACKAGE_TITLE="WolFox Maps"
+            PACKAGE_TITLE="WolFox"
         else
             PRODUCT_NAME="WolFox3_${PROFILE//-/_}"
             PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"

@@ -457,7 +457,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
-    _titleLabel.accessibilityLabel = @"WolFox Maps";
+    _titleLabel.accessibilityLabel = @"WolFox";
     [_header addSubview:_titleLabel];
 
     _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + (edition ? 48 : 34), edition ? MAX(160.0, w - 36.0) : 190, 16)];

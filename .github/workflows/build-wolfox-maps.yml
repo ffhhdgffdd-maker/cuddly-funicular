@@ -1,4 +1,4 @@
-name: Build WolFox Maps — Independent Edition
+name: Build WolFox — Independent Edition
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
 
 env:
   THEOS: ${{ github.workspace }}/.theos
-  WOLFOX_VERSION: 2.1.0
+  WOLFOX_VERSION: 6.0.0
   WOLFOX_EDITION: Full
   WOLFOX_PROFILE: new-app
   WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
@@ -24,7 +24,7 @@ env:
 
 jobs:
   build:
-    name: WolFox Maps · Full · arm64
+    name: WolFox · Full · arm64
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
@@ -38,13 +38,13 @@ jobs:
           test -s WolFoxMaster.mm
           test -s WolFoxProTheme.m
           test -s build_v1_deb.sh
-          grep -F 'WolFox Maps' WolFoxMaster.mm
+          grep -F '_titleLabel.text = @"WolFox";' WolFoxMaster.mm
           grep -F 'new-app' build_v1_deb.sh
 
       - name: Build and run Linux checks
         run: bash ./wolfox_setup_build.sh
 
-      - name: Verify WolFox Maps package
+      - name: Verify WolFox package
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +68,7 @@ jobs:
           file "${product}.dylib" | grep -F 'Mach-O 64-bit'
           cp "${product}.dylib" release/
           cat > release/BUILD_INFO.txt <<EOF
-          PRODUCT=WolFox Maps
+          PRODUCT=WolFox
           VERSION=${WOLFOX_VERSION}
           PROFILE=${WOLFOX_PROFILE}
           ARCHITECTURE=arm64
