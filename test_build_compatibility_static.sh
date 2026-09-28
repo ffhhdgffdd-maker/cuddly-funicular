@@ -42,7 +42,7 @@ expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|
 expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
 expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
 expect_pattern "استهداف تطبيق المساجد فقط" 'WOLFOX_TARGET_BUNDLE_IDS:-sa[.]gov[.]moia[.]mosques-2' wolfox_setup_build.sh
-expect_pattern "إجراء postinst لإعادة التحميل" 'sbreload' build_v1_deb.sh
+expect_pattern "التثبيت لا يفرض إعادة تشغيل المضيف" 'user-initiated host launch' build_v1_deb.sh
 expect_pattern "postinst قابل للتنفيذ" 'chmod 0755.*postinst' build_v1_deb.sh
 expect_pattern "مصدر الكاميرا الافتراضية ضمن البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh
 expect_pattern "ربط CoreMedia" 'framework CoreMedia' build_v1_deb.sh

@@ -212,25 +212,18 @@ make_deb() {
 { Filter = { Bundles = ( $(printf '"%s",' "${TARGET_BUNDLES[@]}" | sed 's/,$//') ); }; }
 EOF
     chmod 0644 "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.plist"
-    local conflicts=""
-    if [ -n "${WOLFOX_PROFILE:-}" ]; then
-        if [ "$PROFILE_BUNDLE" = "com.tahakom.mytahakom" ]; then
-            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.control.full, com.wolfox.gpspro.v3.lite.tahakom, com.wolfox.gpspro.v3.full.tahakom"
-        else
-            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
-        fi
-        conflicts="$conflicts, com.wolfox.gpspro.v4.bluetooth.${PROFILE_BUNDLE}, com.wolfox.gpspro.v5.bluetooth.${PROFILE_BUNDLE}"
-        local candidate
-        local -a conflict_items
-        IFS=',' read -r -a conflict_items <<< "$conflicts"
-        conflicts=""
-        for candidate in "${conflict_items[@]}"; do
-            candidate="${candidate#${candidate%%[![:space:]]*}}"
-            if [ "$candidate" != "$PACKAGE_ID" ]; then
-                conflicts="${conflicts:+$conflicts, }$candidate"
-            fi
-        done
+    local conflicts="" candidate
+    local host_bundle="${PROFILE_BUNDLE:-${TARGET_BUNDLES[0]}}"
+    local -a candidates=(com.wolfox.gpspro com.wolfox.gpspro.lite)
+    if [ "$host_bundle" = "com.tahakom.mytahakom" ]; then
+        candidates+=(com.wolfox.gpspro.v3.control.full com.wolfox.gpspro.v3.lite.tahakom com.wolfox.gpspro.v3.full.tahakom)
+    else
+        candidates+=(com.wolfox.gpspro.v3.mosques.full com.wolfox.gpspro.v3.lite.mosques com.wolfox.gpspro.v3.full.mosques)
     fi
+    for generation in 3 4 5; do candidates+=("com.wolfox.gpspro.v${generation}.bluetooth.${host_bundle}"); done
+    for candidate in "${candidates[@]}"; do
+        if [ "$candidate" != "$PACKAGE_ID" ]; then conflicts="${conflicts:+$conflicts, }$candidate"; fi
+    done
     {
         printf 'Package: %s\n' "$PACKAGE_ID"
         if [ -n "$conflicts" ]; then printf 'Conflicts: %s\n' "$conflicts"; fi
@@ -247,11 +240,7 @@ EOF
     } > "$root/DEBIAN/control"
     cat > "$root/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
-if command -v sbreload >/dev/null 2>&1; then
-    sbreload || true
-elif command -v killall >/dev/null 2>&1; then
-    killall -9 SpringBoard 2>/dev/null || true
-fi
+# Loading the new library is left to the next user-initiated host launch.
 exit 0
 EOF
     chmod 0644 "$root/DEBIAN/control"

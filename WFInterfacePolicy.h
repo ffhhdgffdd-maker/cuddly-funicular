@@ -2,7 +2,13 @@
 #ifndef WOLFOX_INTERFACE_VARIANT
 #define WOLFOX_INTERFACE_VARIANT 0
 #endif
-typedef NS_ENUM(NSInteger, WFRecoveryMethod) { WFRecoveryIcon = 1, WFRecoveryVolume = 2, WFRecoveryBoth = 3 };
+typedef NS_ENUM(NSInteger, WFRecoveryMethod) {
+    WFRecoveryIcon = 1,
+    WFRecoveryVolume = 2,
+    WFRecoveryBoth = 3,
+    // Legacy screenshot recovery shares the combined compatible mode.
+    WFRecoveryScreenshot = WFRecoveryBoth,
+};
 static inline BOOL WFRecoveryMethodValid(NSInteger method) { return method >= 1 && method <= 3; }
 static inline BOOL WFRecoveryUsesIcon(NSInteger method) { return method == WFRecoveryIcon || method == WFRecoveryBoth; }
 static inline BOOL WFRecoveryUsesVolume(NSInteger method) { return method == WFRecoveryVolume || method == WFRecoveryBoth; }
