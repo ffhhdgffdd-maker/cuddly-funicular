@@ -1560,7 +1560,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     cy += 134;
 #if !WOLFOX_LITE
     UIColor *bluetoothActionColor = [UIColor colorWithRed:0.24 green:0.75 blue:0.86 alpha:1.0];
-    UIButton *bluetoothButton = [self royalBtnInside:_scrollDashboard t:@"إدارة Bluetooth والـ Beacons"
+    UIButton *bluetoothButton = [self royalBtnInside:_scrollDashboard t:@"إدارة البلوتوث والـ Beacons"
         i:@"point.3.connected.trianglepath.dotted" c:bluetoothActionColor y:cy];
     bluetoothButton.accessibilityIdentifier = @"masajid.bluetooth-management";
     bluetoothButton.accessibilityLabel = @"فتح إدارة Bluetooth وBeacons";
