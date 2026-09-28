@@ -3566,7 +3566,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         for (UIView *view in expiryRow.subviews) if ([view isKindOfClass:UISwitch.class]) {
             UISwitch *toggle = (UISwitch *)view;
             [toggle removeTarget:self action:@selector(handleSwitch:) forControlEvents:UIControlEventValueChanged];
-            [toggle addTarget:self action:@selector(expiryNotificationChanged:) forControlEvents:UIControlEventValueChanged];
+            [toggle addTarget:self action:@selector(expiryNotificationsChanged:) forControlEvents:UIControlEventValueChanged];
         }
         UIButton *activation = [self royalBtnInside:v t:@"إدخال كود تفعيل WolFox" i:@"key.fill" c:[WolFoxProTheme accent] y:572];
         [activation addTarget:self action:@selector(openActivationFromSubscription) forControlEvents:UIControlEventTouchUpInside];

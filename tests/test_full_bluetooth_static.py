@@ -6,6 +6,9 @@ ui = (root / 'WolFoxMaster.mm').read_text()
 hooks = (root / 'WolFoxIntegrated.mm').read_text()
 proxy = (root / 'WFBluetoothDelegateProxy.m').read_text()
 camera = (root / 'WFVirtualCameraManager.mm').read_text()
+selectors = set(re.findall(r'@selector\((\w+):?\)', ui))
+methods = set(re.findall(r'^[-+]\s*\([^)]*\)\s*(\w+)', ui, re.M))
+assert not selectors - methods, f'Unimplemented UI actions: {sorted(selectors - methods)}'
 assert not re.search(r'\b(?:exit|_exit|abort|kill)\s*\(', ui)
 assert '_deliveredProfile' not in hooks
 assert 'WFBLEMatchesPeripheral(record, actualIdentifier.UUIDString)' in hooks
