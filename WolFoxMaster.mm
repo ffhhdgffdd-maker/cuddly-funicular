@@ -144,6 +144,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) MKPointAnnotation *realLocPin;
 - (void)refreshSpoofHeaderStatus;
+- (void)refreshBluetoothHeaderButton;
+- (void)openBluetoothFromHeader:(UIButton *)sender;
 - (UIView *)liveStatusCardWithFrame:(CGRect)frame title:(NSString *)title labelKey:(const void *)labelKey dotKey:(const void *)dotKey;
 - (void)refreshLiveStatusCards;
 - (void)closeExpandedMapIfNeeded;
@@ -236,6 +238,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIView *_header;
     UILabel *_titleLabel;
     UILabel *_spoofStatusLabel;
+    UIButton *_bluetoothHeaderButton;
     MKPointAnnotation *_currentPin;
     UIView *_mapCard;
     UILabel *_realLocationNoticeLabel;
@@ -468,6 +471,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
 
+    _bluetoothHeaderButton = [self headerCircleBtn:@"point.3.connected.trianglepath.dotted" color:[WolFoxProTheme success] x:w - 162];
+    [_bluetoothHeaderButton addTarget:self action:@selector(openBluetoothFromHeader:) forControlEvents:UIControlEventTouchUpInside];
+    [_header addSubview:_bluetoothHeaderButton];
+    [self refreshBluetoothHeaderButton];
+
     // 2. Top Tabs Bar
     _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
     _tabsBar.layer.cornerRadius = edition == 1 ? 8.0 : edition == 2 ? 24.0 : edition == 3 ? 14.0 : edition == 4 ? 20.0 : 0.0;
@@ -656,6 +664,29 @@ static BOOL WFMasterProcessIsEligible(void) {
     _spoofStatusLabel.accessibilityLabel = active ? @"حالة التزييف: نشط" : @"حالة التزييف: متوقف";
     [self refreshLocationModeNotice];
     [self refreshLiveStatusCards];
+    [self refreshBluetoothHeaderButton];
+}
+
+- (void)refreshBluetoothHeaderButton {
+    if (!_bluetoothHeaderButton) return;
+    WolFoxProStore *store = [WolFoxProStore shared];
+    BOOL ready = store.bluetoothActive && store.activeBleProfile.bluetoothRecord != nil;
+    UIColor *color = ready ? [WolFoxProTheme success] : [WolFoxProTheme accent];
+    _bluetoothHeaderButton.tintColor = color;
+    _bluetoothHeaderButton.backgroundColor = [color colorWithAlphaComponent:0.18];
+    _bluetoothHeaderButton.layer.borderColor = [color colorWithAlphaComponent:0.52].CGColor;
+    _bluetoothHeaderButton.accessibilityLabel = ready ? @"Bluetooth وBeacons مفعّلة؛ افتح الإدارة" : @"فتح إدارة Bluetooth وBeacons";
+    _bluetoothHeaderButton.accessibilityHint = @"يفتح قسم Bluetooth لإدارة الأجهزة وBeacons";
+    if (@available(iOS 13.0, *)) {
+        NSString *symbol = ready ? @"point.3.connected.trianglepath.dotted" : @"link.circle";
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold];
+        [_bluetoothHeaderButton setImage:[UIImage systemImageNamed:symbol withConfiguration:config] forState:UIControlStateNormal];
+    }
+}
+
+- (void)openBluetoothFromHeader:(UIButton *)sender {
+    (void)sender;
+    [self switchPage:2];
 }
 
 - (void)tabBtnPressed:(UIButton *)b { [self switchPage:b.tag]; }
