@@ -24,7 +24,7 @@ assert '[self showUI];' in ui
 assert 'self.spoofQuickPanel = [[' not in ui
 interface = ui.split('- (void)setupInterfacePage {')[1].split('- (void)changeRecoveryMethod')[0]
 assert 'تشغيل الموقع' not in interface and 'Bluetooth' not in interface and 'إعدادات الكاميرا' not in interface
-assert 'الإخفاء والاستعادة' in interface
+assert 'إعدادات WolFox' in interface
 assert 'WF_RECOVERY_ICON_ENABLED' in interface
 assert 'WF_RECOVERY_VOLUME_ENABLED' in interface
 assert 'WF_RECOVERY_SCREENSHOT_ENABLED' in interface
