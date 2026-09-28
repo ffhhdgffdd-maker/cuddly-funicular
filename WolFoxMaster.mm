@@ -2903,14 +2903,14 @@ static BOOL WFMasterProcessIsEligible(void) {
             [edit addTarget:self action:@selector(editSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
             edit.accessibilityLabel = @"تعديل المعرّف المحفوظ";
             [row addSubview:edit];
-            UIButton *delete = [UIButton buttonWithType:UIButtonTypeSystem];
-            delete.frame = CGRectMake(row.bounds.size.width - 44, 8, 38, 44);
-            if (@available(iOS 13.0, *)) [delete setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
-            delete.tintColor = [WolFoxProTheme danger];
-            objc_setAssociatedObject(delete, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
-            [delete addTarget:self action:@selector(deleteSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
-            delete.accessibilityLabel = @"حذف المعرّف المحفوظ";
-            [row addSubview:delete];
+            UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            deleteButton.frame = CGRectMake(row.bounds.size.width - 44, 8, 38, 44);
+            if (@available(iOS 13.0, *)) [deleteButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
+            deleteButton.tintColor = [WolFoxProTheme danger];
+            objc_setAssociatedObject(deleteButton, "_id_uuid", ident.uuid, OBJC_ASSOCIATION_COPY_NONATOMIC);
+            [deleteButton addTarget:self action:@selector(deleteSavedIdentifier:) forControlEvents:UIControlEventTouchUpInside];
+            deleteButton.accessibilityLabel = @"حذف المعرّف المحفوظ";
+            [row addSubview:deleteButton];
             cy += 68;
         }
     }
@@ -4550,8 +4550,8 @@ static BOOL WFMasterProcessIsEligible(void) {
         message:@"اختر طريقة واحدة لإظهار WolFox لاحقاً. سيُحفظ الاختيار فوراً."
         preferredStyle:UIAlertControllerStyleAlert];
     NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"الأيقونة وأزرار الصوت معاً"];
-    for (NSInteger i = 0; i < titles.count; i++) {
-        WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
+    for (NSUInteger i = 0; i < titles.count; i++) {
+        WFRecoveryMethod method = (WFRecoveryMethod)((NSInteger)i + 1);
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
             if (hide) {

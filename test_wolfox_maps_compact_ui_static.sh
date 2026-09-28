@@ -20,6 +20,7 @@ reject "$MASTER" 'royalBtnInside:_scrollDashboard t:@"استيراد ملف بل
 reject "$MASTER" 'royalBtnInside:_scrollDashboard t:@"تصدير الجهاز المختار"' "تكديس تصدير Bluetooth أزيل"
 check "$MASTER" 'CGFloat gridY = 208;' "إجراءات المعرّف في شبكة مضغوطة"
 reject "$MASTER" 'royalBtnInside:idCard' "تكديس أزرار المعرّف أزيل"
+reject "$MASTER" 'UIButton *delete =' "لا يُستخدم اسم C++ المحجوز لأزرار المعرّف"
 check "$MASTER" 'if (hide && WFRecoveryMethodValid(savedMethod))' "الإخفاء يستخدم طريقة الاستعادة المحفوظة مباشرة"
 reject "$MASTER" 'UIAlertController *saved' "رسالة حفظ الإخفاء المكررة أزيلت"
 check "$MASTER" '[self showToast:@"تم حفظ التغيير وتطبيقه"];' "تأكيد التغيير يعرض رسالة واحدة"
