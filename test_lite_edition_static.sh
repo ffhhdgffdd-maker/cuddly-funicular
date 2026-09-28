@@ -11,8 +11,8 @@ check() { grep -Fq "$2" "$1" || { echo "❌ $3"; exit 1; }; echo "✅ $3"; }
 
 check "$MASTER" "#if WOLFOX_LITE" "وجود واجهة Lite المشروطة"
 check "$MASTER" '@[@"location.fill", @"person.text.rectangle.fill", @"slider.horizontal.3"]' "أقسام Lite تشمل التحكم بالواجهة"
-check "$MASTER" '@[@"الموقع", @"المعرّف", @"الواجهة والتحكم"]' "خيارات الواجهة مستقلة عن إعدادات الوظائف"
-check "$MASTER" "setupInterfacePage" "قسم الواجهة والتحكم متاح"
+check "$MASTER" '@[@"الموقع", @"المعرّف", @"WolFox"]' "إعدادات WolFox مستقلة عن إعدادات الوظائف"
+check "$MASTER" "setupInterfacePage" "قسم إعدادات WolFox متاح"
 check "$MASTER" "if (candidate.tag == page)" "تنقل Lite الصحيح بين الأقسام"
 check "$MASTER" 'showSaudiServicesOnMainMap' "دمج المدارس والمساجد والخدمات الصحية في الخريطة الرئيسية"
 check "$MASTER" 'https://overpass-api.de/api/interpreter' "مصدر OpenStreetMap للمعالم"
