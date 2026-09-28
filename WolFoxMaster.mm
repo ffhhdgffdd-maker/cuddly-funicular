@@ -165,6 +165,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)openGPSPage;
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar;
 - (void)volumePressCountChanged:(UISegmentedControl *)control;
+- (void)floatingTapCountChanged:(UISlider *)slider;
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
 - (void)floatingIconOpacityChanged:(UISlider *)slider;
 - (void)resetFloatingIconPosition;
@@ -3304,6 +3305,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     }];
 }
 
+- (void)floatingTapCountChanged:(UISlider *)slider {
+    NSInteger count = MAX(1, MIN(50, (NSInteger)lrintf(slider.value)));
+    slider.value = count;
+    [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_FLOATING_TAP_COUNT"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    UILabel *label = (UILabel *)[slider.superview viewWithTag:4051];
+    if ([label isKindOfClass:[UILabel class]]) label.text = [NSString stringWithFormat:@"عدد ضغطات الأيقونة لفتح WolFox: %ld", (long)count];
+    [self showToast:[NSString stringWithFormat:@"تم حفظ %ld ضغطة لفتح WolFox", (long)count]];
+}
+
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control {
     [[NSUserDefaults standardUserDefaults] setInteger:control.selectedSegmentIndex forKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
     [[NSUserDefaults standardUserDefaults] synchronize];
@@ -3428,30 +3439,38 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupInterfacePage {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:368];
-    UILabel *current = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, card.bounds.size.width - 30, 60)];
-    current.text = WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"]);
-    current.textColor = [WolFoxProTheme textSecondary]; current.numberOfLines = 3;
-    current.textAlignment = NSTextAlignmentRight; current.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium];
-    [card addSubview:current];
-    UIButton *method = [self royalBtnInside:card t:@"اختيار طريقة الإخفاء والاستعادة" i:@"hand.tap" c:[WolFoxProTheme accent] y:112];
-    [method addTarget:self action:@selector(changeRecoveryMethod) forControlEvents:UIControlEventTouchUpInside];
+    UIView *card = [self settingsCard:@"الإخفاء والاستعادة" y:y height:500];
+    [card addSubview:[self royalSwitchInside:card t:@"أيقونة WolFox العائمة" i:@"circle.fill" isOn:[defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"] y:48 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:@"WF_RECOVERY_ICON_ENABLED"]; [defaults synchronize];
+        [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
+    }]];
+    [card addSubview:[self royalSwitchInside:card t:@"الاستعادة بأزرار الصوت" i:@"speaker.wave.2.fill" isOn:[defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"] y:108 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:@"WF_RECOVERY_VOLUME_ENABLED"]; [WolFoxProStore shared].volumeGestureEnabled = toggle.on;
+        [[WolFoxProStore shared] saveSettings]; [defaults synchronize];
+        if (toggle.on) [[WolFoxController shared] prepareHiddenVolumeListening];
+    }]];
+    [card addSubview:[self royalSwitchInside:card t:@"الإظهار والإخفاء بعد Screenshot" i:@"camera.viewfinder" isOn:[defaults boolForKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"] y:168 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"]; [defaults synchronize];
+    }]];
+    UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 232, card.bounds.size.width - 30, 28)];
+    NSInteger tapCount = [defaults integerForKey:@"WF_FLOATING_TAP_COUNT"]; tapCount = MAX(1, MIN(50, tapCount ?: 1));
+    tapLabel.text = [NSString stringWithFormat:@"عدد ضغطات الأيقونة لفتح WolFox: %ld", (long)tapCount];
+    tapLabel.textColor = [WolFoxProTheme textSecondary]; tapLabel.textAlignment = NSTextAlignmentRight; tapLabel.tag = 4051; [card addSubview:tapLabel];
+    UISlider *tapSlider = [[UISlider alloc] initWithFrame:CGRectMake(15, 266, card.bounds.size.width - 30, 34)];
+    tapSlider.minimumValue = 1; tapSlider.maximumValue = 50; tapSlider.value = tapCount; tapSlider.continuous = NO;
+    [tapSlider addTarget:self action:@selector(floatingTapCountChanged:) forControlEvents:UIControlEventValueChanged]; [card addSubview:tapSlider];
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
-    pressCount.frame = CGRectMake(15, 182, card.bounds.size.width - 30, 38);
-    NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
-    pressCount.selectedSegmentIndex = count == 2 ? 0 : count == 5 ? 2 : 1;
-    pressCount.accessibilityLabel = @"عدد ضغطات الصوت لاستعادة WolFox";
-    [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
-    [card addSubview:pressCount];
-    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:232 action:^(UISwitch *toggle) {
-        [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
+    pressCount.frame = CGRectMake(15, 318, card.bounds.size.width - 30, 38);
+    NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"]; pressCount.selectedSegmentIndex = count == 2 ? 0 : count == 5 ? 2 : 1;
+    pressCount.accessibilityLabel = @"عدد ضغطات الصوت لاستعادة WolFox"; [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged]; [card addSubview:pressCount];
+    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:370 action:^(UISwitch *toggle) {
+        [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey]; [defaults synchronize];
         [self showToast:toggle.on ? @"تم حفظ فتح WolFox عند تشغيل التطبيق" : @"تم إيقاف الفتح التلقائي لـ WolFox"];
     }]];
-    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:306];
+    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:432];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    y += 380;
-    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
-    [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
+    y += 514;
+    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y]; [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
 }
 
