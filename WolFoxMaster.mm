@@ -306,7 +306,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)wolfoxScreenshotTaken:(NSNotification *)notification {
     (void)notification;
-    if ([[NSUserDefaults standardUserDefaults] integerForKey:@"WF_RECOVERY_METHOD"] != WFRecoveryScreenshot) return;
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"]) return;
     dispatch_async(dispatch_get_main_queue(), ^{ [[WolFoxController shared] toggleUI]; });
 }
 
@@ -4511,14 +4511,17 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)applyRecoveryMethod:(WFRecoveryMethod)method {
     if (!WFRecoveryMethodValid(method)) return;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    [defaults setInteger:method forKey:@"WF_RECOVERY_METHOD"];
+    [defaults setInteger:method forKey:@"WF_RECOVERY_METHOD"]; // legacy compatibility only
     [defaults setBool:NO forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
-    [WolFoxProStore shared].volumeGestureEnabled = WFRecoveryUsesVolume(method);
+    if (method == WFRecoveryIcon) [defaults setBool:YES forKey:@"WF_RECOVERY_ICON_ENABLED"];
+    if (method == WFRecoveryVolume) [defaults setBool:YES forKey:@"WF_RECOVERY_VOLUME_ENABLED"];
+    if (method == WFRecoveryScreenshot) [defaults setBool:YES forKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"];
+    [WolFoxProStore shared].volumeGestureEnabled = [defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"];
     [[WolFoxProStore shared] saveSettings];
-    [self setFloatingStatusIconVisible:WFRecoveryUsesIcon(method)];
+    [self setFloatingStatusIconVisible:[defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"]];
     [defaults synchronize];
     [self prepareMenuRecoveryGesture];
-    if (WFRecoveryUsesVolume(method)) [self prepareHiddenVolumeListening];
+    if ([defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"]) [self prepareHiddenVolumeListening];
 }
 
 - (void)chooseRecoveryMethodAndHide:(BOOL)hide {
@@ -4556,8 +4559,16 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)enableMenuRecoveryShortcut {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     NSInteger method = [defaults integerForKey:@"WF_RECOVERY_METHOD"];
-    if (!WFRecoveryMethodValid(method)) { [self applyRecoveryMethod:WFRecoveryIcon]; return; }
-    [self prepareHiddenVolumeListening];
+    if (![defaults objectForKey:@"WF_RECOVERY_ICON_ENABLED"] && ![defaults objectForKey:@"WF_RECOVERY_VOLUME_ENABLED"] && ![defaults objectForKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"]) {
+        if (!WFRecoveryMethodValid(method)) method = WFRecoveryIcon;
+        [defaults setBool:(method == WFRecoveryIcon) forKey:@"WF_RECOVERY_ICON_ENABLED"];
+        [defaults setBool:(method == WFRecoveryVolume) forKey:@"WF_RECOVERY_VOLUME_ENABLED"];
+        [defaults setBool:(method == WFRecoveryScreenshot) forKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"];
+        [defaults setInteger:1 forKey:@"WF_FLOATING_TAP_COUNT"];
+    }
+    [WolFoxProStore shared].volumeGestureEnabled = [defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"];
+    [self setFloatingStatusIconVisible:[defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"]];
+    if ([defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"]) [self prepareHiddenVolumeListening];
     [self prepareMenuRecoveryGesture];
 }
 
@@ -4953,6 +4964,16 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)handleFloatingStatusTap:(__unused UIButton *)sender {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if (![defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"]) return;
+    NSInteger required = [defaults integerForKey:@"WF_FLOATING_TAP_COUNT"];
+    required = MAX(1, MIN(50, required ?: 1));
+    NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
+    if (now - self.lastSequentialTapTime > 1.5) self.sequentialTapCount = 0;
+    self.lastSequentialTapTime = now;
+    self.sequentialTapCount++;
+    if (self.sequentialTapCount < required) return;
+    self.sequentialTapCount = 0;
     [self showUI];
 }
 
