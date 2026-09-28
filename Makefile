@@ -5,8 +5,8 @@ THEOS ?= /home/ubuntu/theos
 SDKROOT ?= $(THEOS)/sdks/iPhoneOS16.5.sdk
 TARGET := iphone:latest:15.0
 ARCHS := arm64
-WOLFOX_MIN_RUNTIME ?= 15.8
-WOLFOX_MAX_RUNTIME ?= 27.0
+WOLFOX_MIN_RUNTIME ?= 15.0
+# Build against released/runtime-tested iOS ranges only; do not advertise future iOS versions.
 WOLFOX_BUNDLE_ID ?= sa.gov.moia.mosques-2
 
 export THEOS SDKROOT
@@ -18,7 +18,6 @@ all: package
 check-ios:
 	@test "$(ARCHS)" = "arm64" || (echo "ARCHS must be arm64"; exit 1)
 	@echo "Runtime policy: iOS $(WOLFOX_MIN_RUNTIME)+"
-	@echo "Source compatibility target: iOS $(WOLFOX_MIN_RUNTIME)-$(WOLFOX_MAX_RUNTIME)"
 	@echo "Deployment target used by Clang: 15.0"
 	@echo "Bundle filter: $(WOLFOX_BUNDLE_ID)"
 
