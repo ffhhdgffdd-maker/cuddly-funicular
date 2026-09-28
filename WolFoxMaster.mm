@@ -5198,31 +5198,49 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 @end
 
+static void WFStartAfterApplicationReady(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIApplication *application = UIApplication.sharedApplication;
+            if (application.applicationState == UIApplicationStateBackground) return;
+            WolFoxController *controller = [WolFoxController shared];
+#ifdef DEBUG
+            WFLog(@"[WolFox][BOOT] application_ready stored=%d verify_before_ui=1", [WFLicenseClient hasStoredLicense]);
+#endif
+            [WFLicenseClient validateStrictlyWithCompletion:^(WFLicenseResult *result) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    BOOL stayHidden = ![[NSUserDefaults standardUserDefaults] boolForKey:WFMenuVisibleOnLaunchKey];
+                    if (!stayHidden) {
+                        if (result.success) {
+                            if ([WolFoxProStore shared].mediaUploadActive) [controller toggleCameraIcon:YES];
+                            [controller showUI];
+                        } else {
+                            [controller showActivationScreenWithResult:result];
+                        }
+                    }
+                    [WFLicenseClient startHeartbeat];
+                });
+            }];
+        });
+    });
+}
+
 static void __attribute__((constructor)) initialize() {
     if (!WFMasterProcessIsEligible()) return;
 #ifdef DEBUG
-    WFLog(@"[WolFox][BOOT] ui_constructor_loaded");
+    WFLog(@"[WolFox][BOOT] constructor_loaded_waiting_for_application");
 #endif
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        WolFoxController *controller = [WolFoxController shared];
-#ifdef DEBUG
-        WFLog(@"[WolFox][BOOT] startup_stored=%d verify_before_ui=1", [WFLicenseClient hasStoredLicense]);
-#endif
-        [WFLicenseClient validateStrictlyWithCompletion:^(WFLicenseResult *result) {
-            BOOL stayHidden = ![[NSUserDefaults standardUserDefaults] boolForKey:WFMenuVisibleOnLaunchKey];
-            if (!stayHidden) {
-                if (result.success) {
-                    if ([WolFoxProStore shared].mediaUploadActive) [controller toggleCameraIcon:YES];
-                    [controller showUI];
-                } else {
-                    [controller showActivationScreenWithResult:result];
-                }
-            } else {
-#ifdef DEBUG
-                WFLog(@"[WolFox][BOOT] startup_ui_stays_hidden_until_volume_request");
-#endif
-            }
-            [WFLicenseClient startHeartbeat];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIApplication *application = UIApplication.sharedApplication;
+        if (application.applicationState != UIApplicationStateBackground && application.keyWindow) {
+            WFStartAfterApplicationReady();
+            return;
+        }
+        __block id observer = nil;
+        observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
+            if (observer) [[NSNotificationCenter defaultCenter] removeObserver:observer];
+            WFStartAfterApplicationReady();
         }];
     });
 }
