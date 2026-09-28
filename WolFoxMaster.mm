@@ -671,9 +671,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (!_bluetoothHeaderButton) return;
     WolFoxProStore *store = [WolFoxProStore shared];
     BOOL ready = store.bluetoothActive && store.activeBleProfile.bluetoothRecord != nil;
-    UIColor *color = ready ? [WolFoxProTheme success] : [WolFoxProTheme accent];
+    UIColor *color = [WolFoxProTheme success];
     _bluetoothHeaderButton.tintColor = color;
-    _bluetoothHeaderButton.backgroundColor = [color colorWithAlphaComponent:0.18];
+    _bluetoothHeaderButton.backgroundColor = [color colorWithAlphaComponent:(ready ? 0.22 : 0.13)];
     _bluetoothHeaderButton.layer.borderColor = [color colorWithAlphaComponent:0.52].CGColor;
     _bluetoothHeaderButton.accessibilityLabel = ready ? @"Bluetooth وBeacons مفعّلة؛ افتح الإدارة" : @"فتح إدارة Bluetooth وBeacons";
     _bluetoothHeaderButton.accessibilityHint = @"يفتح قسم Bluetooth لإدارة الأجهزة وBeacons";
@@ -1559,6 +1559,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self addComponentSwitch:@"تشغيل / إيقاف الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
     cy += 134;
 #if !WOLFOX_LITE
+    UIColor *bluetoothActionColor = [UIColor colorWithRed:0.24 green:0.75 blue:0.86 alpha:1.0];
+    UIButton *bluetoothButton = [self royalBtnInside:_scrollDashboard t:@"إدارة Bluetooth والـ Beacons"
+        i:@"point.3.connected.trianglepath.dotted" c:bluetoothActionColor y:cy];
+    bluetoothButton.accessibilityIdentifier = @"masajid.bluetooth-management";
+    bluetoothButton.accessibilityLabel = @"فتح إدارة Bluetooth وBeacons";
+    [bluetoothButton addTarget:self action:@selector(openBluetoothFromHeader:) forControlEvents:UIControlEventTouchUpInside];
+    cy += 64;
     UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا" : @"تشغيل الكاميرا" i:@"camera.fill" c:[WolFoxProTheme accent] y:cy];
     cameraToggle.accessibilityLabel = @"تشغيل / إيقاف الكاميرا";
     [cameraToggle addTarget:self action:@selector(toggleVirtualCameraFromPage) forControlEvents:UIControlEventTouchUpInside];
