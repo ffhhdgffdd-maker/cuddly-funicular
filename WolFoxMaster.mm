@@ -471,7 +471,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     crownBtn.accessibilityLabel = @"معلومات الاشتراك";
     [_header addSubview:crownBtn];
 
-    _bluetoothHeaderButton = [self headerCircleBtn:@"person.3.sequence.fill" color:[WolFoxProTheme success] x:w - 162];
+    _bluetoothHeaderButton = [self headerCircleBtn:@"point.3.connected.trianglepath.dotted" color:[WolFoxProTheme success] x:w - 162];
     [_bluetoothHeaderButton addTarget:self action:@selector(openBluetoothFromHeader:) forControlEvents:UIControlEventTouchUpInside];
     [_header addSubview:_bluetoothHeaderButton];
     [self refreshBluetoothHeaderButton];
@@ -678,7 +678,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     _bluetoothHeaderButton.accessibilityLabel = ready ? @"Bluetooth وBeacons مفعّلة؛ افتح الإدارة" : @"فتح إدارة Bluetooth وBeacons";
     _bluetoothHeaderButton.accessibilityHint = @"يفتح قسم Bluetooth لإدارة الأجهزة وBeacons";
     if (@available(iOS 13.0, *)) {
-        NSString *symbol = ready ? @"person.3.sequence.fill" : @"person.3.sequence.fill";
+        NSString *symbol = ready ? @"point.3.connected.trianglepath.dotted" : @"point.3.connected.trianglepath.dotted";
         UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold];
         [_bluetoothHeaderButton setImage:[UIImage systemImageNamed:symbol withConfiguration:config] forState:UIControlStateNormal];
     }
@@ -1560,11 +1560,17 @@ static BOOL WFMasterProcessIsEligible(void) {
     cy += 134;
 #if !WOLFOX_LITE
     UIColor *bluetoothActionColor = [UIColor colorWithRed:0.24 green:0.75 blue:0.86 alpha:1.0];
-    UIButton *bluetoothButton = [self royalBtnInside:_scrollDashboard t:@"إدارة البلوتوث والـ Beacons"
-        i:@"person.3.sequence.fill" c:bluetoothActionColor y:cy];
+    UIButton *bluetoothButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    bluetoothButton.frame = CGRectMake(15, cy, w - 30, 55);
+    bluetoothButton.backgroundColor = bluetoothActionColor;
+    bluetoothButton.layer.cornerRadius = 12;
+    [bluetoothButton setTitle:@"إدارة البلوتوث والـ Beacons" forState:UIControlStateNormal];
+    [bluetoothButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    bluetoothButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
     bluetoothButton.accessibilityIdentifier = @"masajid.bluetooth-management";
     bluetoothButton.accessibilityLabel = @"فتح إدارة Bluetooth وBeacons";
     [bluetoothButton addTarget:self action:@selector(openBluetoothFromHeader:) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:bluetoothButton];
     cy += 64;
     UIButton *cameraToggle = [self royalBtnInside:_scrollDashboard t:[WFVirtualCameraManager shared].enabled ? @"إيقاف الكاميرا" : @"تشغيل الكاميرا" i:@"camera.fill" c:[WolFoxProTheme accent] y:cy];
     cameraToggle.accessibilityLabel = @"تشغيل / إيقاف الكاميرا";
