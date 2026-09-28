@@ -17,7 +17,10 @@ assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
 assert 'statusBtn' not in ui and '@"crown.fill"' in ui
 assert '_titleLabel.text = @"WolFox";' in ui
 assert 'chooseRecoveryMethodAndHide:YES' in ui and 'applyRecoveryMethod:method' in ui
-assert '- (void)toggleSpoofQuickPanel:(__unused UIButton *)sender { [self showUI]; }' in ui
+assert 'toggleSpoofQuickPanel:' not in ui
+assert 'spoofQuickPanel' not in ui
+assert '- (void)handleFloatingStatusTap:' in ui
+assert '[self showUI];' in ui
 assert 'self.spoofQuickPanel = [[' not in ui
 interface = ui.split('- (void)setupInterfacePage {')[1].split('- (void)changeRecoveryMethod')[0]
 assert 'تشغيل الموقع' not in interface and 'Bluetooth' not in interface and 'إعدادات الكاميرا' not in interface
