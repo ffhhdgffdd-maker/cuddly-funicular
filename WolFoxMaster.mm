@@ -4278,7 +4278,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         if (!WFRecoveryMethodValid(method)) {
             BOOL icon = ![defaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] || [defaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"];
             BOOL volume = [WolFoxProStore shared].volumeGestureEnabled;
-            method = icon ? (volume ? WFRecoveryBoth : WFRecoveryIcon) : (volume ? WFRecoveryVolume : WFRecoveryIcon);
+            method = icon ? WFRecoveryIcon : (volume ? WFRecoveryVolume : WFRecoveryScreenshot);
             [defaults setInteger:method forKey:@"WF_RECOVERY_METHOD"];
         }
         [defaults setBool:WFRecoveryUsesIcon(method) forKey:@"WF_FLOATING_STATUS_VISIBLE"];
