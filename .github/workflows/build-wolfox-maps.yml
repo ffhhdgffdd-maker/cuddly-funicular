@@ -23,13 +23,38 @@ env:
   WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
 
 jobs:
+  branch-guard:
+    name: Verify release branch
+    runs-on: ubuntu-24.04
+    outputs:
+      build_allowed: ${{ steps.guard.outputs.build_allowed }}
+    steps:
+      - id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='wolfox/new-app'
+          actual="${GITHUB_REF_NAME}"
+          if [ "$actual" = "$expected" ]; then
+            echo 'build_allowed=true' >> "$GITHUB_OUTPUT"
+            echo "Building the independent WolFox edition from \`$actual\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'build_allowed=false' >> "$GITHUB_OUTPUT"
+            {
+              echo '## Build skipped'
+              echo "This workflow only packages the \`$expected\` release branch."
+              echo "Selected ref: \`$actual\`. No artifact was created."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   build:
     name: WolFox · Full · arm64
+    needs: branch-guard
+    if: ${{ needs.branch-guard.outputs.build_allowed == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v7
       - name: Validate independent edition configuration
         shell: bash
         run: |
@@ -40,10 +65,8 @@ jobs:
           test -s build_v1_deb.sh
           grep -F '_titleLabel.text = @"WolFox";' WolFoxMaster.mm
           grep -F 'new-app' build_v1_deb.sh
-
       - name: Build and run Linux checks
         run: bash ./wolfox_setup_build.sh
-
       - name: Verify WolFox package
         shell: bash
         run: |
@@ -77,8 +100,7 @@ jobs:
           COMMIT=${GITHUB_SHA}
           EOF
           (cd release && sha256sum * > SHA256SUMS.txt)
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: WolFox-Maps-${{ github.run_number }}-arm64
           if-no-files-found: error
