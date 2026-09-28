@@ -71,10 +71,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 @interface WolFoxController : NSObject <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) WolFoxMainViewController *mainVC;
 @property (nonatomic, strong) UIButton *floatingIcon;
-@property (nonatomic, strong) UIView *spoofQuickPanel;
-@property (nonatomic, strong) UILabel *spoofQuickStatusLabel;
-@property (nonatomic, strong) UIButton *spoofQuickToggleButton;
-@property (nonatomic, strong) UIButton *spoofQuickFavoriteButton;
 @property (nonatomic, strong) UIButton *cameraIcon;
 @property (nonatomic, strong) UIView *floatingControlPanel;
 @property (nonatomic, strong) UILabel *floatingStatusLabel;
@@ -124,13 +120,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)applyRecoveryMethod:(WFRecoveryMethod)method;
 - (void)applyFloatingStatusPreferences;
 - (void)resetFloatingStatusPosition;
-- (void)toggleSpoofQuickPanel:(nullable UIButton *)sender;
-- (void)closeSpoofQuickPanel:(nullable UIButton *)sender;
-- (void)refreshSpoofQuickPanel;
-- (void)toggleSpoofFromQuickPanel:(nullable UIButton *)sender;
-- (void)openMapFromQuickPanel:(nullable UIButton *)sender;
-- (void)openMenuFromQuickPanel:(nullable UIButton *)sender;
-- (void)activateFavoriteFromQuickPanel:(nullable UIButton *)sender;
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture;
 - (void)closeFloatingControlPanel:(nullable UIButton *)sender;
 - (void)prepareVirtualCameraLongPress;
@@ -207,10 +196,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     Class ctrlCls = objc_getClass("WolFoxController");
     if (ctrlCls) {
         WolFoxController *ctrl = [ctrlCls shared];
-        if (ctrl && ctrl.spoofQuickPanel && !ctrl.spoofQuickPanel.hidden && ctrl.spoofQuickPanel.alpha > 0.1) {
-            CGPoint quickPoint = [self convertPoint:point toView:ctrl.spoofQuickPanel];
-            if ([ctrl.spoofQuickPanel pointInside:quickPoint withEvent:event]) return [super hitTest:point withEvent:event];
-        }
         if (ctrl && ctrl.floatingControlPanel && !ctrl.floatingControlPanel.hidden && ctrl.floatingControlPanel.alpha > 0.1) {
             CGPoint panelPoint = [self convertPoint:point toView:ctrl.floatingControlPanel];
             if ([ctrl.floatingControlPanel pointInside:panelPoint withEvent:event]) return [super hitTest:point withEvent:event];
@@ -5013,83 +4998,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.overlayWindow addSubview:hint];
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, hint.text);
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [hint removeFromSuperview]; });
-}
-
-- (void)toggleSpoofQuickPanel:(__unused UIButton *)sender { [self showUI]; }
-
-- (void)closeSpoofQuickPanel:(UIButton *)sender {
-    (void)sender;
-    if (!self.spoofQuickPanel || self.spoofQuickPanel.hidden) return;
-    [UIView animateWithDuration:[WolFoxProTheme transitionDuration] animations:^{
-        self.spoofQuickPanel.alpha = 0.0;
-    } completion:^(__unused BOOL finished) {
-        self.spoofQuickPanel.hidden = YES;
-    }];
-}
-
-- (void)openMenuFromQuickPanel:(__unused UIButton *)sender {
-    [self closeSpoofQuickPanel:nil];
-    [self showUI];
-}
-
-- (void)refreshSpoofQuickPanel {
-    if (!self.spoofQuickPanel) return;
-    WolFoxProStore *store = [WolFoxProStore shared];
-    BOOL active = store.spoofActive && [WFLicenseClient isRuntimeLicenseValid];
-    UIColor *stateColor = active ? [WolFoxProTheme success] : [WolFoxProTheme danger];
-    self.spoofQuickStatusLabel.text = active ? @"الحالة: التزييف مفعّل" : @"الحالة: التزييف متوقف";
-    self.spoofQuickStatusLabel.textColor = stateColor;
-    [self.spoofQuickToggleButton setTitle:(active ? @"إيقاف التزييف والعودة للموقع الحقيقي" : @"تشغيل تزييف الموقع") forState:UIControlStateNormal];
-    self.spoofQuickToggleButton.backgroundColor = stateColor;
-    WolFoxProLocation *favorite = store.locations.firstObject;
-    self.spoofQuickFavoriteButton.enabled = favorite != nil;
-    self.spoofQuickFavoriteButton.alpha = favorite ? 1.0 : 0.45;
-    [self.spoofQuickFavoriteButton setTitle:(favorite ? [NSString stringWithFormat:@"تشغيل: %@", favorite.name ?: @"آخر موقع محفوظ"] : @"لا توجد مواقع محفوظة") forState:UIControlStateNormal];
-}
-
-- (void)toggleSpoofFromQuickPanel:(UIButton *)sender {
-    (void)sender;
-    WolFoxProStore *store = [WolFoxProStore shared];
-    if (store.spoofActive) {
-        [[WolFoxProHookManager shared] stopRoute];
-        store.scheduleApplied = NO;
-        store.spoofActive = NO;
-        [store saveSettings];
-    } else {
-        if (![WFLicenseClient isRuntimeLicenseValid]) {
-            [self showActivationScreenWithResult:[WFLicenseClient lastLicenseResult]];
-            return;
-        }
-        if (!CLLocationCoordinate2DIsValid(store.currentFakeCoords)) return;
-        store.spoofActive = YES;
-        [store saveSettings];
-        [[WolFoxProHookManager shared] deliverFakeUpdate];
-    }
-    [self refreshFloatingStatusIcon];
-    [self refreshSpoofQuickPanel];
-    [self.mainVC refreshSpoofHeaderStatus];
-}
-
-- (void)openMapFromQuickPanel:(UIButton *)sender {
-    (void)sender;
-    [self closeSpoofQuickPanel:nil];
-    [self showUI];
-    [self.mainVC openGPSPage];
-}
-
-- (void)activateFavoriteFromQuickPanel:(UIButton *)sender {
-    (void)sender;
-    WolFoxProLocation *favorite = [WolFoxProStore shared].locations.firstObject;
-    if (!favorite) return;
-    WolFoxProStore *store = [WolFoxProStore shared];
-    if (store.routeActive) [[WolFoxProHookManager shared] stopRoute];
-    store.currentFakeCoords = favorite.coordinate;
-    store.spoofActive = YES;
-    [store saveSettings];
-    [[WolFoxProHookManager shared] deliverFakeUpdate];
-    [self refreshFloatingStatusIcon];
-    [self refreshSpoofQuickPanel];
-    [self.mainVC refreshSpoofHeaderStatus];
 }
 
 - (void)handleFloatingStatusPan:(UIPanGestureRecognizer *)gesture {
