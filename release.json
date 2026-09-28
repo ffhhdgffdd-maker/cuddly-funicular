@@ -1,7 +1,7 @@
 {
   "slug": "bluetooth-v3-blue",
   "label": "Bluetooth V3",
-  "branch": "wolfox/bluetooth-v3-blue",
+  "branch": "WB3",
   "version": "3.0.1",
   "edition": "Full",
   "profile": "full-mosques",

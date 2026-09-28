@@ -1,7 +1,7 @@
 name: WolFox — Bluetooth V3
 on:
   push:
-    branches: [wolfox/bluetooth-v3-blue]
+    branches: [WB3]
   workflow_dispatch:
 permissions:
   contents: read
