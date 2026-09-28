@@ -422,7 +422,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                         [profile isEqualToString:@"mosques-full"] ? 2 :
                         [profile hasPrefix:@"lite-"] ? 3 :
                         [profile hasPrefix:@"full-"] ? 4 : 0;
-    CGFloat headerHeight = safeTop + 66.0;
+    CGFloat headerHeight = safeTop + 58.0;
     CGFloat tabsHeight = edition == 3 ? 62.0 : (edition ? 70.0 : 58.0);
     CGFloat tabsInset = edition ? 12.0 : 0.0;
     CGFloat tabsGap = edition ? 9.0 : 0.0;
@@ -438,14 +438,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     _header.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.28].CGColor;
     [self.view addSubview:_header];
     
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(72, safeTop + 5, MAX(120.0, w - 144.0), 28)];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(64, safeTop + 2, MAX(120.0, w - 128.0), 26)];
     _titleLabel.text = @"WolFox";
     _titleLabel.textAlignment = NSTextAlignmentCenter;
-    _titleLabel.font = [WolFoxProTheme fontOfSize:22 weight:UIFontWeightBlack];
+    _titleLabel.font = [WolFoxProTheme fontOfSize:21 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
     [_header addSubview:_titleLabel];
 
-    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(72, safeTop + 35, MAX(120.0, w - 144.0), 18)];
+    _spoofStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(64, safeTop + 29, MAX(120.0, w - 128.0), 18)];
     _spoofStatusLabel.textAlignment = NSTextAlignmentCenter;
     _spoofStatusLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightBold];
     _spoofStatusLabel.isAccessibilityElement = YES;
@@ -482,11 +482,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     
 #if WOLFOX_LITE
     NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الإخفاء"];
+    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"WolFox"];
     NSArray *tabPages = @[@0, @1, @4];
 #else
     NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"camera.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"الإخفاء"];
+    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"WolFox"];
     NSArray *tabPages = @[@0, @1, @3, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
@@ -1542,11 +1542,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     [scheduleCard addSubview:scheduleButton];
     cy += 87;
 
-    UIButton *hideButton = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة"
-        i:@"eye.slash.fill" c:[WolFoxProTheme danger] y:cy];
-    hideButton.accessibilityIdentifier = @"map.hide-tool";
-    [hideButton addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
-    cy += 62.0;
     _scrollDashboard.contentSize = CGSizeMake(w, cy + 30);
 }
 
@@ -3417,7 +3412,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupInterfacePage {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    UIView *card = [self settingsCard:@"الإخفاء والاستعادة" y:y height:500];
+    UIView *card = [self settingsCard:@"إعدادات WolFox" y:y height:500];
     [card addSubview:[self royalSwitchInside:card t:@"أيقونة WolFox العائمة" i:@"circle.fill" isOn:[defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"] y:48 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:@"WF_RECOVERY_ICON_ENABLED"]; [defaults synchronize];
         [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
