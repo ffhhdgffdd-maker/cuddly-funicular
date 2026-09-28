@@ -1,0 +1,3 @@
+package fun.p3nd.wolfox;
+import android.os.Bundle; import android.widget.Button; import android.widget.TextView; import androidx.appcompat.app.AppCompatActivity;
+public final class MainActivity extends AppCompatActivity { private TextView status; @Override protected void onCreate(Bundle state){super.onCreate(state);setContentView(R.layout.activity_main);status=findViewById(R.id.status);bind(R.id.location,"قسم الموقع يستخدم صلاحيات Android الرسمية فقط.");bind(R.id.camera,"اختيار الصور والكاميرا سيتم عبر واجهات Android الرسمية.");bind(R.id.bluetooth,"Bluetooth يعمل ضمن صلاحيات النظام.");bind(R.id.target,"اختيار التطبيقات مقيد بسياسة Package Visibility.");} private void bind(int id,String message){((Button)findViewById(id)).setOnClickListener(v->status.setText(message));}}
