@@ -342,7 +342,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"هذه جولة إرشادية قصيرة لشرح وظائف WolFox. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"ابحث عن مكان أو إحداثيات أو رابط مشاركة من شريط البحث.",
-        @"من قسم الإخفاء والاستعادة اختر طريقة الإخفاء والاستعادة. التفعيل والاشتراك من زر التاج."
+        @"فعّل طرق الإظهار التي تناسبك من قسم WolFox. يمكن تشغيل أكثر من طريقة معًا."
     ];
     NSString *onboardingEdition = @"WolFox";
 #else
@@ -351,8 +351,8 @@ static BOOL WFMasterProcessIsEligible(void) {
         @"هذه جولة إرشادية قصيرة لشرح أهم وظائف النسخة الكاملة. يمكنك الضغط على تخطي في أي وقت.",
         @"استخدم الخريطة والبحث والإحداثيات والمفضلة لتحديد الموقع وتشغيل الوظائف المرتبطة به.",
         @"احفظ المواقع واستخدم الجدولة لتحديد الأيام ووقت البداية والنهاية حسب إعداداتك.",
-        @"بعد فتح كاميرا التطبيق اضغط مطولاً في منتصف الشاشة لإظهار الأيقونة؛ اسحبها لأكثر من ثانيتين للتبديل السريع.",
-        @"كل إعداد داخل قسمه: الكاميرا في قسم الكاميرا، والإخفاء والاستعادة في الإخفاء والاستعادة. التفعيل والاشتراك من زر التاج."
+        @"عند فتح واجهة الكاميرا تظهر أيقونة الصور ثابتة في منتصف الجهة اليسرى؛ اضغط عليها لاختيار صورة.",
+        @"كل ميزة وإعداد موجودان داخل القسم المخصص لهما فقط، وطرق الإظهار داخل قسم WolFox."
     ];
     NSString *onboardingEdition = @"WolFox";
 #endif
@@ -3311,7 +3311,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)requestHideTool {
     [self cancelBTScan];
-    [[WolFoxController shared] chooseRecoveryMethodAndHide:YES];
+    [[WolFoxController shared] dismissUI];
 }
 
 - (void)componentSwitchChanged:(UISwitch *)sender {
@@ -3392,12 +3392,12 @@ static BOOL WFMasterProcessIsEligible(void) {
         [defaults setBool:toggle.on forKey:@"WF_RECOVERY_ICON_ENABLED"]; [defaults synchronize];
         [[WolFoxController shared] setFloatingStatusIconVisible:toggle.on];
     }]];
-    [card addSubview:[self royalSwitchInside:card t:@"الاستعادة بأزرار الصوت" i:@"speaker.wave.2.fill" isOn:[defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"] y:108 action:^(UISwitch *toggle) {
+    [card addSubview:[self royalSwitchInside:card t:@"الإظهار بأزرار الصوت" i:@"speaker.wave.2.fill" isOn:[defaults boolForKey:@"WF_RECOVERY_VOLUME_ENABLED"] y:108 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:@"WF_RECOVERY_VOLUME_ENABLED"]; [WolFoxProStore shared].volumeGestureEnabled = toggle.on;
         [[WolFoxProStore shared] saveSettings]; [defaults synchronize];
         if (toggle.on) [[WolFoxController shared] prepareHiddenVolumeListening];
     }]];
-    [card addSubview:[self royalSwitchInside:card t:@"الإظهار والإخفاء بعد Screenshot" i:@"camera.viewfinder" isOn:[defaults boolForKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"] y:168 action:^(UISwitch *toggle) {
+    [card addSubview:[self royalSwitchInside:card t:@"الإظهار بتصوير الشاشة" i:@"camera.viewfinder" isOn:[defaults boolForKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"] y:168 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:@"WF_RECOVERY_SCREENSHOT_ENABLED"]; [defaults synchronize];
     }]];
     UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 232, card.bounds.size.width - 30, 28)];
@@ -3423,7 +3423,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIButton *subscription = [self royalBtnInside:_scrollDashboard t:@"معلومات التفعيل" i:@"checkmark.seal" c:[WolFoxProTheme accent] y:y];
     [subscription addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
     y += 72;
-    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y]; [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء WolFox" i:@"eye.slash" c:[WolFoxProTheme accent] y:y]; [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
 }
 
