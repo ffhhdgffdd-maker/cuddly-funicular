@@ -76,7 +76,14 @@ static char kLiveIntervalDotKey;
 static BOOL WFMasterProcessIsEligible(void) {
     NSString *bundleID = NSBundle.mainBundle.bundleIdentifier.lowercaseString;
     NSString *process = NSProcessInfo.processInfo.processName.lowercaseString;
-    return bundleID.length && ![bundleID hasPrefix:@"com.apple."] && ![process containsString:@"springboard"] && ![process containsString:@"backboard"];
+    if (!bundleID.length) return NO;
+    if ([bundleID hasPrefix:@"com.apple."]) return NO;
+    if ([process containsString:@"springboard"] || [process containsString:@"backboard"] || [process containsString:@"installd"]) return NO;
+    // Keep the UI/runtime restricted to the build target. Loading the tweak UI
+    // into unrelated third-party processes is a common source of launch crashes.
+    NSString *expected = [@WOLFOX_TARGET_BUNDLE_ID lowercaseString];
+    if (expected.length && ![bundleID isEqualToString:expected]) return NO;
+    return NSClassFromString(@"UIApplication") != nil;
 }
 
 @interface WolFoxController : NSObject <UIGestureRecognizerDelegate>
