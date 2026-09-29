@@ -1,7 +1,7 @@
-name: WolFox — Bluetooth V5
+name: WolFox — GPS_HK Cleanroom
 on:
   push:
-    branches: [WB5]
+    branches: [WB5, codex/gps-hk-v2-cleanroom]
   workflow_dispatch:
 permissions:
   contents: read
