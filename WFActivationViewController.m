@@ -369,7 +369,7 @@
 - (void)presentCodePrompt {
     if (self.presentedViewController) return;
     self.card.hidden = YES;
-    UIAlertController *prompt = [UIAlertController alertControllerWithTitle:@"تفعيل WolFox" message:@"أدخل كود التفعيل:" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *prompt = [UIAlertController alertControllerWithTitle:@"تفعيل الأداة" message:@"أدخل كود التفعيل:" preferredStyle:UIAlertControllerStyleAlert];
     prompt.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
     [prompt addTextFieldWithConfigurationHandler:^(UITextField *field) {
         field.placeholder = @"كود التفعيل";
