@@ -1,7 +1,7 @@
-name: WolFox New Design Build
+name: WolFox Three Clean Builds
 on:
   push:
-    branches: [WN1]
+    branches: [wolfox/three-clean-builds-v2]
   workflow_dispatch:
 permissions:
   contents: read
