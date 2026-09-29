@@ -4532,8 +4532,9 @@ static BOOL WFMasterProcessIsEligible(void) {
         message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
         preferredStyle:UIAlertControllerStyleAlert];
     NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"تصوير الشاشة"];
+    NSArray<NSNumber *> *methods = @[@(WFRecoveryIcon), @(WFRecoveryVolume), @(WFRecoveryScreenshot)];
     for (NSInteger i = 0; i < titles.count; i++) {
-        WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
+        WFRecoveryMethod method = (WFRecoveryMethod)[methods[i] integerValue];
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
             [alert dismissViewControllerAnimated:YES completion:^{
