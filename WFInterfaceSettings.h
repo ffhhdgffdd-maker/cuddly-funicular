@@ -5,7 +5,6 @@
 + (void)prepareDefaults:(NSUserDefaults *)defaults;
 + (BOOL)setRecoveryMethod:(WFRecoveryMethod)method enabled:(BOOL)enabled defaults:(NSUserDefaults *)defaults;
 + (BOOL)recoveryMethod:(WFRecoveryMethod)method enabledInDefaults:(NSUserDefaults *)defaults;
-+ (NSInteger)tapCountInDefaults:(NSUserDefaults *)defaults;
 + (NSInteger)volumeCountInDefaults:(NSUserDefaults *)defaults;
 + (NSInteger)iconSizeIndexInDefaults:(NSUserDefaults *)defaults;
 + (double)iconOpacityInDefaults:(NSUserDefaults *)defaults;

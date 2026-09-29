@@ -103,8 +103,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, assign) NSTimeInterval lastVolumeToggleTime;
 @property (nonatomic, assign) NSTimeInterval lastSystemVolumeNotificationTime;
 @property (nonatomic, assign) NSTimeInterval lastFallbackVolumePulseTime;
-@property (nonatomic, assign) NSInteger sequentialTapCount;
-@property (nonatomic, assign) NSTimeInterval lastSequentialTapTime;
 + (instancetype)shared;
 - (void)showUI;
 - (void)dismissUI;
@@ -169,7 +167,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)openGPSPage;
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar;
 - (void)volumePressCountChanged:(UISegmentedControl *)control;
-- (void)floatingTapCountChanged:(UISlider *)slider;
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
 - (void)floatingIconOpacityChanged:(UISlider *)slider;
 - (void)resetFloatingIconPosition;
@@ -3384,16 +3381,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self finishConfirmedChange];
 }
 
-- (void)floatingTapCountChanged:(UISlider *)slider {
-    NSInteger count = MAX(1, MIN(50, (NSInteger)lrintf(slider.value)));
-    slider.value = count;
-    [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_FLOATING_TAP_COUNT"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    UILabel *label = (UILabel *)[slider.superview viewWithTag:4051];
-    if ([label isKindOfClass:[UILabel class]]) label.text = [NSString stringWithFormat:@"عدد الضغطات للفتح: %ld", (long)count];
-    [self showToast:[NSString stringWithFormat:@"تم حفظ %ld ضغطة لفتح WolFox", (long)count]];
-}
-
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control {
     [[NSUserDefaults standardUserDefaults] setInteger:control.selectedSegmentIndex forKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
     [[NSUserDefaults standardUserDefaults] synchronize];
@@ -3566,37 +3553,27 @@ static BOOL WFMasterProcessIsEligible(void) {
     recoveryHint.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightRegular];
     recoveryHint.textColor = [WolFoxProTheme textSecondary]; [recovery addSubview:recoveryHint];
     y += 342;
-    UIView *icon = [self settingsCard:@"الأيقونة العائمة" y:y height:366];
+    UIView *icon = [self settingsCard:@"الأيقونة العائمة" y:y height:286];
     BOOL iconEnabled = [WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults];
-    UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 46, icon.bounds.size.width - 32, 28)];
-    NSInteger tapCount = [WFInterfaceSettings tapCountInDefaults:defaults];
-    tapLabel.text = [NSString stringWithFormat:@"عدد الضغطات للفتح: %ld", (long)tapCount];
-    tapLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightMedium];
-    tapLabel.textColor = [WolFoxProTheme textSecondary]; tapLabel.textAlignment = NSTextAlignmentRight; tapLabel.tag = 4051; [icon addSubview:tapLabel];
-    UISlider *tapSlider = [[UISlider alloc] initWithFrame:CGRectMake(16, 80, icon.bounds.size.width - 32, 36)];
-    tapSlider.minimumTrackTintColor = [WolFoxProTheme accent]; tapSlider.accessibilityLabel = @"عدد ضغطات الأيقونة من 1 إلى 50";
-    tapSlider.accessibilityIdentifier = @"WF_FLOATING_TAP_COUNT";
-    tapSlider.minimumValue = 1; tapSlider.maximumValue = 50; tapSlider.value = tapCount; tapSlider.continuous = NO; tapSlider.enabled = iconEnabled;
-    [tapSlider addTarget:self action:@selector(floatingTapCountChanged:) forControlEvents:UIControlEventValueChanged]; [icon addSubview:tapSlider];
-    UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 126, icon.bounds.size.width - 32, 24)];
+    UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 46, icon.bounds.size.width - 32, 24)];
     sizeLabel.text = @"حجم الأيقونة"; sizeLabel.textAlignment = NSTextAlignmentRight;
     sizeLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightMedium]; sizeLabel.textColor = [WolFoxProTheme textSecondary]; [icon addSubview:sizeLabel];
     UISegmentedControl *size = [[UISegmentedControl alloc] initWithItems:@[@"صغير", @"متوسط", @"كبير"]];
-    size.frame = CGRectMake(16, 158, icon.bounds.size.width - 32, 40); size.selectedSegmentIndex = [WFInterfaceSettings iconSizeIndexInDefaults:defaults];
+    size.frame = CGRectMake(16, 78, icon.bounds.size.width - 32, 40); size.selectedSegmentIndex = [WFInterfaceSettings iconSizeIndexInDefaults:defaults];
     size.accessibilityLabel = @"حجم الأيقونة"; size.accessibilityIdentifier = @"WF_FLOATING_STATUS_SIZE_INDEX"; size.enabled = iconEnabled;
     [size setTitleTextAttributes:@{NSFontAttributeName:[WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium]} forState:UIControlStateNormal];
     [size addTarget:self action:@selector(floatingIconSizeChanged:) forControlEvents:UIControlEventValueChanged]; [icon addSubview:size];
-    UILabel *opacityLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 210, icon.bounds.size.width - 32, 24)];
+    UILabel *opacityLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 130, icon.bounds.size.width - 32, 24)];
     opacityLabel.text = @"وضوح الأيقونة"; opacityLabel.textAlignment = NSTextAlignmentRight;
     opacityLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightMedium]; opacityLabel.textColor = [WolFoxProTheme textSecondary]; [icon addSubview:opacityLabel];
-    UISlider *opacity = [[UISlider alloc] initWithFrame:CGRectMake(16, 244, icon.bounds.size.width - 32, 36)];
+    UISlider *opacity = [[UISlider alloc] initWithFrame:CGRectMake(16, 164, icon.bounds.size.width - 32, 36)];
     opacity.minimumValue = 0.45; opacity.maximumValue = 1; opacity.value = [WFInterfaceSettings iconOpacityInDefaults:defaults];
     opacity.minimumTrackTintColor = [WolFoxProTheme accent]; opacity.continuous = NO; opacity.enabled = iconEnabled;
     opacity.accessibilityLabel = @"وضوح الأيقونة"; opacity.accessibilityIdentifier = @"WF_FLOATING_STATUS_OPACITY";
     [opacity addTarget:self action:@selector(floatingIconOpacityChanged:) forControlEvents:UIControlEventValueChanged]; [icon addSubview:opacity];
-    UIButton *reset = [self royalBtnInside:icon t:@"إعادة موضع الأيقونة" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:298];
+    UIButton *reset = [self royalBtnInside:icon t:@"إعادة موضع الأيقونة" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:218];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    y += 382;
+    y += 302;
     UIView *volume = [self settingsCard:@"اختصار أزرار الصوت" y:y height:116];
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
     pressCount.frame = CGRectMake(16, 54, volume.bounds.size.width - 32, 42);
@@ -5108,13 +5085,6 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)handleFloatingStatusTap:(__unused UIButton *)sender {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if (![WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults]) return;
-    NSInteger required = [WFInterfaceSettings tapCountInDefaults:defaults];
-    NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
-    if (now - self.lastSequentialTapTime > 1.5) self.sequentialTapCount = 0;
-    self.lastSequentialTapTime = now;
-    self.sequentialTapCount++;
-    if (self.sequentialTapCount < required) return;
-    self.sequentialTapCount = 0;
     [self showUI];
 }
 

@@ -50,7 +50,8 @@ assert 'إعدادات WolFox' in interface
 assert 'WF_RECOVERY_ICON_ENABLED' in interface
 assert 'WF_RECOVERY_VOLUME_ENABLED' in interface
 assert 'WF_RECOVERY_SCREENSHOT_ENABLED' in interface
-assert 'WF_FLOATING_TAP_COUNT' in interface
+assert 'عدد ضغطات الأيقونة' not in ui
+assert '[self showUI];' in ui.split('- (void)handleFloatingStatusTap:')[1].split('- (void)handleFloatingStatusLongPress:')[0]
 bt = ui.split('- (void)setupBluetoothPage {')[1].split('- (void)btProfileDeactivated')[0]
 for token in ['tag:8102', 'tag:8120', 'startBTScan', 'importBluetoothFile', 'exportBluetoothFile']:
     assert token in bt, token

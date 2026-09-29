@@ -20,11 +20,9 @@ int main(void) { @autoreleasepool {
  assert([d boolForKey:@"WF_PRO_VOLUME_GESTURE"]);
  assert([WFInterfaceSettings setRecoveryMethod:WFRecoveryScreenshot enabled:NO defaults:d]);
  assert(![WFInterfaceSettings setRecoveryMethod:WFRecoveryVolume enabled:NO defaults:d]);
- [d setInteger:99 forKey:@"WF_FLOATING_TAP_COUNT"];
  [d setInteger:99 forKey:@"WF_VOLUME_PRESS_COUNT"];
  [d setInteger:99 forKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
  [d setDouble:0.1 forKey:@"WF_FLOATING_STATUS_OPACITY"];
- assert([WFInterfaceSettings tapCountInDefaults:d] == 50);
  assert([WFInterfaceSettings volumeCountInDefaults:d] == 3);
  assert([WFInterfaceSettings iconSizeIndexInDefaults:d] == 2);
  assert([WFInterfaceSettings iconOpacityInDefaults:d] == 0.45);

@@ -82,6 +82,7 @@ expect_pattern "الأيقونة تخضع لدورة الكاميرا" 'shouldSh
 expect_pattern "تظهر الأيقونة مع جلسة تصوير نشطة ولو بلا طبقة معاينة" 'cameraSessionActive' WFCameraLifecycle.h WFCameraLifecycle.m WFVirtualCameraManager.mm tests/test_runtime_lifecycle.m
 expect_pattern "تهيئة إعداد الضغط قبل إنشاء الأيقونة العائمة" 'prepareDefaults:NSUserDefaults[.]standardUserDefaults' WolFoxMaster.mm
 expect_pattern "معالج الأيقونة يقرأ إعداد الاسترجاع الموحد" 'recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults' WolFoxMaster.mm
+expect_absent "ضغطة واحدة تفتح ولا تنتظر تكرار الضغط" 'sequentialTapCount|lastSequentialTapTime|WF_FLOATING_TAP_COUNT' WolFoxMaster.mm WFInterfaceSettings.h WFInterfaceSettings.m
 
 echo "النتيجة: $PASS ناجح، $FAIL فاشل"
 if [ "$FAIL" -ne 0 ]; then

@@ -59,10 +59,6 @@ static NSString *WFRecoveryKey(WFRecoveryMethod method) {
 + (BOOL)recoveryMethod:(WFRecoveryMethod)method enabledInDefaults:(NSUserDefaults *)defaults {
     return WFRecoveryMethodValid(method) && [defaults boolForKey:WFRecoveryKey(method)];
 }
-+ (NSInteger)tapCountInDefaults:(NSUserDefaults *)defaults {
-    NSInteger count = [defaults integerForKey:@"WF_FLOATING_TAP_COUNT"];
-    return MAX(1, MIN(50, count ?: 1));
-}
 + (NSInteger)volumeCountInDefaults:(NSUserDefaults *)defaults {
     NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
     return count == 2 || count == 5 ? count : 3;
