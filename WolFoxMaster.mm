@@ -1565,7 +1565,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #pragma mark - Unified virtual camera
 
 - (void)setupVirtualCameraCardAtY:(CGFloat)y width:(CGFloat)w {
-    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 526)];
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 620)];
     card.backgroundColor = [WolFoxProTheme surfacePrimary];
     card.layer.cornerRadius = 18.0;
     card.layer.borderWidth = 1.0;
@@ -1655,7 +1655,23 @@ static BOOL WFMasterProcessIsEligible(void) {
         [WFVirtualCameraManager shared].pickerIconEnabled = toggle.on;
     }]];
 
+    UILabel *sideLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 522, card.bounds.size.width - 36, 24)];
+    sideLabel.text = @"موضع أيقونة الرفع في منتصف الشاشة";
+    sideLabel.textColor = [WolFoxProTheme textSecondary]; sideLabel.textAlignment = NSTextAlignmentRight;
+    sideLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium]; [card addSubview:sideLabel];
+    UISegmentedControl *side = [[UISegmentedControl alloc] initWithItems:@[@"يسار", @"يمين"]];
+    side.frame = CGRectMake(18, 557, card.bounds.size.width - 36, 40);
+    side.selectedSegmentIndex = [NSUserDefaults.standardUserDefaults boolForKey:@"WF_CAMERA_ICON_RIGHT"] ? 1 : 0;
+    side.accessibilityLabel = @"جهة أيقونة رفع الصور";
+    [side addTarget:self action:@selector(cameraIconSideChanged:) forControlEvents:UIControlEventValueChanged];
+    [card addSubview:side];
     [self refreshVirtualCameraPage];
+}
+
+- (void)cameraIconSideChanged:(UISegmentedControl *)sender {
+    [NSUserDefaults.standardUserDefaults setBool:sender.selectedSegmentIndex == 1 forKey:@"WF_CAMERA_ICON_RIGHT"];
+    [[WolFoxController shared] toggleCameraIcon:[WFVirtualCameraManager shared].shouldShowPickerIcon];
+    [self showToast:@"تم الحفظ والتطبيق"];
 }
 
 - (void)selectVirtualCameraImage {
@@ -3192,14 +3208,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)showIdentifierMessage:(NSString *)message {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.presentedViewController) { [self showToast:message]; return; }
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"WolFox" message:message preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"إغلاق" style:UIAlertActionStyleCancel handler:nil]];
-        UIViewController *host = self;
-        while (host.presentedViewController && !host.presentedViewController.isBeingDismissed) host = host.presentedViewController;
-        [host presentViewController:alert animated:YES completion:nil];
-    });
+    dispatch_async(dispatch_get_main_queue(), ^{ [self showToast:message]; });
 }
 
 - (void)importIDProPage {
@@ -3335,7 +3344,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = _scrollDashboard.bounds.size.width;
     [self setupVirtualCameraCardAtY:12.0 width:w];
     _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
-    _scrollDashboard.contentSize = CGSizeMake(w, 554.0);
+    _scrollDashboard.contentSize = CGSizeMake(w, 650.0);
 }
 
 
@@ -3531,7 +3540,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     [WFInterfaceSettings prepareDefaults:defaults];
-    UIView *recovery = [self settingsCard:@"إعدادات WolFox · الإظهار" y:y height:272];
+    UIView *recovery = [self settingsCard:@"إعدادات WolFox · الإظهار" y:y height:326];
     NSArray *options = @[
         @[@"أيقونة WolFox العائمة", @"location.circle", @"WF_RECOVERY_ICON_ENABLED"],
         @[@"الإظهار بأزرار الصوت", @"speaker.wave.2", @"WF_RECOVERY_VOLUME_ENABLED"],
@@ -3551,7 +3560,12 @@ static BOOL WFMasterProcessIsEligible(void) {
         for (UIView *view in row.subviews) if ([view isKindOfClass:UISwitch.class]) view.accessibilityIdentifier = option[2];
         [recovery addSubview:row];
     }
-    y += 288;
+    UILabel *recoveryHint = [[UILabel alloc] initWithFrame:CGRectMake(16, 264, recovery.bounds.size.width - 32, 52)];
+    recoveryHint.text = @"زر × يخفي الواجهة فقط. أعد فتحها بالطريقة المفعّلة أدناه: الأيقونة أو أزرار الصوت أو تصوير الشاشة.";
+    recoveryHint.numberOfLines = 3; recoveryHint.textAlignment = NSTextAlignmentRight;
+    recoveryHint.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightRegular];
+    recoveryHint.textColor = [WolFoxProTheme textSecondary]; [recovery addSubview:recoveryHint];
+    y += 342;
     UIView *icon = [self settingsCard:@"الأيقونة العائمة" y:y height:366];
     BOOL iconEnabled = [WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults];
     UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 46, icon.bounds.size.width - 32, 28)];
@@ -4391,15 +4405,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSString *title = @"WolFox";
     UIColor *stateColor = [WolFoxProTheme accent];
     NSString *stateIcon = @"info.circle.fill";
-    if ([text containsString:@"موقعك الحقيقي"]) {
+    BOOL responseError = [text containsString:@"تعذر"] || [text containsString:@"فشل"] || [text containsString:@"خطأ"] || [text containsString:@"غير صالح"] || [text containsString:@"❌"];
+    if (!responseError && [text containsString:@"موقعك الحقيقي"]) {
         title = @"الموقع الحقيقي";
         stateColor = [WolFoxProTheme success];
         stateIcon = @"checkmark.circle.fill";
-    } else if ([text containsString:@"✅"] || [text containsString:@"تشغيل"] || [text containsString:@"تم التفعيل"] || [text containsString:@"تم الحفظ"] || [text containsString:@"تم تطبيق"]) {
+    } else if (!responseError && ([text containsString:@"✅"] || [text containsString:@"تشغيل"] || [text containsString:@"تم التفعيل"] || [text containsString:@"تم الحفظ"] || [text containsString:@"تم تطبيق"])) {
         title = @"تم بنجاح";
         stateColor = [WolFoxProTheme success];
         stateIcon = [text containsString:@"تفعيل"] ? @"iphone.circle.fill" : @"checkmark.circle.fill";
-    } else if ([text containsString:@"⚠"] || [text containsString:@"❌"] || [text containsString:@"إيقاف"] || [text containsString:@"توقفت"] || [text containsString:@"حذف"] || [text containsString:@"تعذر"] || [text containsString:@"خطأ"] || [text containsString:@"غير صحيحة"]) {
+    } else if (responseError || [text containsString:@"⚠"] || [text containsString:@"❌"] || [text containsString:@"إيقاف"] || [text containsString:@"توقفت"] || [text containsString:@"حذف"] || [text containsString:@"تعذر"] || [text containsString:@"خطأ"] || [text containsString:@"غير صحيحة"]) {
         title = @"تنبيه";
         stateColor = [WolFoxProTheme danger];
         stateIcon = @"exclamationmark.triangle.fill";
@@ -4418,7 +4433,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[self.view viewWithTag:998] removeFromSuperview];
     CGFloat width = self.view.bounds.size.width - 32;
     CGFloat top = CGRectGetMaxY(_header.frame) + 8.0;
-    UIView *tv = [[UIView alloc] initWithFrame:CGRectMake(16, top, width, 64)];
+    UIFont *messageFont = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightMedium];
+    CGFloat messageHeight = MIN(180, MAX(30, ceil([displayText boundingRectWithSize:CGSizeMake(width - 76, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName:messageFont} context:nil].size.height)));
+    UIView *tv = [[UIView alloc] initWithFrame:CGRectMake(16, top, width, messageHeight + 38)];
     tv.tag = 998;
     tv.backgroundColor = [[WolFoxProTheme surfacePrimary] colorWithAlphaComponent:0.96]; tv.layer.cornerRadius = 18; tv.layer.borderWidth = 1; tv.layer.borderColor = [stateColor colorWithAlphaComponent:0.82].CGColor; tv.alpha = 0;
     tv.layer.shadowColor = [UIColor blackColor].CGColor; tv.layer.shadowOpacity = 0.30; tv.layer.shadowRadius = 10; tv.layer.shadowOffset = CGSizeMake(0, 5);
@@ -4431,7 +4448,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     icon.tintColor = stateColor; icon.contentMode = UIViewContentModeScaleAspectFit;
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 8, width - 76, 20)];
     titleLabel.text = title; titleLabel.textColor = stateColor; titleLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold]; titleLabel.textAlignment = NSTextAlignmentRight;
-    UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(16, 27, width - 76, 28)]; l.text = displayText; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; l.lineBreakMode = NSLineBreakByTruncatingTail;
+    UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(16, 27, width - 76, messageHeight)]; l.text = displayText; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; l.numberOfLines = 0; l.font = messageFont; l.lineBreakMode = NSLineBreakByWordWrapping;
     [tv addSubview:icon];
     [tv addSubview:titleLabel]; [tv addSubview:l]; [self.view addSubview:tv];
     tv.isAccessibilityElement = YES;
@@ -4439,7 +4456,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, tv.accessibilityLabel);
     tv.transform = CGAffineTransformMakeTranslation(0, -10);
     [UIView animateWithDuration:[WolFoxProTheme transitionDuration] delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ tv.alpha = 1.0; tv.transform = CGAffineTransformIdentity; } completion:^(BOOL f) {
-        [UIView animateWithDuration:[WolFoxProTheme transitionDuration] delay:2.50 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn animations:^{ tv.alpha = 0; tv.transform = CGAffineTransformMakeTranslation(0, -8); } completion:^(BOOL f2) { [tv removeFromSuperview]; }];
+        [UIView animateWithDuration:[WolFoxProTheme transitionDuration] delay:MAX(3.0, MIN(8.0, displayText.length / 18.0)) options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn animations:^{ tv.alpha = 0; tv.transform = CGAffineTransformMakeTranslation(0, -8); } completion:^(BOOL f2) { [tv removeFromSuperview]; }];
     }];
 }
 
@@ -5173,7 +5190,9 @@ static BOOL WFMasterProcessIsEligible(void) {
         }
         CGFloat cameraSize = CGRectGetWidth(self.cameraIcon.bounds);
         CGFloat leftInset = MAX(12.0, self.overlayWindow.safeAreaInsets.left + 8.0);
-        self.cameraIcon.frame = CGRectMake(leftInset, floor((CGRectGetHeight(self.overlayWindow.bounds) - cameraSize) * 0.5), cameraSize, cameraSize);
+        CGFloat iconX = [NSUserDefaults.standardUserDefaults boolForKey:@"WF_CAMERA_ICON_RIGHT"]
+            ? CGRectGetWidth(self.overlayWindow.bounds) - MAX(12.0, self.overlayWindow.safeAreaInsets.right + 8.0) - cameraSize : leftInset;
+        self.cameraIcon.frame = CGRectMake(iconX, floor((CGRectGetHeight(self.overlayWindow.bounds) - cameraSize) * 0.5), cameraSize, cameraSize);
         self.cameraIcon.hidden = NO;
         [self.overlayWindow bringSubviewToFront:self.cameraIcon];
         [self.cameraIcon.layer removeAllAnimations];

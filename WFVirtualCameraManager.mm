@@ -398,7 +398,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
         running |= preview.session.isRunning;
         visible |= [self previewIsVisible:preview];
     }
-    _iconLifecycle.enabled = self.enabled && [WFLicenseClient isRuntimeLicenseValid];
+    _iconLifecycle.enabled = [WFLicenseClient isRuntimeLicenseValid]; // Picker remains available before the first image is selected.
     _iconLifecycle.foreground = UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
     _iconLifecycle.cameraVisible = visible;
     BOOL show = self.shouldShowPickerIcon;
