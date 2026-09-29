@@ -81,7 +81,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     if ([process containsString:@"springboard"] || [process containsString:@"backboard"] || [process containsString:@"installd"]) return NO;
     // Keep the UI/runtime restricted to the build target. Loading the tweak UI
     // into unrelated third-party processes is a common source of launch crashes.
-    NSString *expected = [@WOLFOX_TARGET_BUNDLE_ID lowercaseString];
+    NSString *expected = nil;
+#ifdef WOLFOX_TARGET_BUNDLE_ID
+    expected = [@(WOLFOX_TARGET_BUNDLE_ID) lowercaseString];
+#endif
     if (expected.length && ![bundleID isEqualToString:expected]) return NO;
     return NSClassFromString(@"UIApplication") != nil;
 }
