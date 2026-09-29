@@ -105,6 +105,8 @@ if [ -z "$LDID_PATH" ]; then
     info "بناء ldid من المصدر..."
     git clone --quiet --depth 1 --recurse-submodules \
         https://github.com/ProcursusTeam/ldid.git "$TEMP_DIR/ldid"
+    # النسخة shallow لا تحتوي tags؛ أضف tag محليًا كي لا يطبع git describe رسالة fatal.
+    git -C "$TEMP_DIR/ldid" tag -f wolfox-build >/dev/null 2>&1
     make -C "$TEMP_DIR/ldid" -j"$(nproc)"
     LDID_PATH="$TEMP_DIR/ldid/ldid"
 fi
