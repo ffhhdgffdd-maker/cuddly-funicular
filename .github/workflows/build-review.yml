@@ -1,7 +1,7 @@
 name: WolFox New Design Build
 on:
   push:
-    branches: [WN1]
+    branches: [WN1, codex/wn1-reference-ui-20260929]
   workflow_dispatch:
 permissions:
   contents: read
