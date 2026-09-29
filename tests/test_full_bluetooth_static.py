@@ -51,7 +51,7 @@ assert 'WF_RECOVERY_ICON_ENABLED' in interface
 assert 'WF_RECOVERY_VOLUME_ENABLED' in interface
 assert 'WF_RECOVERY_SCREENSHOT_ENABLED' in interface
 assert 'عدد ضغطات الأيقونة' not in ui
-tap_handler = re.search(r'- \\(void\\)handleFloatingStatusTap:\\(__unused UIButton \\*\\)sender \\{([^}]*)\\}', ui)
+tap_handler = re.search(r'- \(void\)handleFloatingStatusTap:\(__unused UIButton \*\)sender \{([^}]*)\}', ui)
 assert tap_handler and '[self showUI];' in tap_handler.group(1)
 bt = ui.split('- (void)setupBluetoothPage {')[1].split('- (void)btProfileDeactivated')[0]
 for token in ['tag:8102', 'tag:8120', 'startBTScan', 'importBluetoothFile', 'exportBluetoothFile']:
