@@ -79,6 +79,9 @@ else
 fi
 
 expect_pattern "الأيقونة تخضع لدورة الكاميرا" 'shouldShowPickerIcon' WFVirtualCameraManager.mm WolFoxMaster.mm
+expect_pattern "تظهر الأيقونة مع جلسة تصوير نشطة ولو بلا طبقة معاينة" 'cameraSessionActive' WFCameraLifecycle.h WFCameraLifecycle.m WFVirtualCameraManager.mm tests/test_runtime_lifecycle.m
+expect_pattern "تهيئة إعداد الضغط قبل إنشاء الأيقونة العائمة" 'prepareDefaults:NSUserDefaults[.]standardUserDefaults' WolFoxMaster.mm
+expect_pattern "معالج الأيقونة يقرأ إعداد الاسترجاع الموحد" 'recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults' WolFoxMaster.mm
 
 echo "النتيجة: $PASS ناجح، $FAIL فاشل"
 if [ "$FAIL" -ne 0 ]; then

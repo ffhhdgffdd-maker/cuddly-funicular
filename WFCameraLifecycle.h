@@ -2,6 +2,7 @@
 @interface WFCameraLifecycle : NSObject
 @property (nonatomic) BOOL enabled;
 @property (nonatomic) BOOL cameraVisible;
+@property (nonatomic) BOOL cameraSessionActive;
 @property (nonatomic) BOOL foreground;
 @property (nonatomic) BOOL toolVisible;
 @property (nonatomic, readonly) BOOL shouldShowIcon;

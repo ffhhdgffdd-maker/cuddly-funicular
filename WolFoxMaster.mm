@@ -4851,6 +4851,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 #ifdef DEBUG
     WFLog(@"[WolFox][UI] setup_overlay_begin");
 #endif
+    // Initialize the canonical recovery keys before showing the default floating button.
+    // Otherwise it can appear while its tap handler reads an unset/false key.
+    [WFInterfaceSettings prepareDefaults:NSUserDefaults.standardUserDefaults];
     UIWindowScene *activeScene = nil;
     if (@available(iOS 13.0, *)) {
         for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
@@ -5104,9 +5107,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)handleFloatingStatusTap:(__unused UIButton *)sender {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    if (![defaults boolForKey:@"WF_RECOVERY_ICON_ENABLED"]) return;
-    NSInteger required = [defaults integerForKey:@"WF_FLOATING_TAP_COUNT"];
-    required = MAX(1, MIN(50, required ?: 1));
+    if (![WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults]) return;
+    NSInteger required = [WFInterfaceSettings tapCountInDefaults:defaults];
     NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
     if (now - self.lastSequentialTapTime > 1.5) self.sequentialTapCount = 0;
     self.lastSequentialTapTime = now;

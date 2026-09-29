@@ -58,6 +58,8 @@ int main(void) { @autoreleasepool {
 
     WFCameraLifecycle *camera = [WFCameraLifecycle new];
     camera.enabled = YES; assert(!camera.shouldShowIcon); // Ordinary browsing.
+    camera.cameraSessionActive = YES; assert(camera.shouldShowIcon); // Some camera UIs do not use AVCaptureVideoPreviewLayer.
+    camera.cameraSessionActive = NO; assert(!camera.shouldShowIcon);
     for (int cycle = 0; cycle < 3; cycle++) {
         camera.cameraVisible = YES; assert(camera.shouldShowIcon);
         [camera beginActivity:@"picker"]; [camera beginActivity:@"picker"];

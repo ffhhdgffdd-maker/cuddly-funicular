@@ -2,6 +2,12 @@
 #import "WFInterfaceSettings.h"
 #include <assert.h>
 int main(void) { @autoreleasepool {
+ NSString *freshSuite = [@"WF.Settings.FirstLaunch." stringByAppendingString:NSUUID.UUID.UUIDString];
+ NSUserDefaults *fresh = [[NSUserDefaults alloc] initWithSuiteName:freshSuite];
+ [WFInterfaceSettings prepareDefaults:fresh];
+ assert([WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:fresh]);
+ assert([fresh boolForKey:@"WF_FLOATING_STATUS_VISIBLE"]);
+ [fresh removePersistentDomainForName:freshSuite];
  NSString *suite = [@"WF.Settings.Tests." stringByAppendingString:NSUUID.UUID.UUIDString];
  NSUserDefaults *d = [[NSUserDefaults alloc] initWithSuiteName:suite];
  [d setInteger:WFRecoveryScreenshot forKey:@"WF_RECOVERY_METHOD"];

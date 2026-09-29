@@ -304,6 +304,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     BOOL _pickerPresented;
     WFCameraLifecycle *_iconLifecycle;
     NSHashTable<AVCaptureVideoPreviewLayer *> *_visiblePreviews;
+    NSHashTable<AVCaptureSession *> *_runningSessions;
     NSTimer *_visibilityTimer;
     BOOL _lastIconVisible;
 }
@@ -324,6 +325,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     _imageGeneration = 1;
     _iconLifecycle = [WFCameraLifecycle new];
     _visiblePreviews = [NSHashTable weakObjectsHashTable];
+    _runningSessions = [NSHashTable weakObjectsHashTable];
     for (NSString *name in @[AVCaptureSessionDidStartRunningNotification, AVCaptureSessionDidStopRunningNotification,
                             AVCaptureSessionWasInterruptedNotification, AVCaptureSessionInterruptionEndedNotification,
                             UIApplicationDidBecomeActiveNotification, UIApplicationDidEnterBackgroundNotification])
@@ -367,14 +369,28 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     else dispatch_async(dispatch_get_main_queue(), postBlock);
 }
 
-- (void)cameraVisibilityEvent:(__unused NSNotification *)notification {
-    if (NSThread.isMainThread) [self refreshCameraVisibility];
-    else dispatch_async(dispatch_get_main_queue(), ^{ [self refreshCameraVisibility]; });
+- (void)cameraVisibilityEvent:(NSNotification *)notification {
+    void (^update)(void) = ^{
+        AVCaptureSession *session = [notification.object isKindOfClass:AVCaptureSession.class] ? notification.object : nil;
+        if (session) {
+            if ([notification.name isEqualToString:AVCaptureSessionDidStartRunningNotification] ||
+                [notification.name isEqualToString:AVCaptureSessionInterruptionEndedNotification]) {
+                if (session.isRunning && !session.isInterrupted) [self->_runningSessions addObject:session];
+            } else if ([notification.name isEqualToString:AVCaptureSessionDidStopRunningNotification] ||
+                       [notification.name isEqualToString:AVCaptureSessionWasInterruptedNotification]) {
+                [self->_runningSessions removeObject:session];
+            }
+        }
+        [self refreshCameraVisibility];
+    };
+    if (NSThread.isMainThread) update();
+    else dispatch_async(dispatch_get_main_queue(), update);
 }
 
 - (void)trackPreviewLayer:(AVCaptureVideoPreviewLayer *)layer {
     if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self trackPreviewLayer:layer]; }); return; }
     [_visiblePreviews addObject:layer];
+    if (layer.session.isRunning && !layer.session.isInterrupted) [_runningSessions addObject:layer.session];
     [self refreshCameraVisibility];
 }
 
@@ -394,13 +410,21 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
 - (void)refreshCameraVisibility {
     if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self refreshCameraVisibility]; }); return; }
     BOOL running = NO, visible = NO;
+    for (AVCaptureSession *session in _runningSessions.allObjects) {
+        if (session.isRunning && !session.isInterrupted) running = YES;
+        else [_runningSessions removeObject:session];
+    }
     for (AVCaptureVideoPreviewLayer *preview in _visiblePreviews.allObjects) {
-        running |= preview.session.isRunning;
         visible |= [self previewIsVisible:preview];
+        if (preview.session.isRunning && !preview.session.isInterrupted) {
+            [_runningSessions addObject:preview.session];
+            running = YES;
+        }
     }
     _iconLifecycle.enabled = [WFLicenseClient isRuntimeLicenseValid]; // Picker remains available before the first image is selected.
     _iconLifecycle.foreground = UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
     _iconLifecycle.cameraVisible = visible;
+    _iconLifecycle.cameraSessionActive = running;
     BOOL show = self.shouldShowPickerIcon;
     if (show != _lastIconVisible) {
         _lastIconVisible = show;
