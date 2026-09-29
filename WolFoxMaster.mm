@@ -510,7 +510,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     // Location / Tools / WolFox. Camera, Bluetooth and Identifier stay as
     // functional sections inside Tools instead of being repeated as top tabs.
     NSArray *icons = @[@"location.fill", @"square.grid.2x2.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"WolFox"];
+    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"الإعدادات"];
     NSArray *tabPages = @[@0, @1, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
@@ -3519,7 +3519,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     [WFInterfaceSettings prepareDefaults:defaults];
-    UIView *recovery = [self settingsCard:@"إعدادات WolFox · الإظهار" y:y height:272];
+    UIView *recovery = [self settingsCard:@"الإخفاء والإظهار" y:y height:272];
     NSArray *options = @[
         @[@"أيقونة WolFox العائمة", @"location.circle", @"WF_RECOVERY_ICON_ENABLED"],
         @[@"الإظهار بأزرار الصوت", @"speaker.wave.2", @"WF_RECOVERY_VOLUME_ENABLED"],
@@ -3589,7 +3589,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     y += 140;
     UIButton *subscription = [self royalBtnInside:_scrollDashboard t:@"معلومات التفعيل" i:@"checkmark.seal" c:[WolFoxProTheme accent] y:y];
     [subscription addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside]; y += 64;
-    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء WolFox" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
+    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الواجهة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
     [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 70);
 }
