@@ -425,10 +425,10 @@ static BOOL WFMasterProcessIsEligible(void) {
                         [profile isEqualToString:@"mosques-full"] ? 2 :
                         [profile hasPrefix:@"lite-"] ? 3 :
                         [profile hasPrefix:@"full-"] ? 4 : 0;
-    CGFloat headerHeight = safeTop + 78.0;
-    CGFloat tabsHeight = edition == 3 ? 62.0 : (edition ? 70.0 : 58.0);
-    CGFloat tabsInset = edition ? 12.0 : 0.0;
-    CGFloat tabsGap = edition ? 9.0 : 0.0;
+    CGFloat headerHeight = safeTop + 64.0;
+    CGFloat tabsHeight = 54.0;
+    CGFloat tabsInset = 14.0;
+    CGFloat tabsGap = 8.0;
     
     _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[WolFoxProTheme blurStyle]]];
     _blurView.frame = self.view.bounds;
@@ -441,7 +441,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop, w - 32, 26)];
     _titleLabel.text = @"WolFox";
     _titleLabel.textAlignment = NSTextAlignmentCenter;
-    _titleLabel.font = [WolFoxProTheme fontOfSize:21 weight:UIFontWeightBold];
+    _titleLabel.font = [WolFoxProTheme fontOfSize:23 weight:UIFontWeightBlack];
     _titleLabel.textColor = UIColor.whiteColor;
     [_header addSubview:_titleLabel];
 
@@ -462,8 +462,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     // 2. Top Tabs Bar
     _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
-    _tabsBar.layer.cornerRadius = edition == 1 ? 8.0 : edition == 2 ? 24.0 : edition == 3 ? 14.0 : edition == 4 ? 20.0 : 0.0;
-    _tabsBar.layer.masksToBounds = edition != 0;
+    _tabsBar.layer.cornerRadius = 14.0;
+    _tabsBar.layer.masksToBounds = YES;
     _tabsBar.backgroundColor = [WolFoxProTheme surfaceSecondary];
     _tabsBar.layer.borderWidth = 1.0;
     _tabsBar.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18].CGColor;
@@ -1270,17 +1270,19 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupGPSPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
 
-    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(10, 10, w - 20, 64)];
+    UIView *servicesCard = [[UIView alloc] initWithFrame:CGRectMake(15, 12, w - 30, 58)];
     servicesCard.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.13];
     servicesCard.layer.cornerRadius = 13;
     servicesCard.layer.borderWidth = 1.0;
     servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
     [_scrollDashboard addSubview:servicesCard];
     // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 260)];
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 330)];
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
-    mapCard.layer.cornerRadius = 20; mapCard.clipsToBounds = YES;
+    mapCard.layer.cornerRadius = 16; mapCard.clipsToBounds = YES;
+    mapCard.layer.borderWidth = 1.0;
+    mapCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18].CGColor;
     [_scrollDashboard addSubview:mapCard];
     
     self.mapView = [[MKMapView alloc] initWithFrame:mapCard.bounds];
@@ -1351,7 +1353,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIButton *expandBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     expandBtn.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 48);
     expandBtn.backgroundColor = [WolFoxProTheme surfacePrimary];
-    expandBtn.layer.cornerRadius = 12;
+    expandBtn.layer.cornerRadius = 14;
     expandBtn.layer.borderWidth = 1.0;
     expandBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
     [expandBtn setTitle:@"  توسيع الخريطة" forState:UIControlStateNormal];
