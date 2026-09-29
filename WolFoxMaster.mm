@@ -1356,7 +1356,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     expandBtn.layer.cornerRadius = 14;
     expandBtn.layer.borderWidth = 1.0;
     expandBtn.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
-    [expandBtn setTitle:@"  توسيع الخريطة" forState:UIControlStateNormal];
+    [expandBtn setTitle:@"  عرض الخريطة بالحجم الكامل" forState:UIControlStateNormal];
     [expandBtn setTitleColor:[WolFoxProTheme accent] forState:UIControlStateNormal];
     expandBtn.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightSemibold];
     if (@available(iOS 13.0, *)) [expandBtn setImage:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"] forState:UIControlStateNormal];
@@ -1433,7 +1433,9 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     // Keyboard Input Area
     UIView *kbCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(realNotice.frame) + 12, w - 30, 66)];
-    kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 20;
+    kbCard.backgroundColor = [WolFoxProTheme surfacePrimary]; kbCard.layer.cornerRadius = 16;
+    kbCard.layer.borderWidth = 1.0;
+    kbCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16].CGColor;
     [_scrollDashboard addSubview:kbCard];
     
     // الحفظ والمفضلة يظهران قبل أدوات التشغيل، وخارج مساحة الخريطة.
@@ -1441,8 +1443,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     saveLocationButton.frame = CGRectMake(15, 12, (kbCard.bounds.size.width - 45) / 2.0, 40);
     UIColor *saveColor = [UIColor colorWithRed:0.24 green:0.78 blue:0.53 alpha:1.0];
     saveLocationButton.backgroundColor = [saveColor colorWithAlphaComponent:0.17];
-    saveLocationButton.layer.cornerRadius = 11;
-    [saveLocationButton setTitle:@"حفظ الموقع" forState:UIControlStateNormal];
+    saveLocationButton.layer.cornerRadius = 14;
+    [saveLocationButton setTitle:@"حفظ" forState:UIControlStateNormal];
     [saveLocationButton setTitleColor:saveColor forState:UIControlStateNormal];
     [saveLocationButton addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
     saveLocationButton.accessibilityLabel = @"حفظ الموقع الحالي في المفضلة";
@@ -1453,7 +1455,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     favoritesButton.frame = CGRectMake(CGRectGetMaxX(saveLocationButton.frame) + 15, 12, saveLocationButton.bounds.size.width, 40);
     UIColor *favoritesColor = [WolFoxProTheme accent];
     favoritesButton.backgroundColor = [favoritesColor colorWithAlphaComponent:0.17];
-    favoritesButton.layer.cornerRadius = 11;
+    favoritesButton.layer.cornerRadius = 14;
     [favoritesButton setTitle:@"المفضلة" forState:UIControlStateNormal];
     [favoritesButton setTitleColor:favoritesColor forState:UIControlStateNormal];
     [favoritesButton addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
@@ -1463,8 +1465,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     CGFloat cy = CGRectGetMaxY(kbCard.frame) + 15.0;
 
-    UIView *locationControls = [self settingsCard:@"التزييف" y:cy height:122];
-    [self addComponentSwitch:@"تشغيل / إيقاف الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
+    UIView *locationControls = [self settingsCard:@"الموقع" y:cy height:122];
+    [self addComponentSwitch:@"تفعيل تغيير الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
     cy += 134;
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
@@ -1472,7 +1474,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard addSubview:scheduleCard];
     UIButton *scheduleButton = [UIButton buttonWithType:UIButtonTypeSystem];
     scheduleButton.frame = scheduleCard.bounds;
-    [scheduleButton setTitle:@"جدولة التزييف   " forState:UIControlStateNormal];
+    [scheduleButton setTitle:@"جدولة الموقع   " forState:UIControlStateNormal];
     [scheduleButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
     scheduleButton.titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
     scheduleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
@@ -1482,12 +1484,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 #pragma clang diagnostic pop
     if (@available(iOS 13.0, *)) [scheduleButton setImage:[UIImage systemImageNamed:@"calendar.badge.clock"] forState:UIControlStateNormal];
     scheduleButton.tintColor = [WolFoxProTheme accent];
-    scheduleButton.accessibilityLabel = @"فتح قسم جدولة التزييف";
+    scheduleButton.accessibilityLabel = @"فتح قسم جدولة الموقع";
     [scheduleButton addTarget:self action:@selector(showSpoofSchedulePage) forControlEvents:UIControlEventTouchUpInside];
     [scheduleCard addSubview:scheduleButton];
     cy += 87;
 
-    UIView *gpsSettings = [self settingsCard:@"إعدادات GPS" y:cy height:132];
+    UIView *gpsSettings = [self settingsCard:@"تحديث الموقع" y:cy height:132];
     UILabel *intervalLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, gpsSettings.bounds.size.width - 30, 26)];
     intervalLabel.text = [NSString stringWithFormat:@"معدل التحديث: %.2f ث", WFClampGPSUpdateInterval([WolFoxProStore shared].updateIntervalSeconds)];
     intervalLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightMedium];
@@ -1505,7 +1507,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [interval addTarget:self action:@selector(updateIntervalChanged:) forControlEvents:UIControlEventValueChanged];
     [gpsSettings addSubview:interval];
     cy += 144;
-    UIButton *history = [self royalBtnInside:_scrollDashboard t:@"سجل المواقع" i:@"clock.arrow.circlepath" c:[WolFoxProTheme accent] y:cy];
+    UIButton *history = [self royalBtnInside:_scrollDashboard t:@"المواقع السابقة" i:@"clock.arrow.circlepath" c:[WolFoxProTheme accent] y:cy];
     [history addTarget:self action:@selector(showLocationHistory) forControlEvents:UIControlEventTouchUpInside];
     cy += 72;
 
