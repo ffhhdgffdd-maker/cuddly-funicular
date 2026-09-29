@@ -3,6 +3,8 @@
 #import "WFCameraLifecycle.h"
 #import "WolFoxProStore.h"
 #include <assert.h>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 @interface Probe : NSObject <CBCentralManagerDelegate>
 @property NSUInteger states, discoveries, connections, failures;
 @property NSDictionary *last;
@@ -87,3 +89,4 @@ int main(void) { @autoreleasepool {
     [store loadSettings]; assert(!store.bluetoothActive && !store.activeBleProfile);
     puts("Actual scan, delegate forwarding, camera lifecycle, and Bluetooth persistence tests passed");
 } return 0; }
+#pragma clang diagnostic pop

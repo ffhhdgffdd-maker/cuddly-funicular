@@ -4809,7 +4809,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         preferredStyle:UIAlertControllerStyleAlert];
     NSArray *titles = @[@"أيقونة GPS العائمة", @"أزرار الصوت", @"الأيقونة + أزرار الصوت", @"تصوير الشاشة"];
     NSArray<NSNumber *> *methods = @[@(WFRecoveryIcon), @(WFRecoveryVolume), @(WFRecoveryBoth), @(WFRecoveryScreenshot)];
-    for (NSInteger i = 0; i < titles.count; i++) {
+    for (NSUInteger i = 0; i < titles.count; i++) {
         WFRecoveryMethod method = (WFRecoveryMethod)methods[i].integerValue;
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
