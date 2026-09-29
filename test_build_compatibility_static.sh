@@ -53,7 +53,7 @@ expect_pattern "ربط AdSupport مشروط" 'WOLFOX_FEATURE_IDENTIFIER.*framewo
 expect_pattern "حراسة هوكات Identifier" '#if WOLFOX_FEATURE_IDENTIFIER' WolFoxIntegrated.mm
 expect_pattern "حراسة هوكات Bluetooth" '#if WOLFOX_FEATURE_BLUETOOTH' WolFoxIntegrated.mm
 expect_pattern "حراسة هوكات Camera" '#if WOLFOX_FEATURE_CAMERA' WolFoxIntegrated.mm
-expect_pattern "فحص Mach-O ضمن المشروع" 'otool -L' test_macho_feature_isolation.sh
+expect_pattern "فحص Mach-O مستقل عن otool" 'LC_LOAD_DYLIB' test_macho_feature_isolation.sh
 
 if rg -q 'iOS 14|iOS14|14[.]0|14–26|14-26' build_v1_deb.sh Makefile; then
     echo "❌ ما زال هناك مرجع قديم إلى iOS 14 في ملفات البناء"
