@@ -6,7 +6,7 @@ The repository now uses **`main` as its only active GitHub branch**. The former 
 
 - **Repository root** — canonical WolFox build source and CI entry points.
 - **`release.json`** — active release configuration for the `masajid` project on `main`.
-- **`projects/<project-config>/branches/<source-branch>/`** — archived source snapshots retained for each former branch; these nested workflow files are historical and are not active GitHub Actions workflows.
+- **`projects/<project-config>/branches/<branch-slug>/`** — archived source snapshots retained for each former branch; `/` in an original branch name becomes `--` in the folder name, while the exact name remains in the project index. Nested workflow files are historical and are not active GitHub Actions workflows.
 - **`projects/index.json`** — machine-readable project and source-branch catalog.
 - **`tools/verify_projects.py`** — checks project naming, source file counts, and SHA-256 tree digests.
 
