@@ -714,7 +714,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard setContentOffset:CGPointZero animated:NO];
 
     if (page == 0) [self setupGPSPage];
-    else if (page == 1) [self setupIDPage];
+    else if (page == 1) [self setupToolsPage];
     else if (page == 2) [self setupBluetoothPage];
     else if (page == 3) [self setupCameraPage];
     else if (page == 4) [self setupInterfacePage];
@@ -2806,6 +2806,81 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 #pragma mark - ID & Camera Pages (Stubs for linking)
+
+- (UIButton *)toolsSectionButton:(NSString *)title subtitle:(NSString *)subtitle icon:(NSString *)icon y:(CGFloat)y action:(SEL)action {
+    CGFloat w = _scrollDashboard.bounds.size.width;
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.frame = CGRectMake(15, y, w - 30, 82);
+    button.backgroundColor = [WolFoxProTheme surfacePrimary];
+    button.layer.cornerRadius = 16.0;
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.18].CGColor;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 13, button.bounds.size.width - 78, 24)];
+    titleLabel.text = title;
+    titleLabel.textAlignment = NSTextAlignmentRight;
+    titleLabel.textColor = [WolFoxProTheme textPrimary];
+    titleLabel.font = [WolFoxProTheme fontOfSize:16 weight:UIFontWeightBold];
+    titleLabel.userInteractionEnabled = NO;
+    [button addSubview:titleLabel];
+
+    UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 39, button.bounds.size.width - 78, 30)];
+    subtitleLabel.text = subtitle;
+    subtitleLabel.textAlignment = NSTextAlignmentRight;
+    subtitleLabel.textColor = [WolFoxProTheme textSecondary];
+    subtitleLabel.font = [WolFoxProTheme fontOfSize:11 weight:UIFontWeightMedium];
+    subtitleLabel.numberOfLines = 2;
+    subtitleLabel.userInteractionEnabled = NO;
+    [button addSubview:subtitleLabel];
+
+    if (@available(iOS 13.0, *)) {
+        UIImageView *image = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:icon]];
+        image.frame = CGRectMake(button.bounds.size.width - 56, 22, 34, 34);
+        image.tintColor = [WolFoxProTheme accent];
+        image.contentMode = UIViewContentModeScaleAspectFit;
+        image.userInteractionEnabled = NO;
+        [button addSubview:image];
+    }
+    return button;
+}
+
+- (void)openIdentifierTool {
+    for (UIView *v in _scrollDashboard.subviews) [v removeFromSuperview];
+    [self setupIDPage];
+}
+- (void)openCameraTool { [self switchPage:3]; }
+- (void)openBluetoothTool { [self switchPage:2]; }
+
+- (void)setupToolsPage {
+    CGFloat w = _scrollDashboard.bounds.size.width;
+    UILabel *heading = [[UILabel alloc] initWithFrame:CGRectMake(15, 12, w - 30, 30)];
+    heading.text = @"الأدوات";
+    heading.textAlignment = NSTextAlignmentRight;
+    heading.textColor = [WolFoxProTheme textPrimary];
+    heading.font = [WolFoxProTheme fontOfSize:21 weight:UIFontWeightBlack];
+    [_scrollDashboard addSubview:heading];
+
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(15, 43, w - 30, 34)];
+    hint.text = @"كل ميزة في قسم مستقل بدون تكرار الإعدادات.";
+    hint.textAlignment = NSTextAlignmentRight;
+    hint.textColor = [WolFoxProTheme textSecondary];
+    hint.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
+    [_scrollDashboard addSubview:hint];
+
+    UIButton *identifier = [self toolsSectionButton:@"المعرّف" subtitle:@"إدارة المعرّف وحالته والاستيراد والتصدير." icon:@"person.text.rectangle.fill" y:88 action:@selector(openIdentifierTool)];
+    [_scrollDashboard addSubview:identifier];
+#if !WOLFOX_LITE
+    UIButton *camera = [self toolsSectionButton:@"الكاميرا والصور" subtitle:@"اختيار الصورة وإدارة حالة الكاميرا الافتراضية." icon:@"camera.fill" y:182 action:@selector(openCameraTool)];
+    [_scrollDashboard addSubview:camera];
+    UIButton *bluetooth = [self toolsSectionButton:@"Bluetooth" subtitle:@"البحث عن الأجهزة والملفات والحالة من مكان واحد." icon:@"antenna.radiowaves.left.and.right" y:276 action:@selector(openBluetoothTool)];
+    [_scrollDashboard addSubview:bluetooth];
+    _scrollDashboard.contentSize = CGSizeMake(w, 380);
+#else
+    _scrollDashboard.contentSize = CGSizeMake(w, 190);
+#endif
+}
 
 - (void)setupIDPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
