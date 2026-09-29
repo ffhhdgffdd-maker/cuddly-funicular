@@ -1,0 +1,5 @@
+plugins { id 'com.android.application' }
+android { namespace 'fun.p3nd.wolfox'; compileSdk 35
+ defaultConfig { applicationId 'fun.p3nd.wolfox'; minSdk 29; targetSdk 35; versionCode 30000; versionName '3.0.0' }
+}
+dependencies { implementation 'androidx.appcompat:appcompat:1.7.0'; implementation 'com.google.android.material:material:1.12.0' }

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "project_folder": "v2-full__full__v2-0-1__bundle-mosques__theme-blue-original",
+  "display_name": "V2 Full",
+  "project_slug": "v2-full",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "v2-full",
+    "label": "V2 Full",
+    "version": "2.0.1",
+    "edition": "Full",
+    "profile": "",
+    "interface_variant": 0,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox",
+    "theme": "blue-original.m",
+    "color": "أزرق أصلي",
+    "theme_provenance": "1fad73028fd258e0d445b77923d084cb94cb572b",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "WF2",
+      "source_commit": "7781041ea8e9c9310f154cc874e14b01e2db2649",
+      "folder": "WF2",
+      "source_file_count": 155,
+      "source_tree_sha256": "1842c300ecfd14750250ca7777227ed727877c98f22579bcfecbb8f2fa13f441",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/v2-full",
+      "source_commit": "d34e6c0365bbfc388bd75c377f9b8e7e052b0e81",
+      "folder": "wolfox--v2-full",
+      "source_file_count": 155,
+      "source_tree_sha256": "8e4930c94c50106ecb7681b83fb86fe14e6d6593a758ff1d4c60f292ffca4e88",
+      "project_config_path": "release.json"
+    }
+  ]
+}

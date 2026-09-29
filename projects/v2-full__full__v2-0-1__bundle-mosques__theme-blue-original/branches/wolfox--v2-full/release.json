@@ -1,0 +1,16 @@
+{
+  "slug": "v2-full",
+  "label": "V2 Full",
+  "branch": "wolfox/v2-full",
+  "version": "2.0.1",
+  "edition": "Full",
+  "profile": "",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox",
+  "theme": "blue-original.m",
+  "color": "أزرق أصلي",
+  "theme_provenance": "1fad73028fd258e0d445b77923d084cb94cb572b",
+  "display_name": "WolFox",
+  "device_tested": false
+}

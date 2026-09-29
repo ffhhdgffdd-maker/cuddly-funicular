@@ -1,0 +1,16 @@
+{
+  "slug": "v3-amber-lite-masajid",
+  "label": "V3 كهرماني — Lite المساجد",
+  "branch": "wolfox/v3-amber-lite-masajid",
+  "version": "3.0.1",
+  "edition": "Lite",
+  "profile": "lite-mosques",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox3_lite_mosques",
+  "theme": "profile-colors.m",
+  "color": "كهرماني",
+  "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+  "display_name": "WolFox",
+  "device_tested": false
+}

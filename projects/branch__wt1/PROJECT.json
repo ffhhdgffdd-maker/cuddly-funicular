@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_folder": "branch__wt1",
+  "display_name": "WT1",
+  "project_slug": null,
+  "configuration_status": "branch-fallback",
+  "release_config": null,
+  "source_branches": [
+    {
+      "branch": "WT1",
+      "source_commit": "8593485db37ad793b80be325de870387f65f0924",
+      "folder": "WT1",
+      "source_file_count": 157,
+      "source_tree_sha256": "f5514624b805626fa33b186f3c9da5ce382cfa1cf5184e6eb24a59aaec0b737e",
+      "project_config_path": null
+    }
+  ]
+}

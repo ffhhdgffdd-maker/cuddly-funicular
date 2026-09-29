@@ -1,0 +1,8 @@
+Package: com.wolfox.khalid
+Name: WolFox
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: WolFox Khalid clean branch
+Maintainer: WFX
+Author: WFX
+Section: Tweaks

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "bluetooth-v5__full-mosques__v5-0-1__interface-v5__bundle-mosques__theme-wolfoxprotheme",
+  "display_name": "Bluetooth V5",
+  "project_slug": "bluetooth-v5",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "bluetooth-v5",
+    "label": "Bluetooth V5",
+    "version": "5.0.1",
+    "edition": "Full",
+    "profile": "full-mosques",
+    "interface_variant": 5,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox5_Bluetooth",
+    "theme": "WolFoxProTheme.m",
+    "color": "أزرق هادئ",
+    "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "WB5",
+      "source_commit": "efc4133764eae149bc81c72082539e8f9073cdd0",
+      "folder": "WB5",
+      "source_file_count": 156,
+      "source_tree_sha256": "bd178fad50686b8d44299e21bf9637fedf575ec26b8f68bec8b50eccf32b9764",
+      "project_config_path": "release.json"
+    }
+  ]
+}

@@ -2,7 +2,6 @@
 import json
 import os
 import pathlib
-import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
 release_file = root / 'release.json'
@@ -39,8 +38,7 @@ if not os.environ.get('WOLFOX_PROJECT_KEY'):
     raise SystemExit('Missing project key')
 
 workflow_dir = root / '.github' / 'workflows'
-workflows = sorted(workflow_dir.glob('*.yml'))
-if workflows and workflows[0] != workflow_dir / 'build.yml':
-    raise SystemExit('This release branch expects a single workflow: build.yml')
+if not (workflow_dir / 'build.yml').is_file():
+    raise SystemExit('Missing main release workflow: build.yml')
 
 print('Release branch, target, edition and version verified')

@@ -1,0 +1,16 @@
+{
+  "slug": "masajid",
+  "label": "المساجد",
+  "branch": "wolfox/masajid",
+  "version": "3.0.1",
+  "edition": "Full",
+  "profile": "mosques-full",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox3_mosques_full",
+  "theme": "calm-blue.m",
+  "color": "أزرق هادئ",
+  "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+  "display_name": "WolFox",
+  "device_tested": false
+}

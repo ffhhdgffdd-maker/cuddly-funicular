@@ -1,0 +1,16 @@
+{
+  "slug": "v3-violet-original",
+  "label": "V3 بنفسجي ليلي أصلي",
+  "branch": "wolfox/v3-violet-original",
+  "version": "3.0.1",
+  "edition": "Full",
+  "profile": "",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox",
+  "theme": "violet-original.m",
+  "color": "بنفسجي ليلي",
+  "theme_provenance": "c165ba86f2d5a221d7996a90ff34400f5ce809fb",
+  "display_name": "WolFox",
+  "device_tested": false
+}

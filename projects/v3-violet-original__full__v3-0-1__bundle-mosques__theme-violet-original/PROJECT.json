@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "v3-violet-original__full__v3-0-1__bundle-mosques__theme-violet-original",
+  "display_name": "V3 بنفسجي ليلي أصلي",
+  "project_slug": "v3-violet-original",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "v3-violet-original",
+    "label": "V3 بنفسجي ليلي أصلي",
+    "version": "3.0.1",
+    "edition": "Full",
+    "profile": "",
+    "interface_variant": 0,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox",
+    "theme": "violet-original.m",
+    "color": "بنفسجي ليلي",
+    "theme_provenance": "c165ba86f2d5a221d7996a90ff34400f5ce809fb",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "wolfox/v3-violet-original",
+      "source_commit": "ffeb43c2bd34e03bf542e56e9ab9e85d0e5ae96a",
+      "folder": "wolfox--v3-violet-original",
+      "source_file_count": 155,
+      "source_tree_sha256": "6977733c2ecbdd4d3ffbe842c90aa9871bd8c160a2ea8a285c30adab58d8a260",
+      "project_config_path": "release.json"
+    }
+  ]
+}

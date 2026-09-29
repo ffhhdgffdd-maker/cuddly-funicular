@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_folder": "branch__wn1",
+  "display_name": "WN1",
+  "project_slug": null,
+  "configuration_status": "branch-fallback",
+  "release_config": null,
+  "source_branches": [
+    {
+      "branch": "WN1",
+      "source_commit": "0c14ca5c5a608768c21cd8fa5e111edabc29c803",
+      "folder": "WN1",
+      "source_file_count": 164,
+      "source_tree_sha256": "027c941e2a249ff62b14dfca7eebda59d77acb24bfd31c80df7561bb2ba2244c",
+      "project_config_path": null
+    }
+  ]
+}

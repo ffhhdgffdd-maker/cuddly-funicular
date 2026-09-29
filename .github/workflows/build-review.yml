@@ -1,7 +1,7 @@
 name: WolFox Three Clean Builds
 on:
   push:
-    branches: [wolfox/three-clean-builds-v2]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

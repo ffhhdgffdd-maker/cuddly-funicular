@@ -1,0 +1,77 @@
+name: WolFox — المساجد
+
+on:
+  push:
+    branches: [wolfox/masajid]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wolfox-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  branch-guard:
+    name: Verify release branch
+    runs-on: ubuntu-24.04
+    outputs:
+      build_allowed: ${{ steps.guard.outputs.build_allowed }}
+    steps:
+      - id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='wolfox/masajid'
+          actual="${GITHUB_REF_NAME}"
+          if [ "$actual" = "$expected" ]; then
+            echo 'build_allowed=true' >> "$GITHUB_OUTPUT"
+            echo "Building the Masajid release from \`$actual\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'build_allowed=false' >> "$GITHUB_OUTPUT"
+            {
+              echo '## Build skipped'
+              echo "This workflow only packages the \`$expected\` release branch."
+              echo "Selected ref: \`$actual\`. No artifact was created."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  native-tests:
+    needs: branch-guard
+    if: ${{ needs.branch-guard.outputs.build_allowed == 'true' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash run_native_tests.sh
+      - run: python3 tests/test_full_bluetooth_static.py
+
+  build:
+    needs: [branch-guard, native-tests]
+    if: ${{ needs.branch-guard.outputs.build_allowed == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: '3.0.1'
+      WOLFOX_EDITION: 'Full'
+      WOLFOX_PROFILE: 'mosques-full'
+      WOLFOX_INTERFACE_VARIANT: '0'
+      WOLFOX_TARGET_BUNDLE_IDS: 'sa.gov.moia.mosques-2'
+      WOLFOX_PROJECT_BUNDLE_ID: 'sa.gov.moia.mosques-2'
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check branch configuration
+        run: python3 tools/verify_release_config.py
+      - name: Build and test
+        run: bash wolfox_setup_build.sh
+      - name: Verify packages and matching source
+        run: python3 tools/collect_release.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: WolFox-masajid-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 14

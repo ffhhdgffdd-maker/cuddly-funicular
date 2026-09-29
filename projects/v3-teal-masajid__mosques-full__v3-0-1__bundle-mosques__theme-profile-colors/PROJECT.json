@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "v3-teal-masajid__mosques-full__v3-0-1__bundle-mosques__theme-profile-colors",
+  "display_name": "V3 فيروزي — المساجد",
+  "project_slug": "v3-teal-masajid",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "v3-teal-masajid",
+    "label": "V3 فيروزي — المساجد",
+    "version": "3.0.1",
+    "edition": "Full",
+    "profile": "mosques-full",
+    "interface_variant": 0,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox3_mosques_full",
+    "theme": "profile-colors.m",
+    "color": "فيروزي",
+    "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "wolfox/v3-teal-masajid",
+      "source_commit": "721cc30d3b698dc4b230028de4e884f812c0ee22",
+      "folder": "wolfox--v3-teal-masajid",
+      "source_file_count": 155,
+      "source_tree_sha256": "03c74e641983984bed59560d633fa5940d66245e10197941ba1566059d984154",
+      "project_config_path": "release.json"
+    }
+  ]
+}

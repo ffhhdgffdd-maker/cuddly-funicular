@@ -1,0 +1,5 @@
+/config.local.php
+/storage/*
+!/storage/.gitkeep
+__pycache__/
+*.pyc

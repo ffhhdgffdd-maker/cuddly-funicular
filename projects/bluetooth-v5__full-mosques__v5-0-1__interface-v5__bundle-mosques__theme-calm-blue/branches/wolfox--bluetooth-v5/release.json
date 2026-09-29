@@ -1,0 +1,16 @@
+{
+  "slug": "bluetooth-v5",
+  "label": "Bluetooth V5",
+  "branch": "wolfox/bluetooth-v5",
+  "version": "5.0.1",
+  "edition": "Full",
+  "profile": "full-mosques",
+  "interface_variant": 5,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox5_Bluetooth",
+  "theme": "calm-blue.m",
+  "color": "أزرق هادئ",
+  "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+  "display_name": "WolFox",
+  "device_tested": false
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_folder": "branch__revert-1-codex-build-full-lite-20260923",
+  "display_name": "revert-1-codex/build-full-lite-20260923",
+  "project_slug": null,
+  "configuration_status": "branch-fallback",
+  "release_config": null,
+  "source_branches": [
+    {
+      "branch": "revert-1-codex/build-full-lite-20260923",
+      "source_commit": "2c7bc2abcfa53905f7b1f8db316973fa7027f417",
+      "folder": "revert-1-codex--build-full-lite-20260923",
+      "source_file_count": 133,
+      "source_tree_sha256": "04869c5119a96ff0f64624d8edb361e03c0200e3f0413accef07245f660c9517",
+      "project_config_path": null
+    }
+  ]
+}

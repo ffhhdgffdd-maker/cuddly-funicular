@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_folder": "branch__codex-full-bluetooth-gpsplus",
+  "display_name": "codex/full-bluetooth-gpsplus",
+  "project_slug": null,
+  "configuration_status": "branch-fallback",
+  "release_config": null,
+  "source_branches": [
+    {
+      "branch": "codex/full-bluetooth-gpsplus",
+      "source_commit": "37ce338f6a5f6f0e3bd050138db27cd4e21e478c",
+      "folder": "codex--full-bluetooth-gpsplus",
+      "source_file_count": 143,
+      "source_tree_sha256": "f19f08498539a1cc2b6984d0aab30e148658f040eaaf4fe4603a015c9e58aa53",
+      "project_config_path": null
+    }
+  ]
+}

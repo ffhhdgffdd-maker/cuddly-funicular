@@ -1,0 +1,16 @@
+{
+  "slug": "gps-hk-v2-cleanroom",
+  "label": "GPS_HK V2 Cleanroom",
+  "branch": "codex/gps-hk-v2-cleanroom",
+  "version": "5.0.0",
+  "edition": "Full",
+  "profile": "full-mosques",
+  "interface_variant": 5,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox5_Bluetooth",
+  "theme": "WolFoxProTheme.m",
+  "color": "أزرق هادئ",
+  "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+  "display_name": "WolFox GPS_HK",
+  "device_tested": false
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "project_folder": "masajid__mosques-full__v3-0-1__bundle-mosques__theme-calm-blue",
+  "display_name": "المساجد",
+  "project_slug": "masajid",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "masajid",
+    "label": "المساجد",
+    "version": "3.0.1",
+    "edition": "Full",
+    "profile": "mosques-full",
+    "interface_variant": 0,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox3_mosques_full",
+    "theme": "calm-blue.m",
+    "color": "أزرق هادئ",
+    "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "fix/pr-15-sanity",
+      "source_commit": "fadd11eb30eeccb2cd0d40bf13a95013d083af72",
+      "folder": "fix--pr-15-sanity",
+      "source_file_count": 176,
+      "source_tree_sha256": "4661670c5450ba39c8b7360c12e2bc83fca73b02f81a984748a48380e30d64a6",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "main",
+      "source_commit": "829c5664e573bb743f6fbbe11999ded58367c8a1",
+      "folder": "main",
+      "source_file_count": 176,
+      "source_tree_sha256": "4661670c5450ba39c8b7360c12e2bc83fca73b02f81a984748a48380e30d64a6",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "WM2",
+      "source_commit": "ce2cd7b4216cc58a128b902546a7c7ddd3ac2587",
+      "folder": "WM2",
+      "source_file_count": 155,
+      "source_tree_sha256": "8fcbd645ea795a4da1d35e3acff863ca5d8cd25d947fd8b4ba8aad3e9d149739",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/clean-base-runtime",
+      "source_commit": "ee27986341286780ae823c75ed20622b8cd25ddf",
+      "folder": "wolfox--clean-base-runtime",
+      "source_file_count": 166,
+      "source_tree_sha256": "2bbcfdd5a0ee436d73f07c76d0e4d9612074c45f90386c57c53c6e35546d9420",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/khalid-clean",
+      "source_commit": "d85eef4b3b38897e1b5ad07d2f13a349706716a0",
+      "folder": "wolfox--khalid-clean",
+      "source_file_count": 174,
+      "source_tree_sha256": "60444b8475046b5aad0b168883c3caf12acd6a96a7b12bda231d0a95bda37807",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/masajid",
+      "source_commit": "09dd998133f627497d61df35a03666b1312bfa35",
+      "folder": "wolfox--masajid",
+      "source_file_count": 155,
+      "source_tree_sha256": "c35cdd6d4d1aef80360e62fc0da0a9287bb7cea7cc8ebb7658ea8d8d72017fe3",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/three-clean-builds",
+      "source_commit": "38455618ae6b554b27bd02aea11be743f900a509",
+      "folder": "wolfox--three-clean-builds",
+      "source_file_count": 174,
+      "source_tree_sha256": "8b1fd3df516220aade322037d6f48a7e9b5329ec605ea4c73788b1068b9a4a81",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/three-clean-builds-v2",
+      "source_commit": "83715e0cb3c7f3746bd6e9b4fadbe5ef752b1f75",
+      "folder": "wolfox--three-clean-builds-v2",
+      "source_file_count": 176,
+      "source_tree_sha256": "f514062fc646cbb71a1a9abda14dfd224266781cdf1dcddf820a8b699986f552",
+      "project_config_path": "release.json"
+    }
+  ]
+}

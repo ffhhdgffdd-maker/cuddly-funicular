@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "gps-hk-v2-cleanroom__full-mosques__v5-0-0__interface-v5__bundle-mosques__theme-wolfoxprotheme",
+  "display_name": "GPS_HK V2 Cleanroom",
+  "project_slug": "gps-hk-v2-cleanroom",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "gps-hk-v2-cleanroom",
+    "label": "GPS_HK V2 Cleanroom",
+    "version": "5.0.0",
+    "edition": "Full",
+    "profile": "full-mosques",
+    "interface_variant": 5,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox5_Bluetooth",
+    "theme": "WolFoxProTheme.m",
+    "color": "أزرق هادئ",
+    "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+    "display_name": "WolFox GPS_HK",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "codex/gps-hk-v2-cleanroom",
+      "source_commit": "333da1d1a64cc2dd0de64034be612c661074a071",
+      "folder": "codex--gps-hk-v2-cleanroom",
+      "source_file_count": 158,
+      "source_tree_sha256": "b9cfc741f0faf924149c20572d7ed2cea3d288aa034d0bae4bcd427689fb2b41",
+      "project_config_path": "release.json"
+    }
+  ]
+}

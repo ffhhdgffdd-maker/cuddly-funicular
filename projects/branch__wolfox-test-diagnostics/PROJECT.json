@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_folder": "branch__wolfox-test-diagnostics",
+  "display_name": "wolfox/test-diagnostics",
+  "project_slug": null,
+  "configuration_status": "branch-fallback",
+  "release_config": null,
+  "source_branches": [
+    {
+      "branch": "wolfox/test-diagnostics",
+      "source_commit": "aa9c1e27b265938aa1a78951d08173a6baac0e38",
+      "folder": "wolfox--test-diagnostics",
+      "source_file_count": 157,
+      "source_tree_sha256": "c1ece29c9a355c5e3e1f1d02e9acb0eb6b25acd7fdf13ae58edf81efc9f26457",
+      "project_config_path": null
+    }
+  ]
+}

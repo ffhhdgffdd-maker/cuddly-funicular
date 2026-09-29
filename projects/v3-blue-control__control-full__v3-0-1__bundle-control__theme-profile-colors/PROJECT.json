@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "v3-blue-control__control-full__v3-0-1__bundle-control__theme-profile-colors",
+  "display_name": "V3 أزرق — التحكم",
+  "project_slug": "v3-blue-control",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "v3-blue-control",
+    "label": "V3 أزرق — التحكم",
+    "version": "3.0.1",
+    "edition": "Full",
+    "profile": "control-full",
+    "interface_variant": 0,
+    "bundle": "com.tahakom.mytahakom",
+    "product": "WolFox3_control_full",
+    "theme": "profile-colors.m",
+    "color": "أزرق",
+    "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "wolfox/v3-blue-control",
+      "source_commit": "9570acd6552426ee3d0fe518ec5d2024ab70a25f",
+      "folder": "wolfox--v3-blue-control",
+      "source_file_count": 155,
+      "source_tree_sha256": "19e6551c8a2d06db0de417f70841f0329d727ecd706bbe8e6e07aba3e1bc371a",
+      "project_config_path": "release.json"
+    }
+  ]
+}

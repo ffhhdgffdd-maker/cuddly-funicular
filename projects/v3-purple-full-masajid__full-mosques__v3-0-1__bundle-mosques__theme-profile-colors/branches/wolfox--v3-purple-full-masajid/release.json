@@ -1,0 +1,16 @@
+{
+  "slug": "v3-purple-full-masajid",
+  "label": "V3 بنفسجي — Full المساجد",
+  "branch": "wolfox/v3-purple-full-masajid",
+  "version": "3.0.1",
+  "edition": "Full",
+  "profile": "full-mosques",
+  "interface_variant": 0,
+  "bundle": "sa.gov.moia.mosques-2",
+  "product": "WolFox3_full_mosques",
+  "theme": "profile-colors.m",
+  "color": "بنفسجي",
+  "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+  "display_name": "WolFox",
+  "device_tested": false
+}

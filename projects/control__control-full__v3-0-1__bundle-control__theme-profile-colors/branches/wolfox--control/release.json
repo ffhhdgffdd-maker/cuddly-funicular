@@ -1,0 +1,16 @@
+{
+  "slug": "control",
+  "label": "التحكم",
+  "branch": "wolfox/control",
+  "version": "3.0.1",
+  "edition": "Full",
+  "profile": "control-full",
+  "interface_variant": 0,
+  "bundle": "com.tahakom.mytahakom",
+  "product": "WolFox3_control_full",
+  "theme": "profile-colors.m",
+  "color": "أزرق",
+  "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+  "display_name": "WolFox",
+  "device_tested": false
+}

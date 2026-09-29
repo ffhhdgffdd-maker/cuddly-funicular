@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_folder": "v3-purple-full-control__full-tahakom__v3-0-1__bundle-control__theme-profile-colors",
+  "display_name": "V3 بنفسجي — Full التحكم",
+  "project_slug": "v3-purple-full-control",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "v3-purple-full-control",
+    "label": "V3 بنفسجي — Full التحكم",
+    "version": "3.0.1",
+    "edition": "Full",
+    "profile": "full-tahakom",
+    "interface_variant": 0,
+    "bundle": "com.tahakom.mytahakom",
+    "product": "WolFox3_full_tahakom",
+    "theme": "profile-colors.m",
+    "color": "بنفسجي",
+    "theme_provenance": "f47799174188d3f17c7304cb93bb4ee40e1d2b86",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "wolfox/v3-purple-full-control",
+      "source_commit": "0d2d3bdada046970e56bbeb4fd91b009cff1c470",
+      "folder": "wolfox--v3-purple-full-control",
+      "source_file_count": 155,
+      "source_tree_sha256": "743197ff332e0328b4e56516fab6827cc221de78aaf2f5bdbe1cb952126423dd",
+      "project_config_path": "release.json"
+    }
+  ]
+}

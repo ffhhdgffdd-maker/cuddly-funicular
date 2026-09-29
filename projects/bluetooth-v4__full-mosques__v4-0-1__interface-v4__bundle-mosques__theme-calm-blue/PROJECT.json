@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "project_folder": "bluetooth-v4__full-mosques__v4-0-1__interface-v4__bundle-mosques__theme-calm-blue",
+  "display_name": "Bluetooth V4",
+  "project_slug": "bluetooth-v4",
+  "configuration_status": "release.json",
+  "release_config": {
+    "slug": "bluetooth-v4",
+    "label": "Bluetooth V4",
+    "version": "4.0.1",
+    "edition": "Full",
+    "profile": "full-mosques",
+    "interface_variant": 4,
+    "bundle": "sa.gov.moia.mosques-2",
+    "product": "WolFox4_Bluetooth",
+    "theme": "calm-blue.m",
+    "color": "أزرق هادئ",
+    "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
+    "display_name": "WolFox",
+    "device_tested": false
+  },
+  "source_branches": [
+    {
+      "branch": "WB4",
+      "source_commit": "fca7ba1cb76694703cf5d394ebd508c8de796ee4",
+      "folder": "WB4",
+      "source_file_count": 155,
+      "source_tree_sha256": "c91544ea7c46033083102520cf999ac1e08f7a76557c58b98c60b37821815ee7",
+      "project_config_path": "release.json"
+    },
+    {
+      "branch": "wolfox/bluetooth-v4",
+      "source_commit": "814a209f06743ffe830bc6daa83b83e01f1bfe59",
+      "folder": "wolfox--bluetooth-v4",
+      "source_file_count": 155,
+      "source_tree_sha256": "779dc9308dd502c7894175d8ccac22c969d46f1551268ce0b8da809298a0067f",
+      "project_config_path": "release.json"
+    }
+  ]
+}
