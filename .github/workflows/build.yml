@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 70
     env:
       THEOS: ${{ github.workspace }}/.theos
-      WOLFOX_VERSION: '5.0.1'
+      WOLFOX_VERSION: '5.0.0'
       WOLFOX_EDITION: 'Full'
       WOLFOX_PROFILE: 'full-mosques'
       WOLFOX_INTERFACE_VARIANT: '5'
@@ -39,7 +39,7 @@ jobs:
         run: python3 tools/collect_release.py
       - uses: actions/upload-artifact@v4
         with:
-          name: WolFox-bluetooth-v5-5.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          name: WolFox-GPS_HK-cleanroom-${{ github.run_number }}-${{ github.run_attempt }}
           path: release/
           if-no-files-found: error
           retention-days: 14
