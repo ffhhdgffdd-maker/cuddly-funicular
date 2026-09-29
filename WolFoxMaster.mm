@@ -820,18 +820,40 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat y = mapHeight + 14.0;
     CGFloat gap = 10.0;
     CGFloat buttonWidth = (w - 30.0 - gap) / 2.0;
-    void (^addSection)(NSString *, NSString *, UIColor *, NSInteger, CGFloat, CGFloat) = ^(NSString *title, NSString *identifier, UIColor *color, NSInteger page, CGFloat x, CGFloat top) {
+    void (^addSectionCard)(NSString *, NSString *, NSString *, UIImage *, UIColor *, NSInteger, CGFloat, CGFloat) = ^(NSString *title, NSString *status, NSString *identifier, UIImage *icon, UIColor *color, NSInteger page, CGFloat x, CGFloat top) {
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(x, top, buttonWidth, 82)];
+        card.backgroundColor = [WolFoxProTheme surfacePrimary];
+        card.layer.cornerRadius = 16.0;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [color colorWithAlphaComponent:0.38].CGColor;
+        [_scrollDashboard addSubview:card];
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.frame = CGRectMake(x, top, buttonWidth, 58);
-        button.backgroundColor = color;
-        button.layer.cornerRadius = 14.0;
-        [button setTitle:title forState:UIControlStateNormal];
-        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        button.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
+        button.frame = card.bounds;
         button.accessibilityIdentifier = identifier;
         button.tag = page;
+        button.accessibilityLabel = [NSString stringWithFormat:@"%@، %@", title, status];
         [button addTarget:self action:@selector(masajidSectionPressed:) forControlEvents:UIControlEventTouchUpInside];
-        [_scrollDashboard addSubview:button];
+        [card addSubview:button];
+        UIImageView *iconView = [[UIImageView alloc] initWithImage:icon];
+        iconView.frame = CGRectMake(12, 24, 34, 34);
+        iconView.tintColor = color;
+        iconView.contentMode = UIViewContentModeScaleAspectFit;
+        iconView.userInteractionEnabled = NO;
+        [card addSubview:iconView];
+        UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(54, 12, card.bounds.size.width - 66, 25)];
+        titleLabel.text = title;
+        titleLabel.textAlignment = NSTextAlignmentRight;
+        titleLabel.textColor = [WolFoxProTheme textPrimary];
+        titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
+        titleLabel.userInteractionEnabled = NO;
+        [card addSubview:titleLabel];
+        UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(54, 40, card.bounds.size.width - 66, 22)];
+        statusLabel.text = status;
+        statusLabel.textAlignment = NSTextAlignmentRight;
+        statusLabel.textColor = color;
+        statusLabel.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightSemibold];
+        statusLabel.userInteractionEnabled = NO;
+        [card addSubview:statusLabel];
     };
 
     UILabel *locationTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 28)];
@@ -885,12 +907,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     sectionsTitle.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
     [_scrollDashboard addSubview:sectionsTitle];
     y += 36;
-    addSection(@"المعرف", @"masajid.identifier-section", [UIColor colorWithRed:1.0 green:0.55 blue:0.04 alpha:1.0], 1, 15, y);
-    addSection(@"Bluetooth", @"masajid.bluetooth-section", [UIColor colorWithRed:0.18 green:0.70 blue:0.86 alpha:1.0], 2, 15 + buttonWidth + gap, y);
-    y += 68;
-    addSection(@"الكاميرا", @"masajid.camera-section", [WolFoxProTheme accent], 3, 15, y);
-    addSection(@"WolFox", @"masajid.wolfox-section", [UIColor colorWithRed:0.46 green:0.36 blue:0.82 alpha:1.0], 4, 15 + buttonWidth + gap, y);
-    y += 76;
+    UIColor *idColor = [UIColor colorWithRed:1.0 green:0.55 blue:0.04 alpha:1.0];
+    UIColor *btColor = [UIColor colorWithRed:0.18 green:0.70 blue:0.86 alpha:1.0];
+    UIColor *cameraColor = [WolFoxProTheme accent];
+    UIColor *wolfoxColor = [UIColor colorWithRed:0.46 green:0.36 blue:0.82 alpha:1.0];
+    WolFoxProStore *store = [WolFoxProStore shared];
+    NSString *idStatus = store.validatedActiveIdentifier ? @"مفعّل" : @"غير مفعّل";
+    NSString *btStatus = store.bluetoothActive ? @"يعمل" : @"متوقف";
+    NSString *cameraStatus = [WFVirtualCameraManager shared].enabled ? @"مفعّلة" : @"متوقفة";
+    BOOL floatingVisible = [NSUserDefaults.standardUserDefaults objectForKey:@"WF_FLOATING_STATUS_VISIBLE"] ? [NSUserDefaults.standardUserDefaults boolForKey:@"WF_FLOATING_STATUS_VISIBLE"] : YES;
+    NSString *wolfoxStatus = floatingVisible ? @"الأيقونة ظاهرة" : @"الأيقونة مخفية";
+    addSectionCard(@"المعرف", idStatus, @"masajid.identifier-section", [UIImage systemImageNamed:@"person.text.rectangle"], idColor, 1, 15, y);
+    addSectionCard(@"Bluetooth", btStatus, @"masajid.bluetooth-section", [UIImage systemImageNamed:@"antenna.radiowaves.left.and.right"], btColor, 2, 15 + buttonWidth + gap, y);
+    y += 92;
+    addSectionCard(@"الكاميرا", cameraStatus, @"masajid.camera-section", [UIImage systemImageNamed:@"camera.fill"], cameraColor, 3, 15, y);
+    addSectionCard(@"WolFox", wolfoxStatus, @"masajid.wolfox-section", [UIImage systemImageNamed:@"wand.and.stars"], wolfoxColor, 4, 15 + buttonWidth + gap, y);
+    y += 100;
     _scrollDashboard.contentSize = CGSizeMake(w, y);
 }
 
