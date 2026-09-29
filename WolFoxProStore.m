@@ -3,6 +3,7 @@
 #import "WolFoxProStore.h"
 #import "WFBluetoothProfileCodec.h"
 #import "WFHookDefaults.h"
+#import "WFInputValidation.h"
 #import <sqlite3.h>
 
 NSNotificationName const WFSpoofStateDidChangeNotification = @"WFSpoofStateDidChangeNotification";
@@ -122,8 +123,9 @@ static NSString *WFDefaultIdentifierBundleID(void) {
             WolFoxProLocation *l = [WolFoxProLocation new];
             l.ID = sqlite3_column_int64(stmt, 0);
             const char *nameText = (const char *)sqlite3_column_text(stmt, 1);
-            l.name = nameText ? [NSString stringWithUTF8String:nameText] : @"موقع غير معروف";
+            l.name = (nameText ? [NSString stringWithUTF8String:nameText] : nil) ?: @"موقع غير معروف";
             l.coordinate = CLLocationCoordinate2DMake(sqlite3_column_double(stmt, 2), sqlite3_column_double(stmt, 3));
+            if (!CLLocationCoordinate2DIsValid(l.coordinate)) continue;
             l.altitude = sqlite3_column_double(stmt, 4);
             [_mutableLocations addObject:l];
         }
@@ -240,28 +242,24 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     if (!rememberCameraValue) [u setBool:self.rememberCameraImage forKey:@"WF_PRO_CAM_REMEMBER"];
     self.scheduleEnabled = [u boolForKey:@"WF_PRO_SCHEDULE_ENABLED"];
     NSArray *rawDays = [u arrayForKey:@"WF_PRO_SCHEDULE_DAYS"] ?: @[];
-    NSMutableArray<NSNumber *> *validDays = [NSMutableArray new];
-    for (id value in rawDays) {
-        NSInteger day = [value integerValue];
-        if (day >= 1 && day <= 7 && ![validDays containsObject:@(day)]) [validDays addObject:@(day)];
-    }
+    NSArray<NSNumber *> *validDays = WFValidatedWeekdays(rawDays);
     self.scheduleWeekdays = validDays;
     NSInteger startMinutes = [u integerForKey:@"WF_PRO_SCHEDULE_START"];
     NSInteger endMinutes = [u integerForKey:@"WF_PRO_SCHEDULE_END"];
     self.scheduleStartMinutes = (startMinutes >= 0 && startMinutes < 1440) ? startMinutes : 540;
     self.scheduleEndMinutes = (endMinutes >= 0 && endMinutes < 1440) ? endMinutes : 1020;
-    self.scheduleLocationID = [[u objectForKey:@"WF_PRO_SCHEDULE_LOCATION_ID"] longLongValue];
+    self.scheduleLocationID = WFValidatedLocationID([u objectForKey:@"WF_PRO_SCHEDULE_LOCATION_ID"]);
     self.scheduleApplied = [u boolForKey:@"WF_PRO_SCHEDULE_APPLIED"];
     self.scheduleDraftDirty = [u boolForKey:@"WF_PRO_SCHEDULE_DRAFT_DIRTY"];
     BOOL hasCommittedSchedule = [u boolForKey:@"WF_PRO_SCHEDULE_COMMITTED_V1"];
     if (hasCommittedSchedule) {
         self.committedScheduleEnabled = [u boolForKey:@"WF_PRO_SCHEDULE_COMMITTED_ENABLED"];
-        self.committedScheduleWeekdays = [u arrayForKey:@"WF_PRO_SCHEDULE_COMMITTED_DAYS"] ?: @[];
+        self.committedScheduleWeekdays = WFValidatedWeekdays([u objectForKey:@"WF_PRO_SCHEDULE_COMMITTED_DAYS"]);
         NSInteger committedStart = [u integerForKey:@"WF_PRO_SCHEDULE_COMMITTED_START"];
         NSInteger committedEnd = [u integerForKey:@"WF_PRO_SCHEDULE_COMMITTED_END"];
         self.committedScheduleStartMinutes = (committedStart >= 0 && committedStart < 1440) ? committedStart : 540;
         self.committedScheduleEndMinutes = (committedEnd >= 0 && committedEnd < 1440) ? committedEnd : 1020;
-        self.committedScheduleLocationID = [[u objectForKey:@"WF_PRO_SCHEDULE_COMMITTED_LOCATION_ID"] longLongValue];
+        self.committedScheduleLocationID = WFValidatedLocationID([u objectForKey:@"WF_PRO_SCHEDULE_COMMITTED_LOCATION_ID"]);
     } else {
         self.committedScheduleEnabled = self.scheduleEnabled;
         self.committedScheduleWeekdays = self.scheduleWeekdays ?: @[];
@@ -280,14 +278,18 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     // Load Identifiers from Defaults (simulated structured store)
     _mutableIdentifiers = [NSMutableArray new];
     NSArray *ids = [u arrayForKey:@"WF_PRO_IDS"] ?: @[];
-    for (NSDictionary *d in ids) {
-        NSUUID *savedUUID = [[NSUUID alloc] initWithUUIDString:d[@"uuid"]];
+    for (id d in ids) {
+        if (![d isKindOfClass:NSDictionary.class]) continue;
+        NSString *uuidText = WFValidatedString(d[@"uuid"]);
+        if (!uuidText.length) continue;
+        NSUUID *savedUUID = [[NSUUID alloc] initWithUUIDString:uuidText];
         if (!savedUUID) continue;
         WolFoxProIdentifier *i = [WolFoxProIdentifier new];
-        i.uuid = savedUUID.UUIDString; i.name = d[@"name"];
+        i.uuid = savedUUID.UUIDString; i.name = WFValidatedString(d[@"name"]) ?: @"";
         i.bundleID = [d[@"bundleID"] isKindOfClass:[NSString class]] ? d[@"bundleID"] : WFDefaultIdentifierBundleID();
-        NSString *dateStr = d[@"date"];
-        i.createdAt = dateStr ? [NSDate dateWithTimeIntervalSince1970:[dateStr doubleValue]] : [NSDate date];
+        NSNumber *timestamp = WFValidatedFiniteNumber(d[@"date"]);
+        i.createdAt = timestamp && fabs(timestamp.doubleValue) < 1.0e11
+            ? [NSDate dateWithTimeIntervalSince1970:timestamp.doubleValue] : [NSDate date];
         [_mutableIdentifiers addObject:i];
     }
     NSUUID *activeUUID = [[NSUUID alloc] initWithUUIDString:[u stringForKey:@"WF_PRO_ACTIVE_ID"]];
@@ -559,4 +561,3 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 }
 
 @end
-

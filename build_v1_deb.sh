@@ -159,17 +159,16 @@ fi
 [ "${#TARGET_BUNDLES[@]}" -gt 0 ] || { echo "❌ لا توجد Bundle IDs صالحة؛ تم منع الحقن العام"; exit 1; }
 
 FILES=("WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFRedactedLogger.m" "WFVirtualCameraManager.mm" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
-# Identifier transfer and Bluetooth profile codec are implemented in the
-# existing WolFox sources; do not add non-existent standalone .m files.
-if [ "$WOLFOX_FEATURE_PROFILE" = "location-id-bluetooth" ]; then
-    FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
-fi
+# Shared UI/hooks reference these classes even when a feature's tab is hidden.
+# Keep their implementations linked in every profile; missing classes crash dyld
+# before any constructor or runtime fallback can run.
+FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)
 COMMON_FLAGS+=(-DWOLFOX_INTERFACE_VARIANT="$INTERFACE_VARIANT")
 COMMON_FLAGS+=("${FEATURE_DEFINES[@]}")
-BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,dynamic_lookup -framework UIKit -framework Foundation -framework CoreLocation -framework CoreBluetooth -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework QuartzCore -framework AdSupport -framework WebKit -framework UserNotifications -lsqlite3)
+BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,error -framework UIKit -framework Foundation -framework CoreGraphics -framework CoreLocation -framework CoreBluetooth -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework QuartzCore -framework AdSupport -framework WebKit -framework UserNotifications -lsqlite3)
 LINK_FLAGS=("${BASE_LINK_FLAGS[@]}")
 [ "$WOLFOX_EDITION" = "Lite" ] && COMMON_FLAGS+=(-DWOLFOX_LITE=1)
 if [ "${WOLFOX_HARDENING:-1}" != "0" ]; then
@@ -226,6 +225,7 @@ build_arch() {
 build_arch arm64
 cp "$BUILD_DIR/arm64/WolFox.dylib" "$OUTPUT_DYLIB"
 if [ -n "$LDID" ]; then "$LDID" -S "$OUTPUT_DYLIB"; fi
+python3 "$PROJECT_DIR/tools/verify_macho_bindings.py" "$OUTPUT_DYLIB"
 
 make_deb() {
     local mode="$1" root="$BUILD_DIR/pkg-$1" prefix=""
@@ -295,4 +295,3 @@ EOF
 }
 make_deb rootful
 make_deb rootless
-

@@ -26,6 +26,7 @@
 
 #import "WolFoxProStore.h"
 #import "WFIdentifierTransfer.h"
+#import "WFInputValidation.h"
 #import "WFBluetoothProfileCodec.h"
 #import "WFBluetoothScanSession.h"
 #import "WFInterfacePolicy.h"
@@ -793,8 +794,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     _saudiPlacesStatusLabel.text = includeMosques ? @"جارٍ تحميل المعالم الظاهرة…" : @"جارٍ تحميل المدارس والمنشآت الصحية… قرّب أكثر للمساجد";
     __weak typeof(self) weakSelf = self;
     _saudiPlacesTask = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSDictionary *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-        NSArray *elements = [json isKindOfClass:NSDictionary.class] ? json[@"elements"] : nil;
+        id json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+        NSArray *elements = WFValidatedOverpassElements(json);
         NSMutableArray<WFSaudiPlaceAnnotation *> *annotations = [NSMutableArray new];
         NSMutableSet<NSString *> *seen = [NSMutableSet new];
         for (NSDictionary *element in elements) {
@@ -2616,15 +2617,17 @@ static BOOL WFMasterProcessIsEligible(void) {
     [request setValue:@"WolFoxGPS/2.0.0 (global map search)" forHTTPHeaderField:@"User-Agent"];
     __weak typeof(self) weakSelf = self;
     NSURLSessionDataTask *task = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSArray *json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-        NSDictionary *item = [json isKindOfClass:NSArray.class] ? json.firstObject : nil;
+        id json = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+        NSDictionary *item = WFValidatedMapSearchResult(json, query);
+        NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
+        BOOL validResponse = !error && http.statusCode >= 200 && http.statusCode < 300 && item != nil;
         double latitude = [item[@"lat"] doubleValue];
         double longitude = [item[@"lon"] doubleValue];
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
             CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(latitude, longitude);
-            if (error || !item || !CLLocationCoordinate2DIsValid(coordinate)) {
+            if (!validResponse || !CLLocationCoordinate2DIsValid(coordinate)) {
                 [self showToast:@"لم يتم العثور على العنوان أو المكان ❌"];
                 return;
             }
