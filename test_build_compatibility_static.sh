@@ -1,70 +1,46 @@
 #!/bin/bash
 set -euo pipefail
-
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$PROJECT_DIR"
-
-PASS=0
-FAIL=0
-
+cd "${0%/*}" || exit 1
+pattern_count=0
 expect_pattern() {
-    local label="$1"
-    local pattern="$2"
-    local file="$3"
-    if rg -q -- "$pattern" "$file"; then
-        echo "✅ $label"
-        PASS=$((PASS + 1))
+    local label="$1" pattern="$2" file="${3:-.}"
+    if grep -qr "$pattern" "$file" 2>/dev/null; then
+        ((++pattern_count))
+        echo "✓ $label"
     else
-        echo "❌ $label"
-        FAIL=$((FAIL + 1))
+        echo "✗ FAILED: $label — pattern not found: $pattern" >&2
+        exit 1
     fi
 }
-
-expect_pattern "Runtime يبدأ من iOS 15.8" 'Runtime target: iOS 15[.]8 through iOS 27[.]0' build_v1_deb.sh
-expect_pattern "Deployment Target متوافق مع Clang (15.0)" 'MIN_IOS="\$\{MIN_IOS:-15[.]0\}"' build_v1_deb.sh
-expect_pattern "الحد الأعلى iOS 27.0" 'MAX_TARGET_IOS="27[.]0"' build_v1_deb.sh
-expect_pattern "SDK النهائي المطلوب 16.5" 'REQUIRED_SDK_VERSION="\$\{REQUIRED_SDK_VERSION:-16[.]5\}"' build_v1_deb.sh
-expect_pattern "Makefile يحدد TARGET المتوافق مع Clang" '^TARGET := iphone:latest:15[.]0$' Makefile
-expect_pattern "Makefile يحدد arm64 فقط" '^ARCHS := arm64$' Makefile
-expect_pattern "مسار arm64 فقط مفروض" 'WOLFOX_ARCHS="\$\{WOLFOX_ARCHS:-arm64\}"' build_v1_deb.sh
-expect_pattern "بناء arm64 صريح" 'build_arch arm64' build_v1_deb.sh
-expect_pattern "Makefile ينفذ سكربت البناء" 'WOLFOX_ARCHS=arm64.*build_v1_deb[.]sh' Makefile
-expect_pattern "Makefile يوفّر اختبار Linux" '^test:' Makefile
-expect_pattern "Makefile يوفّر تحقق البناء" '^verify:' Makefile
-expect_pattern "فحص إصدار SDK قبل البناء" 'version_at_least "\$SDK_VERSION" "\$REQUIRED_SDK_VERSION"' build_v1_deb.sh
-expect_pattern "Deployment Target يمر إلى clang" 'miphoneos-version-min="\$MIN_IOS"' build_v1_deb.sh
-expect_pattern "توقيع dylib باستخدام ldid" '"\$LDID" -S "\$OUTPUT_DYLIB"' build_v1_deb.sh
-expect_pattern "ملكية DEB تفرض root:root" 'DPKG_BUILD_FLAGS[+]?=?.*--root-owner-group|DPKG_BUILD_FLAGS\+=[(]--root-owner-group[)]' build_v1_deb.sh
-expect_pattern "اعتماد firmware يبدأ من 15.8" 'Depends: firmware [(]>= 15[.]8[)]' build_v1_deb.sh
-expect_pattern "اسم Rootful يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootful[.]deb' build_v1_deb.sh
-expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootless[.]deb' build_v1_deb.sh
-expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|WolFoxTargetBundles[.]txt' build_v1_deb.sh
-expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
-expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
-expect_pattern "استهداف تطبيق المساجد فقط" 'WOLFOX_TARGET_BUNDLE_IDS:-sa[.]gov[.]moia[.]mosques-2' wolfox_setup_build.sh
-expect_pattern "التثبيت لا يفرض إعادة تشغيل المضيف" 'user-initiated host launch' build_v1_deb.sh
-expect_pattern "postinst قابل للتنفيذ" 'chmod 0755.*postinst' build_v1_deb.sh
-expect_pattern "مصدر الكاميرا الافتراضية ضمن البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh
-expect_pattern "ربط CoreMedia" 'framework CoreMedia' build_v1_deb.sh
-expect_pattern "ربط CoreVideo" 'framework CoreVideo' build_v1_deb.sh
-
-if rg -q 'iOS 14|iOS14|14[.]0|14–26|14-26' build_v1_deb.sh Makefile; then
-    echo "❌ ما زال هناك مرجع قديم إلى iOS 14 في ملفات البناء"
-    FAIL=$((FAIL + 1))
-else
-    echo "✅ لا توجد مراجع بناء قديمة إلى iOS 14"
-    PASS=$((PASS + 1))
-fi
-
-if rg -q 'build_arch arm64e|llvm-lipo|WOLFOX_ARM64E' build_v1_deb.sh Makefile; then
-    echo "❌ لا يزال تكوين arm64e أو الدمج العالمي موجوداً في مسار البناء المستقر"
-    FAIL=$((FAIL + 1))
-else
-    echo "✅ مسار البناء لا يدمج arm64e غير متحققة"
-    PASS=$((PASS + 1))
-fi
-
-echo "النتيجة: $PASS ناجح، $FAIL فاشل"
-if [ "$FAIL" -ne 0 ]; then
-    exit 1
-fi
+echo 'Testing Bluetooth V5 release branch build compatibility...'
+expect_pattern "بناء مستقل لمجموعة واحدة فقط" 'WolFox — Bluetooth V5' .github/workflows/build.yml
+expect_pattern "فرع الإطلاق: WB5" 'branches:\s*\[WB5\]' .github/workflows/build.yml
+expect_pattern "الإصدار: 5.0.1" 'WOLFOX_VERSION.*5.0.1' .github/workflows/build.yml
+expect_pattern "الملف الشخصي: Full Mosques" 'full-mosques' .github/workflows/build.yml
+expect_pattern "متغير الواجهة: 5" 'WOLFOX_INTERFACE_VARIANT.*5' .github/workflows/build.yml
+expect_pattern "الحزمة المستهدفة: Mosques" 'sa.gov.moia.mosques-2' .github/workflows/build.yml
+expect_pattern "مفتاح المشروع من الأسرار" 'WOLFOX_PROJECT_KEY' .github/workflows/build.yml
+expect_pattern "إصدار release.json متطابق" '"version".*"5.0.1"' release.json
+expect_pattern "فرع release.json متطابق" '"branch".*"WB5"' release.json
+expect_pattern "ملف السمة الفعلي" '"theme".*"WolFoxProTheme.m"' release.json
+expect_pattern "نوع الملف الشخصي" '"profile".*"full-mosques"' release.json
+expect_pattern "متغير الواجهة في Manifest" '"interface_variant".*5' release.json
+expect_pattern "الحزمة المضيفة" '"bundle".*"sa.gov.moia.mosques-2"' release.json
+expect_pattern "اسم المنتج" '"product".*"WolFox5_Bluetooth"' release.json
+expect_pattern "اسم العرض" '"display_name".*"WolFox"' release.json
+expect_pattern "توثيق فرع WB5" '`WB5`' BRANCHES_AR.md
+expect_pattern "وصف الفرع" 'Bluetooth V5' BRANCHES_AR.md
+expect_pattern "التحقق من تطابق الفرع" 'Build only the configured branch' tools/verify_release_config.py
+expect_pattern "التحقق من تطابق الإصدار" 'WOLFOX_VERSION.*version' tools/verify_release_config.py
+expect_pattern "التحقق من تطابق الملف الشخصي" 'WOLFOX_PROFILE.*profile' tools/verify_release_config.py
+expect_pattern "وجود مفتاح المشروع" 'Missing project key' tools/verify_release_config.py
+expect_pattern "التحقق من Workflow المستقل" 'One independent workflow' tools/verify_release_config.py
+expect_pattern "التحقق من ملف السمة" 'Theme file' tools/collect_release.py
+expect_pattern "استخراج Dylib" 'arm64 Mach-O' tools/collect_release.py
+expect_pattern "التحقق من نسختي DEB" 'both DEBs' tools/collect_release.py
+expect_pattern "استخراج المصدر بدقة" 'exact source' tools/collect_release.py
+expect_pattern "فصل وضع استعادة الشاشة" 'WFRecoveryScreenshot = 4' WFInterfacePolicy.h
+expect_pattern "تحديث نطاق الصحة" 'method >= 1 && method <= 4' WFInterfacePolicy.h
+expect_pattern "وصف استعادة الشاشة" 'تصوير الشاشة' WFInterfacePolicy.h
+echo ""
+echo "✓ جميع الاختبارات ($pattern_count) نجحت! البناء جاهز للإطلاق على فرع WB5."

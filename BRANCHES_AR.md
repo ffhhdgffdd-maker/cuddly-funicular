@@ -10,7 +10,7 @@
 | التحكم | `wolfox/control` | أزرق | `com.tahakom.mytahakom` |
 | Bluetooth V3 | `wolfox/bluetooth-v3-blue` | أزرق هادئ | `sa.gov.moia.mosques-2` |
 | Bluetooth V4 | `wolfox/bluetooth-v4` | أزرق هادئ | `sa.gov.moia.mosques-2` |
-| Bluetooth V5 | `wolfox/bluetooth-v5` | أزرق هادئ | `sa.gov.moia.mosques-2` |
+| Bluetooth V5 | `WB5` | أزرق هادئ | `sa.gov.moia.mosques-2` |
 | V3 أزرق — التحكم | `wolfox/v3-blue-control` | أزرق | `com.tahakom.mytahakom` |
 | V3 فيروزي — المساجد | `wolfox/v3-teal-masajid` | فيروزي | `sa.gov.moia.mosques-2` |
 | V3 كهرماني — Lite التحكم | `wolfox/v3-amber-lite-control` | كهرماني | `com.tahakom.mytahakom` |

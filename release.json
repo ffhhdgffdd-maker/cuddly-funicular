@@ -8,7 +8,7 @@
   "interface_variant": 5,
   "bundle": "sa.gov.moia.mosques-2",
   "product": "WolFox5_Bluetooth",
-  "theme": "calm-blue.m",
+  "theme": "WolFoxProTheme.m",
   "color": "أزرق هادئ",
   "theme_provenance": "b51bd18971fd11c1d32ef4df54bbbc0b189570eb",
   "display_name": "WolFox",

@@ -5,6 +5,11 @@ root = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(root)
 cfg = json.loads((root/'release.json').read_text())
 product, version, bundle = cfg['product'], cfg['version'], cfg['bundle']
+theme = cfg['theme']
+
+# Validate theme file exists
+assert (root/theme).exists(), f'Theme file {theme} not found in source'
+
 out = root/'release'; out.mkdir(exist_ok=True)
 dylib = root/f'{product}.dylib'
 magic, cpu = struct.unpack('<II', dylib.read_bytes()[:8])
@@ -31,4 +36,4 @@ info = {'commit':commit,'run':os.environ.get('GITHUB_RUN_ID'),'branch':cfg['bran
 subprocess.run(['git','archive','--format=zip',f'--output={out}/WolFox-Source.zip',commit],check=True)
 checks = [f'{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}' for f in sorted(out.iterdir()) if f.is_file() and f.name!='SHA256SUMS.txt']
 (out/'SHA256SUMS.txt').write_text('\n'.join(checks)+'\n')
-print(f'Verified {product} {version}, arm64, both DEBs, single bundle and exact source {commit}')
+print(f'Verified {product} {version}, arm64, both DEBs, single bundle, theme {theme}, and exact source {commit}')
