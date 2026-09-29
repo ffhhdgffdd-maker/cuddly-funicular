@@ -658,15 +658,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)showSaudiServicesOnMainMap {
-    _saudiPlacesPageActive = YES;
-    if (self.mapView.region.span.longitudeDelta > 6.0) {
-        CLLocationCoordinate2D center = CLLocationCoordinate2DMake(23.8859, 45.0792);
-        [self.mapView setRegion:MKCoordinateRegionMake(center, MKCoordinateSpanMake(5.0, 5.0)) animated:YES];
-    }
-    [self scheduleSaudiPlacesReload];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"خدمات الخريطة" message:@"تظهر المدارس والمساجد والمستوصفات والمراكز الصحية والمستشفيات تدريجياً عند تقريب الخريطة." preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"موافق" style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [self showToast:@"الخريطة الرئيسية جاهزة للبحث وتحديد المواقع"];
 }
 
 - (void)refreshSpoofHeaderStatus {
@@ -882,6 +874,17 @@ static BOOL WFMasterProcessIsEligible(void) {
     [favorites addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
     [_scrollDashboard addSubview:favorites];
     y += 62;
+    UIButton *save = [UIButton buttonWithType:UIButtonTypeSystem];
+    save.frame = CGRectMake(15, y, w - 30, 48);
+    save.backgroundColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.18];
+    save.layer.cornerRadius = 13.0;
+    [save setTitle:@"حفظ الموقع المحدد" forState:UIControlStateNormal];
+    [save setTitleColor:[WolFoxProTheme success] forState:UIControlStateNormal];
+    save.accessibilityIdentifier = @"masajid.location.save";
+    save.accessibilityLabel = @"حفظ دبوس البحث الأحمر في المواقع المفضلة";
+    [save addTarget:self action:@selector(saveCurrentLocation) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:save];
+    y += 58;
     UIButton *history = [UIButton buttonWithType:UIButtonTypeSystem];
     history.frame = CGRectMake(15, y, w - 30, 48);
     history.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
@@ -967,37 +970,17 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(8, 8, card.bounds.size.width - 16, 44)];
     self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"ابحث عن مدرسة، مسجد، مركز صحي أو مستشفى";
+    self.searchBar.placeholder = @"ابحث عن عنوان أو موقع";
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
     self.searchBar.returnKeyType = UIReturnKeySearch;
-    self.searchBar.accessibilityLabel = @"البحث في خريطة المدارس والمساجد";
+    self.searchBar.accessibilityLabel = @"البحث في الخريطة";
     if (@available(iOS 13.0, *)) {
         self.searchBar.searchTextField.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.94];
         self.searchBar.searchTextField.textColor = [WolFoxProTheme textPrimary];
         [self configureKeyboardToolbarForTextField:self.searchBar.searchTextField searchMode:YES];
     }
     [card addSubview:self.searchBar];
-
-    UIView *legend = [[UIView alloc] initWithFrame:CGRectMake(10, 60, card.bounds.size.width - 20, 62)];
-    legend.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    legend.backgroundColor = [[WolFoxProTheme surfaceSecondary] colorWithAlphaComponent:0.92];
-    legend.layer.cornerRadius = 12;
-    [card addSubview:legend];
-    UILabel *legendTitle = [[UILabel alloc] initWithFrame:CGRectMake(10, 5, legend.bounds.size.width - 20, 25)];
-    legendTitle.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    legendTitle.text = @"🏫 مدرسة  •  🕌 مسجد  •  🏥 مركز صحي  •  H مستشفى حكومي";
-    legendTitle.textColor = [WolFoxProTheme textPrimary];
-    legendTitle.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
-    legendTitle.textAlignment = NSTextAlignmentCenter;
-    [legend addSubview:legendTitle];
-    _saudiPlacesStatusLabel = [[UILabel alloc] initWithFrame:CGRectMake(8, 31, legend.bounds.size.width - 16, 23)];
-    _saudiPlacesStatusLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    _saudiPlacesStatusLabel.text = @"قرّب الخريطة لعرض المدارس والمنشآت الصحية والمساجد";
-    _saudiPlacesStatusLabel.textColor = [WolFoxProTheme textSecondary];
-    _saudiPlacesStatusLabel.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightSemibold];
-    _saudiPlacesStatusLabel.textAlignment = NSTextAlignmentCenter;
-    [legend addSubview:_saudiPlacesStatusLabel];
 
     UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:card.bounds.size.height - 54];
     styleBtn.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin;
@@ -1013,7 +996,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     CLLocationCoordinate2D center = CLLocationCoordinate2DMake(23.8859, 45.0792);
     [self.mapView setRegion:MKCoordinateRegionMake(center, MKCoordinateSpanMake(17.0, 18.0)) animated:NO];
-    [self scheduleSaudiPlacesReload];
+    // خريطة فقط: لا تُحمّل أو تُعرض أيقونات المدارس أو المساجد أو المراكز الصحية.
+    _saudiPlacesPageActive = NO;
+    [_saudiPlacesReloadTimer invalidate];
+    _saudiPlacesReloadTimer = nil;
+    [_saudiPlacesTask cancel];
+    _saudiPlacesTask = nil;
 }
 
 - (void)scheduleSaudiPlacesReload {
@@ -2754,18 +2742,31 @@ static BOOL WFMasterProcessIsEligible(void) {
     return YES;
 }
 
+- (void)showSearchResultPin:(CLLocationCoordinate2D)coordinate title:(NSString *)title {
+    if (!self.mapView || !CLLocationCoordinate2DIsValid(coordinate)) return;
+    MKPointAnnotation *oldPin = objc_getAssociatedObject(self, @"_search_result_pin");
+    if (oldPin) [self.mapView removeAnnotation:oldPin];
+    MKPointAnnotation *pin = [MKPointAnnotation new];
+    pin.coordinate = coordinate;
+    pin.title = title.length ? title : @"نتيجة البحث";
+    pin.subtitle = @"دبوس البحث الأحمر — اضغط «حفظ الموقع» لحفظه";
+    objc_setAssociatedObject(self, @"_search_result_pin", pin, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self.mapView addAnnotation:pin];
+    MKCoordinateRegion region = MKCoordinateRegionMakeWithDistance(coordinate, 1400.0, 1400.0);
+    [self.mapView setRegion:region animated:YES];
+}
+
 - (void)selectMapSearchCoordinate:(CLLocationCoordinate2D)coordinate title:(NSString *)title toast:(NSString *)toast {
     if (!CLLocationCoordinate2DIsValid(coordinate)) {
         [self showToast:@"الإحداثيات خارج النطاق المسموح ❌"];
         return;
     }
+    // نتيجة البحث تُعرض كدبوس أحمر مستقل؛ لا تُشغّل التزييف ولا تستبدل دبوس الموقع الحالي.
     [WolFoxProStore shared].currentFakeCoords = coordinate;
     [[WolFoxProStore shared] saveSettings];
-    [self updateMapPin:coordinate];
-    _currentPin.title = title.length ? title : @"الموقع المحدد";
+    [self showSearchResultPin:coordinate title:title];
     if (_latInput) _latInput.text = [NSString stringWithFormat:@"%.6f", coordinate.latitude];
     if (_lonInput) _lonInput.text = [NSString stringWithFormat:@"%.6f", coordinate.longitude];
-    [[WolFoxProHookManager shared] deliverFakeUpdate];
     [self showToast:toast];
 }
 
@@ -4026,8 +4027,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)updateMapPin:(CLLocationCoordinate2D)c {
     if (_currentPin) [self.mapView removeAnnotation:_currentPin];
     _currentPin = [MKPointAnnotation new]; _currentPin.coordinate = c;
-    _currentPin.title = @"الدبوس الأحمر: الموقع المزيّف";
-    _currentPin.subtitle = @"الإحداثيات التي تم اختيارها أو إدخالها";
+    _currentPin.title = @"الموقع المزيّف الحالي";
+    _currentPin.subtitle = @"الإحداثيات المطبقة على التطبيق";
     [self.mapView addAnnotation:_currentPin];
 }
 
@@ -4213,6 +4214,17 @@ static BOOL WFMasterProcessIsEligible(void) {
             target.canShowCallout = YES;
             return target;
         }
+        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, @"_search_result_pin");
+        if (annotation == searchPin) {
+            MKMarkerAnnotationView *result = (MKMarkerAnnotationView *)[mapView dequeueReusableAnnotationViewWithIdentifier:@"search_result_marker"];
+            if (!result) result = [[MKMarkerAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"search_result_marker"];
+            result.annotation = annotation;
+            result.markerTintColor = [UIColor colorWithRed:0.92 green:0.08 blue:0.10 alpha:1.0];
+            result.glyphText = @"●";
+            result.glyphTintColor = UIColor.whiteColor;
+            result.canShowCallout = YES;
+            return result;
+        }
         if (annotation == self.realLocPin) {
             MKAnnotationView *av = [mapView dequeueReusableAnnotationViewWithIdentifier:@"real_dot"];
             if (!av) av = [[MKAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"real_dot"];
@@ -4268,13 +4280,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     [ac addTextFieldWithConfigurationHandler:^(UITextField *tf){ tf.placeholder = @"اسم الموقع (مثال: المنزل)"; tf.textAlignment = NSTextAlignmentRight; }];
     [ac addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
     [ac addAction:[UIAlertAction actionWithTitle:@"حفظ" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a){
-        NSString *name = ac.textFields.firstObject.text ?: @"موقع جديد";
+        NSString *name = [ac.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (!name.length) name = @"موقع جديد";
         WolFoxProStore *store = [WolFoxProStore shared];
         WolFoxProLocation *l = [WolFoxProLocation new];
-        // لا تحفظ مركز الخريطة الحقيقي أثناء التزييف؛ احفظ الإحداثية المزيّفة الحالية.
-        CLLocationCoordinate2D selected = store.spoofActive
-            ? store.currentFakeCoords
-            : (self.mapView ? self.mapView.centerCoordinate : store.currentFakeCoords);
+        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, @"_search_result_pin");
+        // نتيجة البحث لها الأولوية حتى لا يُحفظ مركز الخريطة أو الموقع الوهمي الخطأ.
+        CLLocationCoordinate2D selected = searchPin ? searchPin.coordinate : (store.spoofActive ? store.currentFakeCoords : (self.mapView ? self.mapView.centerCoordinate : store.currentFakeCoords));
         if (!CLLocationCoordinate2DIsValid(selected)) {
             [self showToast:@"تعذر حفظ إحداثية صالحة ❌"];
             return;
