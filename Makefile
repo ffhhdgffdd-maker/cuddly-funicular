@@ -32,7 +32,7 @@ test:
 	@./run_all_linux_tests.sh
 
 verify:
-	@./test_build_compatibility_static.sh
+	@bash ./test_build_compatibility_static.sh
 
 clean:
 	@rm -rf .wolfox-build WolFox.dylib WolFox_v*_Rootful.deb WolFox_v*_Rootless.deb
