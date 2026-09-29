@@ -28,6 +28,34 @@
 - (void)prepareCleanVirtualPhotoCapture;
 @end
 
+// أنشئ طبقة الواجهة مبكراً؛ الاعتماد على أول تشغيل للكاميرا أو أول ضغطة صوت
+// كان يجعل أيقونة GPS غير موجودة في تطبيقات لا تستخدم هذه المسارات فوراً.
+static void WFEnsureControllerReady(void) {
+    void (^startController)(void) = ^{
+        (void)[WolFoxController shared];
+    };
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), startController);
+        return;
+    }
+    UIApplication *application = UIApplication.sharedApplication;
+    if (application.applicationState == UIApplicationStateActive) {
+        startController();
+        return;
+    }
+    __block id observer = nil;
+    observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
+                                                                   object:nil
+                                                                    queue:NSOperationQueue.mainQueue
+                                                               usingBlock:^(__unused NSNotification *notification) {
+        startController();
+        if (observer) {
+            [[NSNotificationCenter defaultCenter] removeObserver:observer];
+            observer = nil;
+        }
+    }];
+}
+
 static BOOL WFProcessIsEligible(void) {
     NSString *bundleID = NSBundle.mainBundle.bundleIdentifier.lowercaseString;
     NSString *process = NSProcessInfo.processInfo.processName.lowercaseString;
@@ -549,6 +577,7 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
     WFLog(@"[WolFox][BOOT] dylib_loaded process=%@", NSProcessInfo.processInfo.processName);
 #endif
     [[WolFoxProHookManager shared] installHooks];
+    WFEnsureControllerReady();
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{

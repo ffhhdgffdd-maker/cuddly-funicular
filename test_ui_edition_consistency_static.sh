@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MASTER="$PROJECT_DIR/WolFoxMaster.mm"
+INTEGRATED="$PROJECT_DIR/WolFoxIntegrated.mm"
 ACTIVATION="$PROJECT_DIR/WFActivationViewController.m"
 CONFIG="$PROJECT_DIR/WFLicenseConfig.h"
 
@@ -34,6 +35,8 @@ check "$MASTER" 'masajid.camera-settings' "قسم الكاميرا مرتبط ب
 check "$MASTER" 'masajid.interface-settings' "قسم الإخفاء والاستعادة مرتبط بالإعدادات"
 check "$MASTER" 'masajid.saved-routes' "قسم المسارات مرتبط بالمسارات المحفوظة"
 check "$MASTER" 'refreshFloatingStatusIcon' "لون أيقونة GPS يتحدث مع حالة التشغيل"
+check "$INTEGRATED" 'WFEnsureControllerReady' "تهيئة الأيقونة لا تعتمد على تشغيل الكاميرا"
+check "$MASTER" 'showFloatingStatusIconAtLaunch' "إظهار الأيقونة عند بدء التطبيق"
 check "$MASTER" 'WF_FLOATING_OPEN_TAPS' "حفظ عدد ضغطات الأيقونة العائمة"
 check "$MASTER" 'tapStepper.minimumValue = 1' "أقل عدد ضغطات للأيقونة هو 1"
 check "$MASTER" 'tapStepper.maximumValue = 50' "أقصى عدد ضغطات للأيقونة هو 50"
