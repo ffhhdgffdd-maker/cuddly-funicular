@@ -123,6 +123,10 @@ static NSString *hook_SAMKeychain_passwordForService(id self, SEL _cmd, NSString
 
 #endif
 
+#if !WOLFOX_FEATURE_IDENTIFIER
+static NSUUID *WFActivePublicIdentifier(void) { return nil; }
+#endif
+
 #pragma mark - Location hooks
 
 static IMP orig_CLLocation_coordinate;
@@ -520,6 +524,8 @@ static CVPixelBufferRef hook_AVCapturePhoto_previewPixelBuffer(AVCapturePhoto *s
     return WFReplacementPhotoPixelBuffer(self, source, &kWFPhotoPreviewPixelBufferKey);
 }
 
+#endif
+
 #pragma mark - UDID spoofing hook
 
 // UIDevice.uniqueIdentifier مُهمل لكن بعض التطبيقات القديمة لا تزال تستدعيه.
@@ -660,8 +666,6 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                                   &orig_AVCapturePhoto_previewPixelBuffer);
         }
 
-#endif
-
         if (!WFVirtualPreviewStateObserver) {
             WFVirtualPreviewStateObserver = [[NSNotificationCenter defaultCenter]
                 addObserverForName:WFVirtualCameraStateDidChangeNotification
@@ -671,6 +675,7 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                             WFRefreshAllVirtualPreviewLayers();
                         }];
         }
+#endif
 
         WFInstallInstanceHook(CLLocationManager.class,
                               @selector(location),
@@ -722,13 +727,14 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                               (IMP)hook_CBPeripheral_identifier,
                               &orig_CBPeripheral_identifier);
 
+#endif
+
         WFInstallInstanceHook(UIApplication.class,
                               @selector(pressesBegan:withEvent:),
                               (IMP)hook_UIApplication_pressesBegan,
                               &orig_UIApplication_pressesBegan);
 
-#endif
-
+#if WOLFOX_FEATURE_IDENTIFIER
         // UDID spoofing (deprecated API, still used by some apps)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -739,6 +745,7 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                                   &orig_uniqueIdentifier);
         }
 #pragma clang diagnostic pop
+#endif
 
 #ifdef DEBUG
         WFLog(@"[WolFox][BOOT] hooks_install_complete");
