@@ -8,9 +8,9 @@
 
 يتطلب البناء النهائي بيئة Theos مع `iPhoneOS16.5.sdk` أو SDK أحدث متوافق مع Toolchain المستخدمة، ويدعم `arm64` فقط في هذه النسخة. الحد الأدنى المعلن للتشغيل هو iOS 15.8، والحد الأعلى المستهدف هو iOS 27.0؛ وهو نطاق توافق أمامي ولا يعني أن الاختبار تم على جهاز iOS 27 فعلي.
 
-البناء الرسمي للإصدار النشط 3.0.1 يتم عبر سير GitHub Actions في `.github/workflows/build.yml` باستخدام `wolfox_setup_build.sh` والتحقق من `release.json`. للبناء اليدوي يلزم Python 3 وإعداد Theos وSDK والمفاتيح المطلوبة؛ يقرأ `wolfox_setup_build.sh` افتراضيات الإصدار والملف التعريفي ومعرّف التطبيق من `release.json`، ثم شغّله عبر `WOLFOX_PROJECT_KEY='<project-key>' bash wolfox_setup_build.sh`. لا تضع المفتاح في سجل الطرفية المشترك أو المستودع. لا تُدمج arm64e في النسخة الحالية لعدم توفر Toolchain واختبار فعلي معتمد لها.
+البناء الرسمي للإصدار النشط 3.0.1 يتم عبر سير GitHub Actions في `.github/workflows/build.yml` باستخدام `wolfox_setup_build.sh` والتحقق من `release.json`. للبناء اليدوي يلزم Python 3 وإعداد Theos وSDK. يقرأ `wolfox_setup_build.sh` افتراضيات الإصدار والملف التعريفي ومعرّف التطبيق من `release.json`. أدخل مفتاح المشروع المخول تفاعليًا ثم شغّل البناء: `read -rsp 'WOLFOX_PROJECT_KEY: ' WOLFOX_PROJECT_KEY; printf '\\n'; export WOLFOX_PROJECT_KEY; bash wolfox_setup_build.sh; unset WOLFOX_PROJECT_KEY`. لا تُدمج arm64e في النسخة الحالية لعدم توفر Toolchain واختبار فعلي معتمد لها.
 
-لا تضع سر توقيع اللوحة أو مفتاحًا خاصًا داخل السورس أو Dylib. قيمة `WF_PROJECT_KEY` معرف مشروع عام، ويجب ألا تمنح صلاحيات سرية. يجب إبقاء أسرار الخادم في الخادم فقط.
+يُمرر `WOLFOX_PROJECT_KEY` إلى CI عبر GitHub Secret، لكن أداة البناء تضمّن قيمته في Dylib بصيغة قابلة للاستخراج؛ تمريره كـSecret لا يجعله سريًا داخل التطبيق. لا تستخدم فيه اعتمادًا يمنح صلاحيات حساسة. إذا كان المفتاح الحالي سريًا أو يجيز عمليات مميزة، انقل التحقق إلى الخادم وأوقف إصدار هذه الحزمة إلى أن يتم ذلك. احتفظ بأسرار التوقيع وبيانات الخادم داخل الخادم فقط.
 
 ## الواجهة الجديدة: Dark Blue
 
