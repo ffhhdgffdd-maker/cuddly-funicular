@@ -463,25 +463,30 @@ static BOOL WFMasterProcessIsEligible(void) {
     _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, headerHeight)];
     _header.backgroundColor = [WolFoxProTheme royalBackground];
     [self.view addSubview:_header];
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop, w - 32, 26)];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop, w - 96, 28)];
     _titleLabel.text = @"WolFox";
-    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:23 weight:UIFontWeightBold];
     _titleLabel.textColor = UIColor.whiteColor;
     [_header addSubview:_titleLabel];
+
     UIButton *closeTool = [UIButton buttonWithType:UIButtonTypeSystem];
-    closeTool.frame = CGRectMake(w - 54, safeTop, 44, 44);
+    closeTool.frame = CGRectMake(w - 58, safeTop - 2, 44, 44);
+    closeTool.backgroundColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.18];
+    closeTool.layer.cornerRadius = 12;
+    closeTool.layer.borderWidth = 1.0;
+    closeTool.layer.borderColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.55].CGColor;
     [closeTool setImage:[WolFoxProTheme symbolNamed:@"xmark"] forState:UIControlStateNormal];
-    closeTool.tintColor = [WolFoxProTheme textPrimary];
-    closeTool.accessibilityLabel = @"إغلاق واجهة WolFox";
-    closeTool.accessibilityHint = @"العودة للتطبيق مع الاحتفاظ بإعدادات الإظهار";
+    closeTool.tintColor = [WolFoxProTheme danger];
+    closeTool.accessibilityLabel = @"خروج";
+    closeTool.accessibilityHint = @"إغلاق واجهة WolFox والعودة للتطبيق";
     [closeTool addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     [_header addSubview:closeTool];
 
-    UILabel *versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop + 28, w - 32, 18)];
+    UILabel *versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 30, w - 96, 18)];
     NSString *version = [[WF_APP_VERSION stringByReplacingOccurrencesOfString:@"-Full" withString:@""] stringByReplacingOccurrencesOfString:@"-Lite" withString:@""];
     versionLabel.text = [NSString stringWithFormat:@"الإصدار %@", version];
-    versionLabel.textAlignment = NSTextAlignmentCenter;
+    versionLabel.textAlignment = NSTextAlignmentLeft;
     versionLabel.textColor = [WolFoxProTheme textSecondary];
     versionLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
     [_header addSubview:versionLabel];
@@ -520,7 +525,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     // Location / Tools / WolFox. Camera, Bluetooth and Identifier stay as
     // functional sections inside Tools instead of being repeated as top tabs.
     NSArray *icons = @[@"location.fill", @"square.grid.2x2.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"الإعدادات"];
+    NSArray *tabLabels = @[@"الرئيسية", @"الأدوات", @"الإعدادات"];
     NSArray *tabPages = @[@0, @1, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
@@ -2906,7 +2911,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     CGFloat y = 14;
 
     UILabel *heading = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 30)];
-    heading.text = @"أدوات WolFox";
+    heading.text = @"جميع مميزات WolFox";
     heading.textAlignment = NSTextAlignmentRight;
     heading.textColor = [WolFoxProTheme textPrimary];
     heading.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBold];
@@ -2914,7 +2919,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     y += 40;
 
     UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 34)];
-    hint.text = @"كل وظيفة داخل قسم مستقل — بدون تكرار الإعدادات.";
+    hint.text = @"الموقع، المعرّف، Bluetooth، الصور، الإخفاء والاشتراك في واجهة واحدة.";
     hint.textAlignment = NSTextAlignmentRight;
     hint.textColor = [WolFoxProTheme textSecondary];
     hint.font = [WolFoxProTheme fontOfSize:12.5 weight:UIFontWeightMedium];
