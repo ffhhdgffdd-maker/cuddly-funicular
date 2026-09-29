@@ -440,10 +440,10 @@ static BOOL WFMasterProcessIsEligible(void) {
                         [profile isEqualToString:@"mosques-full"] ? 2 :
                         [profile hasPrefix:@"lite-"] ? 3 :
                         [profile hasPrefix:@"full-"] ? 4 : 0;
-    CGFloat headerHeight = safeTop + 78.0;
+    CGFloat headerHeight = safeTop + 68.0;
     CGFloat tabsHeight = 54.0;
-    CGFloat tabsInset = 14.0;
-    CGFloat tabsGap = 8.0;
+    CGFloat tabsInset = 0.0;
+    CGFloat tabsGap = 0.0;
     
     _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[WolFoxProTheme blurStyle]]];
     _blurView.frame = self.view.bounds;
@@ -484,8 +484,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self refreshSpoofHeaderStatus];
 
     // 2. Top Tabs Bar
-    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, headerHeight + tabsGap, w - 2 * tabsInset, tabsHeight)];
-    _tabsBar.layer.cornerRadius = 14.0;
+    _tabsBar = [[UIView alloc] initWithFrame:CGRectMake(tabsInset, h - self.view.safeAreaInsets.bottom - tabsHeight, w - 2 * tabsInset, tabsHeight)];
+    _tabsBar.layer.cornerRadius = 0.0;
     _tabsBar.layer.masksToBounds = YES;
     _tabsBar.backgroundColor = [WolFoxProTheme surfaceSecondary];
     _tabsBar.layer.borderWidth = 1.0;
@@ -509,8 +509,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     // Full edition follows the three-part navigation shown in the reference:
     // Location / Tools / WolFox. Camera, Bluetooth and Identifier stay as
     // functional sections inside Tools instead of being repeated as top tabs.
-    NSArray *icons = @[@"location.fill", @"square.grid.2x2.fill", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"WolFox"];
+    NSArray *icons = @[@"location.fill", @"briefcase.fill", @"gearshape.fill"];
+    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"الإعدادات"];
     NSArray *tabPages = @[@0, @1, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
@@ -540,20 +540,22 @@ static BOOL WFMasterProcessIsEligible(void) {
             caption.font = [WolFoxProTheme fontOfSize:9 weight:UIFontWeightSemibold];
             caption.adjustsFontSizeToFitWidth = YES;
             caption.minimumScaleFactor = 0.7;
+            caption.tag = 9000 + [tabPages[i] integerValue];
             [_tabsBar addSubview:caption];
         }
         [_tabBtns addObject:b];
     }
     
     // 3. Dashboard (Main Content)
-    CGFloat contentTop = headerHeight + tabsGap + tabsHeight + (edition ? 9.0 : 0.0);
-    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, contentTop, w, MAX(0.0, h - contentTop))];
+    CGFloat contentTop = headerHeight + tabsGap;
+    _dashboard = [[UIView alloc] initWithFrame:CGRectMake(0, contentTop, w, MAX(0.0, CGRectGetMinY(_tabsBar.frame) - contentTop))];
     _dashboard.backgroundColor = [WolFoxProTheme windowBackground];
     [self.view addSubview:_dashboard];
     
     _scrollDashboard = [[UIScrollView alloc] initWithFrame:_dashboard.bounds];
-    _scrollDashboard.alwaysBounceVertical = YES;
-    _scrollDashboard.contentInset = UIEdgeInsetsMake(0, 0, MAX(self.view.safeAreaInsets.bottom, 16.0), 0);
+    _scrollDashboard.alwaysBounceVertical = NO;
+    _scrollDashboard.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    _scrollDashboard.contentInset = UIEdgeInsetsMake(0, 0, 16.0, 0);
     _scrollDashboard.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     _scrollDashboard.backgroundColor = [WolFoxProTheme windowBackground];
     [_dashboard addSubview:_scrollDashboard];
@@ -706,6 +708,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     for (UIButton *b in _tabBtns) {
         b.tintColor = (b.tag == primaryPage) ? [WolFoxProTheme accent] : [UIColor whiteColor];
         b.accessibilityTraits = UIAccessibilityTraitButton | ((b.tag == primaryPage) ? UIAccessibilityTraitSelected : 0);
+        UILabel *caption = (UILabel *)[_tabsBar viewWithTag:9000 + b.tag];
+        caption.textColor = b.tag == primaryPage ? [WolFoxProTheme accent] : [WolFoxProTheme textSecondary];
     }
 
     for (UIView *v in _scrollDashboard.subviews) [v removeFromSuperview];
@@ -1311,9 +1315,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     mapStyle.frame = CGRectMake(15, 8, w - 30, 40);
     mapStyle.selectedSegmentIndex = [WolFoxProStore shared].mapStyle;
     mapStyle.accessibilityLabel = @"نوع الخريطة";
+    objc_setAssociatedObject(self, "_map_style_control", mapStyle, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [mapStyle addTarget:self action:@selector(referenceMapStyleChanged:) forControlEvents:UIControlEventValueChanged];
     [_scrollDashboard addSubview:mapStyle];
-    CGFloat mapHeight = MIN(440.0, MAX(280.0, self.view.bounds.size.height * 0.48));
+    CGFloat mapHeight = MIN(350.0, MAX(220.0, _scrollDashboard.bounds.size.height * 0.48));
     UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(0, 56, w, mapHeight)];
     servicesCard.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 58);
     _mapCard = mapCard;
@@ -1568,7 +1573,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard addSubview:card];
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 12, card.bounds.size.width - 36, 26)];
-    title.text = @"الكاميرا الافتراضية";
+    title.text = @"رفع الصور";
     title.textAlignment = NSTextAlignmentCenter;
     title.textColor = [WolFoxProTheme textPrimary];
     title.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
@@ -1629,7 +1634,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     rememberLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
     [rememberRow addSubview:rememberLabel];
     _cameraRememberSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(10, 8, 52, 32)];
-    _cameraRememberSwitch.onTintColor = [WolFoxProTheme accent];
+    _cameraRememberSwitch.onTintColor = [WolFoxProTheme success];
     _cameraRememberSwitch.accessibilityLabel = @"الخطوة الثالثة: الاحتفاظ بآخر صورة";
     [_cameraRememberSwitch addTarget:self action:@selector(rememberVirtualCameraChanged:) forControlEvents:UIControlEventValueChanged];
     [rememberRow addSubview:_cameraRememberSwitch];
@@ -1646,7 +1651,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     clearButton.accessibilityLabel = @"الخطوة الرابعة: حذف الصورة المختارة وإيقاف البث";
     [clearButton addTarget:self action:@selector(clearSpoofedImage) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:clearButton];
-    [card addSubview:[self royalSwitchInside:card t:@"إظهار أيقونة الكاميرا" i:@"camera.fill" isOn:[WFVirtualCameraManager shared].pickerIconEnabled y:445 action:^(UISwitch *toggle) {
+    [card addSubview:[self royalSwitchInside:card t:@"إظهار أيقونة الرفع" i:@"camera.fill" isOn:[WFVirtualCameraManager shared].pickerIconEnabled y:445 action:^(UISwitch *toggle) {
         [WFVirtualCameraManager shared].pickerIconEnabled = toggle.on;
     }]];
 
@@ -1763,7 +1768,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [statusCard addSubview:statusTitle];
     UISwitch *enabled = [[UISwitch alloc] initWithFrame:CGRectMake(16, 12, 52, 32)];
     enabled.tag = 9101;
-    enabled.onTintColor = [WolFoxProTheme accent];
+    enabled.onTintColor = [WolFoxProTheme success];
     [enabled addTarget:self action:@selector(scheduleEnabledChanged:) forControlEvents:UIControlEventValueChanged];
     [statusCard addSubview:enabled];
     UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(18, 52, statusCard.bounds.size.width - 36, 28)];
@@ -2232,6 +2237,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [WolFoxProStore shared].mapStyle = s;
     [[WolFoxProStore shared] saveSettings];
     self.mapView.mapType = (MKMapType)s;
+    ((UISegmentedControl *)objc_getAssociatedObject(self, "_map_style_control")).selectedSegmentIndex = s;
     [self showToast:s == 0 ? @"نمط عادي" : (s == 1 ? @"نمط قمر صناعي" : @"نمط هجين")];
 }
 
@@ -2812,7 +2818,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [v addSubview:l];
     
     UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(15, 17, 50, 30)];
-    sw.on = on; sw.onTintColor = [WolFoxProTheme accent];
+    sw.on = on; sw.onTintColor = [WolFoxProTheme success];
     sw.accessibilityLabel = t;
     [sw addTarget:self action:@selector(handleSwitch:) forControlEvents:UIControlEventValueChanged];
     objc_setAssociatedObject(sw, "_sw_block", block, OBJC_ASSOCIATION_COPY_NONATOMIC);
@@ -2833,11 +2839,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.frame = CGRectMake(15, y, _scrollDashboard.bounds.size.width - 30, 55);
     BOOL dangerous = CGColorEqualToColor(c.CGColor, [WolFoxProTheme danger].CGColor);
-    b.backgroundColor = dangerous ? [WolFoxProTheme danger] : [WolFoxProTheme surfacePrimary]; b.layer.cornerRadius = 15;
+    b.backgroundColor = dangerous ? [WolFoxProTheme danger] : [WolFoxProTheme accent]; b.layer.cornerRadius = 15;
     [b setTitle:t forState:UIControlStateNormal]; [b setTitleColor:dangerous ? UIColor.whiteColor : [WolFoxProTheme textPrimary] forState:UIControlStateNormal];
     b.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
     if (@available(iOS 13.0, *)) [b setImage:[WolFoxProTheme symbolNamed:i] forState:UIControlStateNormal];
-    b.tintColor = dangerous ? UIColor.whiteColor : c;
+    b.tintColor = UIColor.whiteColor;
+    [b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     b.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 15);
@@ -2914,7 +2921,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     [_scrollDashboard addSubview:[self toolsSectionButton:@"Bluetooth" subtitle:@"البحث والأجهزة المحفوظة والتشغيل." icon:@"antenna.radiowaves.left.and.right" y:y action:@selector(openBluetoothTool)]];
     y += 94;
 #endif
-    [_scrollDashboard addSubview:[self toolsSectionButton:@"الكاميرا" subtitle:@"الصورة المختارة وإعدادات التصوير." icon:@"camera" y:y action:@selector(openCameraTool)]];
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"رفع الصور" subtitle:@"الصورة المختارة وإعدادات التصوير." icon:@"photo" y:y action:@selector(openCameraTool)]];
+    y += 94;
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"الجدولة" subtitle:@"الموقع المفضل والأيام ووقت التشغيل." icon:@"calendar" y:y action:@selector(showSpoofSchedulePage)]];
+    y += 94;
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"الاشتراك والتفعيل" subtitle:@"حالة الاشتراك وموعد انتهائه." icon:@"checkmark.seal" y:y action:@selector(showSubscriptionInfo)]];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 98);
 }
 
@@ -3155,11 +3166,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.frame = CGRectMake(15, y, p.bounds.size.width - 30, 50);
     BOOL dangerous = CGColorEqualToColor(c.CGColor, [WolFoxProTheme danger].CGColor);
-    b.backgroundColor = dangerous ? [WolFoxProTheme danger] : [c colorWithAlphaComponent:0.12]; b.layer.cornerRadius = 12;
+    b.backgroundColor = dangerous ? [WolFoxProTheme danger] : [WolFoxProTheme accent]; b.layer.cornerRadius = 12;
     [b setTitle:t forState:UIControlStateNormal]; [b setTitleColor:dangerous ? UIColor.whiteColor : c forState:UIControlStateNormal];
     b.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
     if (@available(iOS 13.0, *)) [b setImage:[WolFoxProTheme symbolNamed:i] forState:UIControlStateNormal];
-    b.tintColor = dangerous ? UIColor.whiteColor : c;
+    b.tintColor = UIColor.whiteColor;
+    [b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     b.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 10);
@@ -3349,7 +3361,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(80, 0, v.bounds.size.width - 135, 65)];
     l.text = t; l.textColor = [WolFoxProTheme textPrimary]; l.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; l.textAlignment = NSTextAlignmentRight; l.numberOfLines = 2; [v addSubview:l];
     UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(15, 17, 50, 30)];
-    sw.on = on; sw.onTintColor = [WolFoxProTheme accent];
+    sw.on = on; sw.onTintColor = [WolFoxProTheme success];
     sw.accessibilityLabel = t;
     [sw addTarget:self action:@selector(handleSwitch:) forControlEvents:UIControlEventValueChanged];
     objc_setAssociatedObject(sw, "_sw_block", block, OBJC_ASSOCIATION_COPY_NONATOMIC);
@@ -3587,9 +3599,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     for (UIView *view in launchRow.subviews) if ([view isKindOfClass:UISwitch.class]) view.accessibilityIdentifier = WFMenuVisibleOnLaunchKey;
     [launch addSubview:launchRow];
     y += 140;
-    UIButton *subscription = [self royalBtnInside:_scrollDashboard t:@"معلومات التفعيل" i:@"checkmark.seal" c:[WolFoxProTheme accent] y:y];
-    [subscription addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside]; y += 64;
-    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء WolFox" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
+    UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء WolFox" i:@"eye.slash" c:[WolFoxProTheme danger] y:y];
     [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 70);
 }
@@ -4407,7 +4417,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     _lastToastTime = now;
     [[self.view viewWithTag:998] removeFromSuperview];
     CGFloat width = self.view.bounds.size.width - 32;
-    CGFloat top = MAX(CGRectGetMaxY(_tabsBar.frame) + 12.0, self.view.safeAreaInsets.top + 104.0);
+    CGFloat top = CGRectGetMaxY(_header.frame) + 8.0;
     UIView *tv = [[UIView alloc] initWithFrame:CGRectMake(16, top, width, 64)];
     tv.tag = 998;
     tv.backgroundColor = [[WolFoxProTheme surfacePrimary] colorWithAlphaComponent:0.96]; tv.layer.cornerRadius = 18; tv.layer.borderWidth = 1; tv.layer.borderColor = [stateColor colorWithAlphaComponent:0.82].CGColor; tv.alpha = 0;

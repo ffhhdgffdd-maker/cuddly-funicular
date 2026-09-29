@@ -28,33 +28,9 @@ static UIColor *WFEditionColor(CGFloat r, CGFloat g, CGFloat b) {
 + (UIColor *)windowBackground { return [self royalBackground]; }
 
 // ── خلفيات البطاقات الزرقاء الداكنة ───────────────────────────
-+ (UIColor *)surfacePrimary {
-    switch (WFThemeEdition()) {
-        case 1: return WFEditionColor(0.055, 0.095, 0.160);
-        case 2: return WFEditionColor(0.055, 0.095, 0.160);
-        case 3: return WFEditionColor(0.055, 0.095, 0.160);
-        case 4: return WFEditionColor(0.055, 0.095, 0.160);
-    }
++ (UIColor *)surfacePrimary { return [UIColor colorWithWhite:0.14 alpha:1]; }
 
-    return [self isDark]
-        // داكن: أزرق كحلي يفصل البطاقة عن الخلفية
-        ? [UIColor colorWithRed:0.035 green:0.075 blue:0.150 alpha:1.0]
-        // فاتح: أبيض نقي للوضوح الكامل
-        : [UIColor colorWithRed:1.000 green:1.000 blue:1.000 alpha:1.0];
-}
-
-+ (UIColor *)surfaceSecondary {
-    switch (WFThemeEdition()) {
-        case 1: return WFEditionColor(0.085, 0.145, 0.230);
-        case 2: return WFEditionColor(0.085, 0.145, 0.230);
-        case 3: return WFEditionColor(0.085, 0.145, 0.230);
-        case 4: return WFEditionColor(0.085, 0.145, 0.230);
-    }
-
-    return [self isDark]
-        ? [UIColor colorWithRed:0.055 green:0.115 blue:0.230 alpha:1.0]
-        : [UIColor colorWithRed:0.930 green:0.940 blue:0.950 alpha:1.0];
-}
++ (UIColor *)surfaceSecondary { return [UIColor colorWithWhite:0.19 alpha:1]; }
 
 // ── نصوص ─────────────────────────────────────────────────────
 + (UIColor *)textPrimary {
@@ -80,18 +56,7 @@ static UIColor *WFEditionColor(CGFloat r, CGFloat g, CGFloat b) {
 
 // ── ألوان Dark Blue الأساسية عالية التباين ───────────────────
 // accent: أزرق واضح للأزرار والتبويب النشط
-+ (UIColor *)accent {
-    switch (WFThemeEdition()) {
-        case 1: return WFEditionColor(0.340, 0.590, 0.860);
-        case 2: return WFEditionColor(0.340, 0.590, 0.860);
-        case 3: return WFEditionColor(0.340, 0.590, 0.860);
-        case 4: return WFEditionColor(0.340, 0.590, 0.860);
-    }
-
-    return [self isDark]
-        ? [UIColor colorWithRed:0.120 green:0.475 blue:0.925 alpha:1.0]  // أزرق داكن واضح
-        : [UIColor colorWithRed:0.090 green:0.360 blue:0.760 alpha:1.0]; // أزرق للوضع الفاتح
-}
++ (UIColor *)accent { return [UIColor colorWithRed:0 green:0.48 blue:1 alpha:1]; }
 
 // danger: أحمر وردي واضح للحالة الحرجة والتوقف
 + (UIColor *)danger {
@@ -111,34 +76,11 @@ static UIColor *WFEditionColor(CGFloat r, CGFloat g, CGFloat b) {
 }
 
 // ── الخلفية الكحلية الداكنة ─────────────────────────────────
-+ (UIColor *)royalBackground {
-    switch (WFThemeEdition()) {
-        case 1: return WFEditionColor(0.025, 0.050, 0.095);
-        case 2: return WFEditionColor(0.025, 0.050, 0.095);
-        case 3: return WFEditionColor(0.025, 0.050, 0.095);
-        case 4: return WFEditionColor(0.025, 0.050, 0.095);
-    }
++ (UIColor *)royalBackground { return [UIColor colorWithWhite:0.095 alpha:1]; }
 
-    return [self isDark]
-        // داكن: كحلي عميق
-        ? [UIColor colorWithRed:0.018 green:0.040 blue:0.085 alpha:1.0]
-        // فاتح: رمادي ناعم جداً
-        : [UIColor colorWithRed:0.950 green:0.955 blue:0.965 alpha:1.0];
-}
++ (UIColor *)royalCard { return [self surfacePrimary]; }
 
-+ (UIColor *)royalCard {
-    if (WFThemeEdition()) return [self surfacePrimary];
-
-    // بطاقة داكنة: تعلو بوضوح فوق الخلفية الكحلية
-    return [UIColor colorWithRed:0.035 green:0.075 blue:0.150 alpha:1.0];
-}
-
-+ (UIColor *)royalField {
-    if (WFThemeEdition()) return [self surfaceSecondary];
-
-    // حقل إدخال: أزرق أعمق قليلاً من البطاقة
-    return [UIColor colorWithRed:0.045 green:0.100 blue:0.205 alpha:1.0];
-}
++ (UIColor *)royalField { return [self surfaceSecondary]; }
 
 + (UIColor *)royalBlue {
     return [self accent];

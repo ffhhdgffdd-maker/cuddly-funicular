@@ -67,3 +67,9 @@ assert 'self.floatingIcon.hidden && (!self.cameraIcon || self.cameraIcon.hidden)
 camera_icon = ui.split('- (void)toggleCameraIcon:(BOOL)show {')[1].split('- (void)prepareCleanVirtualPhotoCapture')[0]
 assert 'HUGE_VALF' not in camera_icon and 'CABasicAnimation' not in camera_icon
 assert 'self.cameraIcon.alpha = 0.90' in camera_icon
+
+# Bottom navigation reserves its own safe-area space; notices stay below the header.
+assert 'h - self.view.safeAreaInsets.bottom - tabsHeight' in ui
+assert 'CGRectGetMinY(_tabsBar.frame) - contentTop' in ui
+assert 'CGFloat top = CGRectGetMaxY(_header.frame) + 8.0' in ui
+assert '@"الإعدادات"' in ui
