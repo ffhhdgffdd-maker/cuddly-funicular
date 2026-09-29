@@ -1,0 +1,52 @@
+name: WolFox New Design Build
+on:
+  push:
+    branches: [WN1]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wolfox-new-design-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-tests:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate new-design source
+        run: test -f WolFoxMaster.mm && test -f WFInterfacePolicy.h && test -f Makefile
+      - run: bash run_native_tests.sh
+      - run: python3 tests/test_full_bluetooth_static.py
+  build:
+    needs: native-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: [location, location-id, location-id-bluetooth]
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: 3.0.0
+      WOLFOX_EDITION: Full
+      WOLFOX_FEATURE_PROFILE: ${{ matrix.feature }}
+      WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
+      WOLFOX_PROJECT_BUNDLE_ID: sa.gov.moia.mosques-2
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash wolfox_setup_build.sh
+      - name: Package exact source and binaries
+        run: |
+          mkdir -p release
+          cp WolFox*.deb WolFox*.dylib release/
+          printf 'COMMIT=%s\nFEATURE=%s\nVERSION=%s\nRUN=%s\n' "$GITHUB_SHA" "$WOLFOX_FEATURE_PROFILE" "$WOLFOX_VERSION" "$GITHUB_RUN_ID" > release/BUILD_INFO.txt
+          git archive --format=zip --output=release/WolFox-Source.zip HEAD
+          (cd release && sha256sum * > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WolFox-New-Design-${{ matrix.feature }}-${{ github.run_number }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
