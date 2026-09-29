@@ -98,6 +98,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, assign) NSTimeInterval lastFallbackVolumePulseTime;
 @property (nonatomic, assign) NSInteger sequentialTapCount;
 @property (nonatomic, assign) NSTimeInterval lastSequentialTapTime;
+@property (nonatomic, assign) NSInteger floatingOpenTapCount;
+@property (nonatomic, assign) NSTimeInterval lastFloatingOpenTapTime;
 + (instancetype)shared;
 - (void)showUI;
 - (void)dismissUI;
@@ -165,6 +167,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)openGPSPage;
 - (void)searchOpenStreetMapForQuery:(NSString *)query searchBar:(UISearchBar *)searchBar;
 - (void)volumePressCountChanged:(UISegmentedControl *)control;
+- (void)floatingOpenTapCountChanged:(UIStepper *)stepper;
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control;
 - (void)floatingIconOpacityChanged:(UISlider *)slider;
 - (void)resetFloatingIconPosition;
@@ -300,6 +303,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     _realLocManager.delegate = nil;
     [_btManager stopScan];
     _btManager.delegate = nil;
+}
+
+- (void)wolfoxScreenshotTaken:(NSNotification *)notification {
+    (void)notification;
+    NSInteger method = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_RECOVERY_METHOD"];
+    if (!WFRecoveryUsesScreenshot(method)) return;
+    dispatch_async(dispatch_get_main_queue(), ^{ [[WolFoxController shared] toggleUI]; });
 }
 
 - (void)viewDidLayoutSubviews {
@@ -3420,7 +3430,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupInterfacePage {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:368];
+    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:420];
     UILabel *current = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, card.bounds.size.width - 30, 60)];
     current.text = WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"]);
     current.textColor = [WolFoxProTheme textSecondary]; current.numberOfLines = 3;
@@ -3428,26 +3438,56 @@ static BOOL WFMasterProcessIsEligible(void) {
     [card addSubview:current];
     UIButton *method = [self royalBtnInside:card t:@"اختيار طريقة الإخفاء والاستعادة" i:@"hand.tap" c:[WolFoxProTheme accent] y:112];
     [method addTarget:self action:@selector(changeRecoveryMethod) forControlEvents:UIControlEventTouchUpInside];
+    UILabel *tapTitle = [[UILabel alloc] initWithFrame:CGRectMake(15, 176, card.bounds.size.width - 96, 24)];
+    tapTitle.text = @"عدد ضغطات الأيقونة العائمة لفتح WolFox";
+    tapTitle.textColor = [WolFoxProTheme textPrimary];
+    tapTitle.textAlignment = NSTextAlignmentRight;
+    tapTitle.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightSemibold];
+    [card addSubview:tapTitle];
+    UILabel *tapValue = [[UILabel alloc] initWithFrame:CGRectMake(15, 202, card.bounds.size.width - 96, 24)];
+    tapValue.textColor = [WolFoxProTheme accent];
+    tapValue.textAlignment = NSTextAlignmentRight;
+    tapValue.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightBold];
+    NSInteger savedTapCount = [defaults objectForKey:@"WF_FLOATING_OPEN_TAPS"] ? [defaults integerForKey:@"WF_FLOATING_OPEN_TAPS"] : 1;
+    savedTapCount = MIN(MAX(savedTapCount, 1), 50);
+    tapValue.text = [NSString stringWithFormat:@"%ld ضغطة", (long)savedTapCount];
+    [card addSubview:tapValue];
+    UIStepper *tapStepper = [[UIStepper alloc] initWithFrame:CGRectMake(card.bounds.size.width - 82, 180, 68, 32)];
+    tapStepper.minimumValue = 1; tapStepper.maximumValue = 50; tapStepper.stepValue = 1;
+    tapStepper.value = savedTapCount;
+    tapStepper.accessibilityLabel = @"عدد ضغطات الأيقونة العائمة لفتح WolFox";
+    objc_setAssociatedObject(tapStepper, "wf_tap_value_label", tapValue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [tapStepper addTarget:self action:@selector(floatingOpenTapCountChanged:) forControlEvents:UIControlEventValueChanged];
+    [card addSubview:tapStepper];
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
-    pressCount.frame = CGRectMake(15, 182, card.bounds.size.width - 30, 38);
+    pressCount.frame = CGRectMake(15, 252, card.bounds.size.width - 30, 38);
     NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
     pressCount.selectedSegmentIndex = count == 2 ? 0 : count == 5 ? 2 : 1;
     pressCount.accessibilityLabel = @"عدد ضغطات الصوت لاستعادة WolFox";
     [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
     [card addSubview:pressCount];
-    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:232 action:^(UISwitch *toggle) {
+    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:302 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
         [self showToast:toggle.on ? @"تم حفظ فتح WolFox عند تشغيل التطبيق" : @"تم إيقاف الفتح التلقائي لـ WolFox"];
     }]];
-    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:306];
+    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:376];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    y += 380;
+    y += 432;
     UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
     [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
 }
 
 - (void)changeRecoveryMethod { [[WolFoxController shared] chooseRecoveryMethodAndHide:NO]; }
+
+- (void)floatingOpenTapCountChanged:(UIStepper *)stepper {
+    NSInteger count = MIN(MAX((NSInteger)llround(stepper.value), 1), 50);
+    stepper.value = count;
+    [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_FLOATING_OPEN_TAPS"];
+    UILabel *value = objc_getAssociatedObject(stepper, "wf_tap_value_label");
+    value.text = [NSString stringWithFormat:@"%ld ضغطة", (long)count];
+    [self showToast:[NSString stringWithFormat:@"تم حفظ عدد الضغطات: %ld", (long)count]];
+}
 
 - (NSArray<UIColor *> *)markerPalette {
     return @[[UIColor systemBlueColor], [UIColor colorWithRed:0.16 green:0.72 blue:0.34 alpha:1.0], [UIColor systemOrangeColor], [UIColor systemPurpleColor], [UIColor systemRedColor], [UIColor systemTealColor]];
@@ -4523,9 +4563,10 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"كيف ستعيد إظهار WolFox؟"
         message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
         preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"الأيقونة وأزرار الصوت معًا"];
+    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"تصوير الشاشة"];
+    NSArray<NSNumber *> *methods = @[@(WFRecoveryIcon), @(WFRecoveryVolume), @(WFRecoveryScreenshot)];
     for (NSInteger i = 0; i < titles.count; i++) {
-        WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
+        WFRecoveryMethod method = (WFRecoveryMethod)methods[i].integerValue;
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
             [alert dismissViewControllerAnimated:YES completion:^{
@@ -4945,7 +4986,17 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)handleFloatingStatusTap:(__unused UIButton *)sender {
-    [self showUI];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSInteger required = [defaults objectForKey:@"WF_FLOATING_OPEN_TAPS"] ? [defaults integerForKey:@"WF_FLOATING_OPEN_TAPS"] : 1;
+    required = MIN(MAX(required, 1), 50);
+    NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
+    if (now - self.lastFloatingOpenTapTime > 1.25) self.floatingOpenTapCount = 0;
+    self.lastFloatingOpenTapTime = now;
+    self.floatingOpenTapCount = MIN(self.floatingOpenTapCount + 1, required);
+    if (self.floatingOpenTapCount >= required) {
+        self.floatingOpenTapCount = 0;
+        [self showUI];
+    }
 }
 
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture {
