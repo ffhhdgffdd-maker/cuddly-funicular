@@ -1,0 +1,61 @@
+name: WolFox Full and Lite
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['projects/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: wolfox-editions-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-tests:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash run_native_tests.sh
+      - run: bash run_linux_volume_tests.sh
+      - run: python3 tests/test_full_bluetooth_static.py
+  build:
+    needs: native-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: Full
+            profile: mosques-full
+            feature: location-id-bluetooth
+          - edition: Lite
+            profile: lite-mosques
+            feature: location-id
+    env:
+      THEOS: ${{ github.workspace }}/.theos
+      WOLFOX_VERSION: '3.0.1'
+      WOLFOX_EDITION: ${{ matrix.edition }}
+      WOLFOX_PROFILE: ${{ matrix.profile }}
+      WOLFOX_FEATURE_PROFILE: ${{ matrix.feature }}
+      WOLFOX_INTERFACE_VARIANT: '0'
+      WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
+      WOLFOX_PROJECT_BUNDLE_ID: sa.gov.moia.mosques-2
+      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash wolfox_setup_build.sh
+      - name: Package binaries and exact source
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp WolFox*.deb WolFox*.dylib release/
+          printf 'COMMIT=%s\nEDITION=%s\nPROFILE=%s\nRUN=%s\nDEVICE_TESTED=false\n' "$GITHUB_SHA" "$WOLFOX_EDITION" "$WOLFOX_PROFILE" "$GITHUB_RUN_ID" > release/BUILD_INFO.txt
+          git archive --format=zip --output=release/WolFox-Source.zip HEAD
+          (cd release && sha256sum * > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WolFox-${{ matrix.edition }}-Volume3-${{ github.run_number }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 14

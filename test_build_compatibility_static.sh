@@ -41,7 +41,11 @@ expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8
 expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|WolFoxTargetBundles[.]txt' build_v1_deb.sh
 expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
 expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
-expect_pattern "استهداف تطبيق المساجد فقط" 'WOLFOX_TARGET_BUNDLE_IDS:-sa[.]gov[.]moia[.]mosques-2' wolfox_setup_build.sh
+expect_pattern "فلتر التطبيق الافتراضي من إعداد الإصدار" 'TARGET_BUNDLE_IDS=.*RELEASE_DEFAULTS_ARRAY\[4\]' wolfox_setup_build.sh
+python3 - "$PROJECT_DIR/release.json" <<'PY'
+import json, sys
+assert json.load(open(sys.argv[1]))['bundle'] == 'sa.gov.moia.mosques-2'
+PY
 expect_pattern "التثبيت لا يفرض إعادة تشغيل المضيف" 'user-initiated host launch' build_v1_deb.sh
 expect_pattern "postinst قابل للتنفيذ" 'chmod 0755.*postinst' build_v1_deb.sh
 expect_pattern "مصدر الكاميرا الافتراضية ضمن البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh

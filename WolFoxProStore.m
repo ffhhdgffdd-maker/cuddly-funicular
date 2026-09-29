@@ -206,7 +206,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     } else {
         self.jitterActive = [u boolForKey:@"WF_PRO_JITTER_ACT"];
     }
-    self.volumeGestureEnabled = [u objectForKey:@"WF_PRO_VOLUME_GESTURE"] == nil ? YES : [u boolForKey:@"WF_PRO_VOLUME_GESTURE"];
+    self.volumeGestureEnabled = YES;
     // v1.8.4: تثبيت الوضع الليلي الداكن وترحيل أي اختيار فاتح سابق.
     self.themeIndex = 0;
     [u setInteger:0 forKey:@"WF_PRO_THEME_IDX"];

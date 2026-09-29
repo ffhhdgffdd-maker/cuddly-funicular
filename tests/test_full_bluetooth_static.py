@@ -16,13 +16,17 @@ assert '(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1' in u
 assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
 assert 'statusBtn' not in ui and '@"crown.fill"' in ui
 assert '_titleLabel.text = @"WolFox";' in ui
-assert 'chooseRecoveryMethodAndHide:YES' in ui and 'applyRecoveryMethod:method' in ui
+assert 'chooseRecoveryMethodAndHide:' not in ui and 'applyRecoveryMethod:' not in ui
+assert 'UIApplicationUserDidTakeScreenshotNotification' not in ui
+assert 'handleFloatingStatusTap:' not in ui and 'handleThreeSequentialTaps:' not in ui
 assert '- (void)showUI {' in ui
 assert 'self.spoofQuickPanel = [[' not in ui
-interface = ui.split('- (void)setupInterfacePage {')[1].split('- (void)changeRecoveryMethod')[0]
+interface = ui.split('- (void)setupInterfacePage {')[1].split('- (NSArray<UIColor *> *)markerPalette')[0]
 assert 'تشغيل الموقع' not in interface and 'Bluetooth' not in interface and 'إعدادات الكاميرا' not in interface
 for token in ['WF_RECOVERY_ICON_ENABLED', 'WF_RECOVERY_VOLUME_ENABLED', 'WF_RECOVERY_SCREENSHOT_ENABLED']:
-    assert token in interface, token
+    assert token not in interface, token
+assert '@"إخفاء الأداة"' in interface
+assert 'WFRecoveryDescription(WFRecoveryVolume)' in interface
 bt = ui.split('- (void)setupBluetoothPage {')[1].split('- (void)btProfileDeactivated')[0]
 for token in ['tag:8102', 'tag:8120', 'startBTScan', 'importBluetoothFile', 'exportBluetoothFile']:
     assert token in bt, token

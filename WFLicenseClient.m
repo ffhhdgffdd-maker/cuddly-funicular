@@ -136,6 +136,7 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 
 + (NSDictionary *)requestBodyForCode:(NSString *)code token:(NSString *)token {
     NSString *deviceID = [self deviceIdentifier];
+    if (!deviceID.length) return nil; // Never bind a subscription to an unpersisted identity.
     NSString *targetBundleID = NSBundle.mainBundle.bundleIdentifier ?: @"";
     NSString *appName = NSBundle.mainBundle.infoDictionary[@"CFBundleDisplayName"]
                       ?: NSBundle.mainBundle.infoDictionary[@"CFBundleName"]
@@ -169,6 +170,10 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     }
 
     NSDictionary *body = [self requestBodyForCode:trimmed token:nil];
+    if (!body) {
+        [self complete:completion result:[self resultWithSuccess:NO status:WFLicenseStatusNetworkError message:@"تعذر الوصول إلى معرّف الجهاز المحفوظ. افتح قفل الجهاز ثم أعد المحاولة." started:nil expires:nil plan:nil]];
+        return;
+    }
     [self postEndpoint:@"/activate.php" body:body completion:^(NSDictionary *json, NSInteger httpStatus, NSError *error) {
         BOOL transientHTTP = [self isTransientHTTPStatus:httpStatus];
         if (error || transientHTTP) {
@@ -239,6 +244,10 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 
     NSString *token = [self loadFromKeychain:kTokenKey];
     NSDictionary *body = [self requestBodyForCode:code token:token];
+    if (!body) {
+        [self complete:completion result:[self resultWithSuccess:NO status:WFLicenseStatusNetworkError message:@"تعذر الوصول إلى معرّف الجهاز المحفوظ. افتح قفل الجهاز ثم أعد المحاولة." started:nil expires:nil plan:nil]];
+        return;
+    }
     [self postEndpoint:@"/verify.php" body:body completion:^(NSDictionary *json, NSInteger httpStatus, NSError *error) {
         BOOL transientHTTP = [self isTransientHTTPStatus:httpStatus];
         if (error || transientHTTP) {
@@ -375,12 +384,16 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 }
 
 + (NSString *)deviceIdentifier {
-    NSString *stored = [self loadFromKeychain:kDeviceKey];
-    if (stored.length) return stored;
-    NSString *identifier = UIDevice.currentDevice.identifierForVendor.UUIDString;
-    if (!identifier.length) identifier = NSUUID.UUID.UUIDString;
-    [self saveToKeychain:identifier key:kDeviceKey];
-    return identifier;
+    @synchronized(self) {
+        static NSString *pendingIdentifier = nil;
+        NSString *stored = [self loadFromKeychain:kDeviceKey];
+        if (stored.length) return stored;
+        // A temporarily locked store must not create a second device registration.
+        if (!UIApplication.sharedApplication.protectedDataAvailable || [self storedCode].length) return nil;
+        if (!pendingIdentifier.length) pendingIdentifier = NSUUID.UUID.UUIDString;
+        if (![self saveToKeychain:pendingIdentifier key:kDeviceKey]) return nil;
+        return pendingIdentifier;
+    }
 }
 
 + (void)validateWithCompletion:(void(^)(BOOL, NSString *))completion {
@@ -760,7 +773,12 @@ static const NSUInteger kMaximumRequestAttempts = 2;
     };
     CFTypeRef result = NULL;
     if (SecItemCopyMatching((__bridge CFDictionaryRef)query, &result) == errSecSuccess) {
-        return [[NSString alloc] initWithData:(__bridge_transfer NSData *)result encoding:NSUTF8StringEncoding];
+        NSString *stored = [[NSString alloc] initWithData:(__bridge_transfer NSData *)result encoding:NSUTF8StringEncoding];
+        // Migrate old Keychain-only installs before an upgrade or reinstall.
+        if (stored.length && ![[self loadSharedValueForKey:key] isEqualToString:stored]) {
+            [self saveSharedValue:stored key:key];
+        }
+        return stored;
     }
     NSString *shared = [self loadSharedValueForKey:key];
     if (shared.length) {
