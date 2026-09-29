@@ -85,6 +85,13 @@ echo "✓ جميع اختبارات التوافق نجحت"
 set -euo pipefail
 echo "=== التحقق من تكوين الإصدار ==="
 
+export GITHUB_REF_NAME="WB5"
+export WOLFOX_VERSION="5.0.1"
+export WOLFOX_EDITION="Full"
+export WOLFOX_PROFILE="full-mosques"
+export WOLFOX_INTERFACE_VARIANT="5"
+export WOLFOX_TARGET_BUNDLE_IDS="sa.gov.moia.mosques-2"
+export WOLFOX_PROJECT_BUNDLE_ID="sa.gov.moia.mosques-2"
 python3 tools/verify_release_config.py
 
 echo "✓ تكوين الإصدار متطابق وصحيح"
