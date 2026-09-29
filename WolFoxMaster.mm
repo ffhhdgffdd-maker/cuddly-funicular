@@ -3,6 +3,15 @@
 #ifndef WOLFOX_LITE
 #define WOLFOX_LITE 0
 #endif
+#ifndef WOLFOX_FEATURE_LOCATION
+#define WOLFOX_FEATURE_LOCATION 1
+#endif
+#ifndef WOLFOX_FEATURE_IDENTIFIER
+#define WOLFOX_FEATURE_IDENTIFIER 1
+#endif
+#ifndef WOLFOX_FEATURE_BLUETOOTH
+#define WOLFOX_FEATURE_BLUETOOTH 1
+#endif
 // WolFoxMaster.mm - WolFox v1.8.2 Full "Dark Blue Panel UI"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -2869,17 +2878,22 @@ static BOOL WFMasterProcessIsEligible(void) {
     hint.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightMedium];
     [_scrollDashboard addSubview:hint];
 
+#if WOLFOX_FEATURE_IDENTIFIER
     UIButton *identifier = [self toolsSectionButton:@"المعرّف" subtitle:@"إدارة المعرّف وحالته والاستيراد والتصدير." icon:@"person.text.rectangle.fill" y:88 action:@selector(openIdentifierTool)];
     [_scrollDashboard addSubview:identifier];
-#if !WOLFOX_LITE
-    UIButton *camera = [self toolsSectionButton:@"الكاميرا والصور" subtitle:@"اختيار الصورة وإدارة حالة الكاميرا الافتراضية." icon:@"camera.fill" y:182 action:@selector(openCameraTool)];
-    [_scrollDashboard addSubview:camera];
-    UIButton *bluetooth = [self toolsSectionButton:@"Bluetooth" subtitle:@"البحث عن الأجهزة والملفات والحالة من مكان واحد." icon:@"antenna.radiowaves.left.and.right" y:276 action:@selector(openBluetoothTool)];
-    [_scrollDashboard addSubview:bluetooth];
-    _scrollDashboard.contentSize = CGSizeMake(w, 380);
-#else
-    _scrollDashboard.contentSize = CGSizeMake(w, 190);
 #endif
+#if WOLFOX_FEATURE_BLUETOOTH
+    UIButton *bluetooth = [self toolsSectionButton:@"Bluetooth" subtitle:@"البحث عن الأجهزة والملفات والحالة من مكان واحد." icon:@"antenna.radiowaves.left.and.right" y:(WOLFOX_FEATURE_IDENTIFIER ? 182 : 88) action:@selector(openBluetoothTool)];
+    [_scrollDashboard addSubview:bluetooth];
+#endif
+    CGFloat toolsBottom = 100;
+#if WOLFOX_FEATURE_IDENTIFIER
+    toolsBottom += 94;
+#endif
+#if WOLFOX_FEATURE_BLUETOOTH
+    toolsBottom += 94;
+#endif
+    _scrollDashboard.contentSize = CGSizeMake(w, toolsBottom);
 }
 
 - (void)setupIDPage {
