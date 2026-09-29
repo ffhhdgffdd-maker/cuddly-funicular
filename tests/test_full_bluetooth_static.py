@@ -19,7 +19,8 @@ assert '(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1' in u
 assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
 assert 'statusBtn' not in ui
 header = ui.split('// Header contains only')[1].split('// 2. Top Tabs Bar')[0]
-assert 'UIButton' not in header
+assert header.count('[UIButton buttonWithType:') == 1
+assert '@selector(requestHideTool)' in header
 assert 'versionLabel' in header and '_spoofStatusLabel' in header
 status = ui.split('- (void)refreshSpoofHeaderStatus {')[1].split('- (void)tabBtnPressed:')[0]
 assert 'isRuntimeLicenseValid' in status and 'bluetoothActive' not in status
@@ -57,3 +58,11 @@ for token in ['WFPhotoDelegateForCapture', 'WFTrackPhotoUploadTask', 'hook_AVCap
     assert token in hooks, token
 assert 'NSBluetoothAlwaysUsageDescription' in (root/'WFBluetoothScanSession.h').read_text()
 print('Feature ownership, real hooks, full-menu recovery and no host-exit wiring guards passed')
+
+# Hiding commits synchronously, so reopening cannot be undone by a stale animation.
+hide = ui.split('- (void)dismissUI {')[1].split('- (void)setFloatingStatusIconVisible:')[0]
+assert 'animateWithDuration' not in hide
+assert 'self.floatingIcon.hidden && (!self.cameraIcon || self.cameraIcon.hidden)' in hide
+camera_icon = ui.split('- (void)toggleCameraIcon:(BOOL)show {')[1].split('- (void)prepareCleanVirtualPhotoCapture')[0]
+assert 'HUGE_VALF' not in camera_icon and 'CABasicAnimation' not in camera_icon
+assert 'self.cameraIcon.alpha = 0.90' in camera_icon

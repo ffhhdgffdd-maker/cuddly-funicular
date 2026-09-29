@@ -459,6 +459,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     _titleLabel.font = [WolFoxProTheme fontOfSize:23 weight:UIFontWeightBold];
     _titleLabel.textColor = UIColor.whiteColor;
     [_header addSubview:_titleLabel];
+    UIButton *closeTool = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeTool.frame = CGRectMake(w - 54, safeTop, 44, 44);
+    [closeTool setImage:[WolFoxProTheme symbolNamed:@"xmark"] forState:UIControlStateNormal];
+    closeTool.tintColor = [WolFoxProTheme textPrimary];
+    closeTool.accessibilityLabel = @"إغلاق واجهة WolFox";
+    closeTool.accessibilityHint = @"العودة للتطبيق مع الاحتفاظ بإعدادات الإظهار";
+    [closeTool addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
+    [_header addSubview:closeTool];
 
     UILabel *versionLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop + 28, w - 32, 18)];
     NSString *version = [[WF_APP_VERSION stringByReplacingOccurrencesOfString:@"-Full" withString:@""] stringByReplacingOccurrencesOfString:@"-Lite" withString:@""];
@@ -3340,7 +3348,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_FLOATING_TAP_COUNT"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     UILabel *label = (UILabel *)[slider.superview viewWithTag:4051];
-    if ([label isKindOfClass:[UILabel class]]) label.text = [NSString stringWithFormat:@"عدد ضغطات الأيقونة لفتح WolFox: %ld", (long)count];
+    if ([label isKindOfClass:[UILabel class]]) label.text = [NSString stringWithFormat:@"عدد الضغطات للفتح: %ld", (long)count];
     [self showToast:[NSString stringWithFormat:@"تم حفظ %ld ضغطة لفتح WolFox", (long)count]];
 }
 
@@ -3348,11 +3356,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     [[NSUserDefaults standardUserDefaults] setInteger:control.selectedSegmentIndex forKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [[WolFoxController shared] applyFloatingStatusPreferences];
+    [self showToast:@"تم الحفظ والتطبيق"];
 }
 
 - (void)floatingIconOpacityChanged:(UISlider *)slider {
     [[NSUserDefaults standardUserDefaults] setFloat:slider.value forKey:@"WF_FLOATING_STATUS_OPACITY"];
     [[WolFoxController shared] applyFloatingStatusPreferences];
+    [self showToast:@"تم الحفظ والتطبيق"];
 }
 
 - (void)resetFloatingIconPosition {
@@ -3369,10 +3379,26 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)finishConfirmedChange {
     [[WolFoxProStore shared] saveSettings];
     [self refreshSpoofHeaderStatus];
-    CGPoint offset = _scrollDashboard.contentOffset;
-    [self switchPage:_activePage];
-    CGFloat maximum = MAX(0, _scrollDashboard.contentSize.height - _scrollDashboard.bounds.size.height + _scrollDashboard.contentInset.bottom);
-    _scrollDashboard.contentOffset = CGPointMake(0, MIN(MAX(0, offset.y), maximum));
+    if (_activePage == 4) {
+        // Update enabled states in place: keep the active control and scroll position.
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        BOOL icon = [WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:defaults];
+        BOOL volume = [WFInterfaceSettings recoveryMethod:WFRecoveryVolume enabledInDefaults:defaults];
+        for (UIView *card in _scrollDashboard.subviews) for (UIView *view in card.subviews) {
+            if (![view isKindOfClass:UIControl.class]) continue;
+            NSString *key = view.accessibilityIdentifier;
+            if ([key hasPrefix:@"WF_FLOATING_"]) ((UIControl *)view).enabled = icon;
+            if ([key isEqualToString:@"WF_VOLUME_PRESS_COUNT"]) ((UIControl *)view).enabled = volume;
+        }
+    } else {
+        CGPoint offset = _scrollDashboard.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [self switchPage:self->_activePage];
+            [self.view layoutIfNeeded];
+            CGFloat maximum = MAX(0, self->_scrollDashboard.contentSize.height - self->_scrollDashboard.bounds.size.height + self->_scrollDashboard.contentInset.bottom);
+            self->_scrollDashboard.contentOffset = CGPointMake(0, MIN(MAX(0, offset.y), maximum));
+        }];
+    }
     [self showToast:@"تم الحفظ والتطبيق"];
 }
 
@@ -4904,6 +4930,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)showActivationScreenWithResult:(WFLicenseResult *)result {
     if (!self.mainVC) return;
     if (self.mainVC.presentedViewController) return; // already showing
+    self.floatingIcon.hidden = YES;
+    [[WFVirtualCameraManager shared] setToolVisible:YES];
 #ifdef DEBUG
     WFLog(@"[WolFox][ACT] presenting_activation");
 #endif
@@ -4957,44 +4985,28 @@ static BOOL WFMasterProcessIsEligible(void) {
     self.mainVC.view.alpha = 0; 
     self.floatingIcon.hidden = YES;
     if ([WolFoxProStore shared].mediaUploadActive) [self toggleCameraIcon:YES];
-    [UIView animateWithDuration:[WolFoxProTheme transitionDuration] animations:^{
-        self.mainVC.view.alpha = 1.0;
-    } completion:^(__unused BOOL finished) {
-#ifdef DEBUG
-        WFLog(@"[WolFox][UI] main_visible");
-#endif
-        [self.mainVC presentOnboardingIfNeeded];
-    }]; 
+    [self.mainVC.view.layer removeAllAnimations];
+    self.mainVC.view.alpha = 1;
+    [self.mainVC presentOnboardingIfNeeded];
 }
 - (void)dismissUI {
-    [self.mainVC cancelBTScan]; 
-#ifdef DEBUG
-    WFLog(@"[WolFox][UI] dismiss_main_requested");
-#endif
+    [self.mainVC.view endEditing:YES];
+    [self.mainVC cancelBTScan];
     [self.mainVC closeExpandedMapIfNeeded];
-    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [feedback impactOccurred];
     [self enableMenuRecoveryShortcut];
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:WFUIHiddenOnLaunchKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
+    [NSUserDefaults.standardUserDefaults setBool:YES forKey:WFUIHiddenOnLaunchKey];
     [self prepareHiddenVolumeListening];
     [self closeFloatingControlPanel:nil];
-    [self.cameraIcon.layer removeAllAnimations];
-    self.cameraIcon.alpha = 0;
-    self.cameraIcon.hidden = YES;
-    [UIView animateWithDuration:[WolFoxProTheme transitionDuration] animations:^{
-        self.mainVC.view.alpha = 0;
-    } completion:^(BOOL f){
-        self.mainVC.view.hidden = YES;
-        [self setFloatingStatusIconVisible:[WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:NSUserDefaults.standardUserDefaults]];
-        self.overlayWindow.hidden = self.floatingIcon.hidden;
-        [[WFVirtualCameraManager shared] setToolVisible:NO];
-        [self refreshFloatingStatusIcon];
-        [self restoreHostKeyWindow];
-#ifdef DEBUG
-        WFLog(@"[WolFox][UI] dismiss_confirmed_volume_hook_stays_active");
-#endif
-    }]; 
+    // Commit visibility synchronously: an old fade completion must never hide a reopened page.
+    [self.mainVC.view.layer removeAllAnimations];
+    self.mainVC.view.hidden = YES;
+    self.mainVC.view.alpha = 1;
+    [self setFloatingStatusIconVisible:[WFInterfaceSettings recoveryMethod:WFRecoveryIcon enabledInDefaults:NSUserDefaults.standardUserDefaults]];
+    [[WFVirtualCameraManager shared] setToolVisible:NO];
+    [self toggleCameraIcon:[WFVirtualCameraManager shared].shouldShowPickerIcon];
+    self.overlayWindow.hidden = self.floatingIcon.hidden && (!self.cameraIcon || self.cameraIcon.hidden);
+    [self refreshFloatingStatusIcon];
+    [self restoreHostKeyWindow];
 }
 
 - (void)setFloatingStatusIconVisible:(BOOL)visible {
@@ -5004,6 +5016,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.overlayWindow.hidden = NO;
         [self applyFloatingStatusPreferences];
         [self refreshFloatingStatusIcon];
+        [self.overlayWindow bringSubviewToFront:self.floatingIcon];
     }
 }
 
@@ -5037,6 +5050,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIColor *color = active ? [WolFoxProTheme success] : [WolFoxProTheme danger];
     self.floatingIcon.backgroundColor = color;
     self.floatingIcon.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.75].CGColor;
+    self.floatingIcon.accessibilityValue = active ? @"يعمل" : @"متوقف";
     self.floatingIcon.accessibilityLabel = active ? @"WolFox: تزييف الموقع مفعّل" : @"WolFox: تزييف الموقع متوقف";
 }
 
@@ -5077,7 +5091,9 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIView *icon = gesture ? gesture.view : self.floatingIcon;
     if (!icon) return;
     CGPoint translation = gesture ? [gesture translationInView:self.overlayWindow] : CGPointZero;
-    icon.center = CGPointMake(icon.center.x + translation.x, icon.center.y + translation.y);
+    CGPoint center = icon.center;
+    if (!isfinite(center.x) || !isfinite(center.y)) center = CGPointMake(CGRectGetWidth(self.overlayWindow.bounds) - 48, 140);
+    icon.center = CGPointMake(center.x + translation.x, center.y + translation.y);
     if (gesture) [gesture setTranslation:CGPointZero inView:self.overlayWindow];
 
     CGRect bounds = self.overlayWindow.bounds;
@@ -5129,16 +5145,9 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.cameraIcon.frame = CGRectMake(leftInset, floor((CGRectGetHeight(self.overlayWindow.bounds) - cameraSize) * 0.5), cameraSize, cameraSize);
         self.cameraIcon.hidden = NO;
         [self.overlayWindow bringSubviewToFront:self.cameraIcon];
-        self.cameraIcon.alpha = 0;
-        [self.cameraIcon.layer removeAnimationForKey:@"wf_photo_pulse"];
-        [UIView animateWithDuration:[WolFoxProTheme transitionDuration] animations:^{ self.cameraIcon.alpha = 0.90; }];
-        if (![WolFoxProTheme reduceMotionEnabled]) {
-            CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-            pulse.fromValue = @1.0; pulse.toValue = @1.12; pulse.duration = 0.75;
-            pulse.autoreverses = YES; pulse.repeatCount = HUGE_VALF;
-            pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-            [self.cameraIcon.layer addAnimation:pulse forKey:@"wf_photo_pulse"];
-        }
+        [self.cameraIcon.layer removeAllAnimations];
+        self.cameraIcon.transform = CGAffineTransformIdentity;
+        self.cameraIcon.alpha = 0.90;
     } else {
         [self.cameraIcon.layer removeAllAnimations];
         self.cameraIcon.alpha = 0; self.cameraIcon.hidden = YES;

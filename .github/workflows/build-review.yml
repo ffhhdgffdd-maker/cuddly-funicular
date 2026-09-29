@@ -27,7 +27,7 @@ jobs:
         feature: [location, location-id, location-id-bluetooth]
     env:
       THEOS: ${{ github.workspace }}/.theos
-      WOLFOX_VERSION: 3.0.3
+      WOLFOX_VERSION: 3.0.4
       WOLFOX_EDITION: Full
       WOLFOX_FEATURE_PROFILE: ${{ matrix.feature }}
       WOLFOX_TARGET_BUNDLE_IDS: sa.gov.moia.mosques-2
