@@ -5,13 +5,15 @@ root = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(root)
 cfg = json.loads((root/'release.json').read_text())
 product, version, bundle = cfg['product'], cfg['version'], cfg['bundle']
+profile = cfg.get('profile', 'legacy')
+artifact_stem = f'WolFox-v{version}-{profile}'
 out = root/'release'; out.mkdir(exist_ok=True)
-dylib = root/f'{product}.dylib'
+dylib = root/f'{artifact_stem}.dylib'
 magic, cpu = struct.unpack('<II', dylib.read_bytes()[:8])
 assert magic == 0xfeedfacf and cpu == 0x100000c, 'Expected arm64 Mach-O'
 digest = hashlib.sha256(dylib.read_bytes()).hexdigest()
 for mode in ('Rootful', 'Rootless'):
-    deb = root/f'{product}_v{version}_iOS15.8-27.0_{mode}.deb'
+    deb = root/f'{artifact_stem}-iOS15.8-27.0-{mode}.deb'
     assert subprocess.check_output(['dpkg-deb','-f',str(deb),'Version'],text=True).strip() == version
     assert subprocess.check_output(['dpkg-deb','-f',str(deb),'Name'],text=True).strip() == 'WolFox'
     with tempfile.TemporaryDirectory() as tmp:
