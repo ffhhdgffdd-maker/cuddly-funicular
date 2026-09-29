@@ -4288,9 +4288,14 @@ static BOOL WFMasterProcessIsEligible(void) {
             [defaults setBool:![defaults boolForKey:WFUIHiddenOnLaunchKey] forKey:WFMenuVisibleOnLaunchKey];
         }
         [defaults setBool:![defaults boolForKey:WFMenuVisibleOnLaunchKey] forKey:WFUIHiddenOnLaunchKey];
-        [self setupUI];
-        [self setupVolumeObserver];
-        dispatch_async(dispatch_get_main_queue(), ^{ [self prepareMenuRecoveryGesture]; });
+        // Startup-sensitive UIKit and audio work stays on the main queue.
+        void (^prepareRuntimeUI)(void) = ^{
+            [self setupUI];
+            [self setupVolumeObserver];
+            [self prepareMenuRecoveryGesture];
+        };
+        if ([NSThread isMainThread]) prepareRuntimeUI();
+        else dispatch_async(dispatch_get_main_queue(), prepareRuntimeUI);
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(licenseStateChanged:) name:@"WF_LICENSE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleStateChanged:) name:@"WF_SCHEDULE_STATE_CHANGED" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(scheduleLocationMissing:) name:@"WF_SCHEDULE_LOCATION_MISSING" object:nil];
