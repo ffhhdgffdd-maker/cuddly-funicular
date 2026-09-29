@@ -472,7 +472,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 #if WOLFOX_LITE
     UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #else
-    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 5.0, 3)];
+    UIView *indicator = [[UIView alloc] initWithFrame:CGRectMake(0, tabsHeight - 4, CGRectGetWidth(_tabsBar.bounds) / 3.0, 3)];
 #endif
     indicator.backgroundColor = [WolFoxProTheme accent];
     objc_setAssociatedObject(self, "_tab_indicator", indicator, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -483,9 +483,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"WolFox"];
     NSArray *tabPages = @[@0, @1, @4];
 #else
-    NSArray *icons = @[@"location.fill", @"person.text.rectangle.fill", @"camera.fill", @"antenna.radiowaves.left.and.right", @"slider.horizontal.3"];
-    NSArray *tabLabels = @[@"الموقع", @"المعرّف", @"الكاميرا", @"Bluetooth", @"WolFox"];
-    NSArray *tabPages = @[@0, @1, @3, @2, @4];
+    // Full edition follows the three-part navigation shown in the reference:
+    // Location / Tools / WolFox. Camera, Bluetooth and Identifier stay as
+    // functional sections inside Tools instead of being repeated as top tabs.
+    NSArray *icons = @[@"location.fill", @"square.grid.2x2.fill", @"slider.horizontal.3"];
+    NSArray *tabLabels = @[@"الموقع", @"الأدوات", @"WolFox"];
+    NSArray *tabPages = @[@0, @1, @4];
 #endif
     CGFloat tw = CGRectGetWidth(_tabsBar.bounds) / icons.count;
     UIImageSymbolConfiguration *tabConfig = nil;
