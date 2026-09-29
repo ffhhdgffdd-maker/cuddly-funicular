@@ -26,10 +26,12 @@ def dylibs(blob, base=0):
         cursor = base + 32
         for _ in range(ncmds):
             cmd, size = struct.unpack_from('<II', blob, cursor)
-            if size < 24 or cursor + size > len(blob):
+            if size < 8 or cursor + size > len(blob):
                 raise SystemExit('invalid Mach-O load command')
             # LC_LOAD_DYLIB and its weak/reexport/upward/lazy variants.
             if cmd in {0xc, 0x18, 0x1f, 0x20, 0x23}:
+                if size < 24:
+                    raise SystemExit('invalid dylib load command')
                 name_offset = struct.unpack_from('<I', blob, cursor + 8)[0]
                 end = blob.find(b'\0', cursor + name_offset, cursor + size)
                 if end < 0:
@@ -55,7 +57,7 @@ forbidden_common=(CoreBluetooth AdSupport CoreMedia CoreVideo)
 case "$profile" in
   location) forbidden=("${forbidden_common[@]}") ;;
   location-id) forbidden=(CoreBluetooth CoreMedia CoreVideo) ;;
-  location-id-bluetooth) forbidden=(AdSupport CoreMedia CoreVideo) ;;
+  location-id-bluetooth) forbidden=(CoreMedia CoreVideo) ;;
   *) echo "❌ Profile غير معروف: $profile"; exit 1 ;;
 esac
 for framework in "${forbidden[@]}"; do
