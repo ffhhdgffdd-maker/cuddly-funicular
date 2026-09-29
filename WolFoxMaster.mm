@@ -2744,13 +2744,13 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)showSearchResultPin:(CLLocationCoordinate2D)coordinate title:(NSString *)title {
     if (!self.mapView || !CLLocationCoordinate2DIsValid(coordinate)) return;
-    MKPointAnnotation *oldPin = objc_getAssociatedObject(self, @"_search_result_pin");
+    MKPointAnnotation *oldPin = objc_getAssociatedObject(self, "_search_result_pin");
     if (oldPin) [self.mapView removeAnnotation:oldPin];
     MKPointAnnotation *pin = [MKPointAnnotation new];
     pin.coordinate = coordinate;
     pin.title = title.length ? title : @"نتيجة البحث";
     pin.subtitle = @"دبوس البحث الأحمر — اضغط «حفظ الموقع» لحفظه";
-    objc_setAssociatedObject(self, @"_search_result_pin", pin, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, "_search_result_pin", pin, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [self.mapView addAnnotation:pin];
     MKCoordinateRegion region = MKCoordinateRegionMakeWithDistance(coordinate, 1400.0, 1400.0);
     [self.mapView setRegion:region animated:YES];
@@ -4214,7 +4214,7 @@ static BOOL WFMasterProcessIsEligible(void) {
             target.canShowCallout = YES;
             return target;
         }
-        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, @"_search_result_pin");
+        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, "_search_result_pin");
         if (annotation == searchPin) {
             MKMarkerAnnotationView *result = (MKMarkerAnnotationView *)[mapView dequeueReusableAnnotationViewWithIdentifier:@"search_result_marker"];
             if (!result) result = [[MKMarkerAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"search_result_marker"];
@@ -4284,7 +4284,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         if (!name.length) name = @"موقع جديد";
         WolFoxProStore *store = [WolFoxProStore shared];
         WolFoxProLocation *l = [WolFoxProLocation new];
-        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, @"_search_result_pin");
+        MKPointAnnotation *searchPin = objc_getAssociatedObject(self, "_search_result_pin");
         // نتيجة البحث لها الأولوية حتى لا يُحفظ مركز الخريطة أو الموقع الوهمي الخطأ.
         CLLocationCoordinate2D selected = searchPin ? searchPin.coordinate : (store.spoofActive ? store.currentFakeCoords : (self.mapView ? self.mapView.centerCoordinate : store.currentFakeCoords));
         if (!CLLocationCoordinate2DIsValid(selected)) {
