@@ -294,11 +294,15 @@ cd release && ls -lh && cat SHA256SUMS.txt
 - tools/verify_release_config.py (intact)
 - .github/workflows/build.yml (WB5 trigger)
 
-🔄 **الخطوات المتبقية:**
-1. تشغيل اختبارات التوافق الثابتة
-2. تنفيذ البناء الفعلي (يتطلب بيئة Theos + build tools)
-3. جمع وتحقق من الحزم
-4. التحقق من SHA256 للجودة النهائية
+🚀 **التنفيذ الحالي:**
+1. GitHub Actions مهيأ على الفرع WB5
+2. native-tests يعمل على macOS
+3. التحقق من release.json يعمل قبل البناء
+4. البناء يعمل على Ubuntu 24.04 عبر wolfox_setup_build.sh
+5. جمع release/ والتحقق من الحزم يتم عبر tools/collect_release.py
+6. SHA256SUMS.txt و BUILD_INFO.json يتم إنتاجهما ضمن release/
+
+✅ **ملاحظة:** أي push جديد إلى WB5 يشغّل خط البناء الكامل تلقائياً.
 
 ---
 
