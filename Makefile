@@ -35,4 +35,4 @@ verify:
 	@./test_build_compatibility_static.sh
 
 clean:
-	@rm -rf .wolfox-build WolFox.dylib WolFox_v*_Rootful.deb WolFox_v*_Rootless.deb
+	@rm -rf .wolfox-build WolFox.dylib WolFox-*.dylib WolFox_v*_Rootful.deb WolFox_v*_Rootless.deb WolFox-*-Rootful.deb WolFox-*-Rootless.deb

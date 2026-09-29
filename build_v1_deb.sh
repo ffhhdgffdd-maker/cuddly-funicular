@@ -68,7 +68,10 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 SDK_PATH="${SDKROOT:-${SDK_PATH:-$THEOS/sdks/iPhoneOS${REQUIRED_SDK_VERSION}.sdk}}"
 THEOS_INC="$THEOS/include"
 BUILD_DIR="$PROJECT_DIR/.wolfox-build"
-OUTPUT_DYLIB="$PROJECT_DIR/$PRODUCT_NAME.dylib"
+# Public artifacts use one predictable naming scheme. The internal dylib name
+# remains PRODUCT_NAME so existing MobileSubstrate paths and filters stay compatible.
+OUTPUT_STEM="WolFox-v${VERSION}-${PROFILE:-legacy}"
+OUTPUT_DYLIB="$PROJECT_DIR/$OUTPUT_STEM.dylib"
 WOLFOX_ARCHS="${WOLFOX_ARCHS:-arm64}"
 GENERATED_LICENSE_CONFIG="$BUILD_DIR/WFLicenseGeneratedConfig.h"
 
@@ -249,13 +252,12 @@ EOF
     find "$prefix/Library" -type d -exec chmod 0755 {} +
     local out
     if [ "$mode" = "rootless" ]; then
-        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-27.0_Rootless.deb"
+        out="$PROJECT_DIR/${OUTPUT_STEM}-iOS15.8-27.0-Rootless.deb"
     else
-        out="$PROJECT_DIR/${PRODUCT_NAME}_v${VERSION}_iOS15.8-27.0_Rootful.deb"
+        out="$PROJECT_DIR/${OUTPUT_STEM}-iOS15.8-27.0-Rootful.deb"
     fi
     "$DPKG_DEB" "${DPKG_BUILD_FLAGS[@]}" --build "$root" "$out"
     echo "✅ $out"
 }
 make_deb rootful
 make_deb rootless
-

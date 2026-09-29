@@ -34,10 +34,11 @@ expect_pattern "Makefile يوفّر تحقق البناء" '^verify:' Makefile
 expect_pattern "فحص إصدار SDK قبل البناء" 'version_at_least "\$SDK_VERSION" "\$REQUIRED_SDK_VERSION"' build_v1_deb.sh
 expect_pattern "Deployment Target يمر إلى clang" 'miphoneos-version-min="\$MIN_IOS"' build_v1_deb.sh
 expect_pattern "توقيع dylib باستخدام ldid" '"\$LDID" -S "\$OUTPUT_DYLIB"' build_v1_deb.sh
+expect_pattern "اسم artifact يبدأ بـ WolFox-v والإصدار" 'OUTPUT_STEM="WolFox-v\$\{VERSION\}-\$\{PROFILE:-legacy\}"' build_v1_deb.sh
 expect_pattern "ملكية DEB تفرض root:root" 'DPKG_BUILD_FLAGS[+]?=?.*--root-owner-group|DPKG_BUILD_FLAGS\+=[(]--root-owner-group[)]' build_v1_deb.sh
 expect_pattern "اعتماد firmware يبدأ من 15.8" 'Depends: firmware [(]>= 15[.]8[)]' build_v1_deb.sh
-expect_pattern "اسم Rootful يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootful[.]deb' build_v1_deb.sh
-expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8-27[.]0_Rootless[.]deb' build_v1_deb.sh
+expect_pattern "اسم Rootful يتضمن الإصدار والنطاق" 'OUTPUT_STEM.*iOS15[.]8-27[.]0-Rootful[.]deb' build_v1_deb.sh
+expect_pattern "اسم Rootless يتضمن الإصدار والنطاق" 'OUTPUT_STEM.*iOS15[.]8-27[.]0-Rootless[.]deb' build_v1_deb.sh
 expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|WolFoxTargetBundles[.]txt' build_v1_deb.sh
 expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
 expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
