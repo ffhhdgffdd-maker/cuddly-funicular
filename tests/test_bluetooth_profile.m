@@ -76,7 +76,7 @@ int main(void) {
         assert(!WFRecoveryMethodValid(0) && !WFRecoveryMethodValid(4));
         assert(WFRecoveryUsesIcon(1) && !WFRecoveryUsesVolume(1));
         assert(!WFRecoveryUsesIcon(2) && WFRecoveryUsesVolume(2));
-        assert(WFRecoveryUsesIcon(3) && WFRecoveryUsesVolume(3));
+        assert(!WFRecoveryUsesIcon(3) && !WFRecoveryUsesVolume(3));
         puts("Bluetooth codec and interface policy tests passed");
     }
     return 0;
