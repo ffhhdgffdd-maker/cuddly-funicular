@@ -7,10 +7,13 @@
 #define WOLFOX_FEATURE_LOCATION 1
 #endif
 #ifndef WOLFOX_FEATURE_IDENTIFIER
-#define WOLFOX_FEATURE_IDENTIFIER 1
+#define WOLFOX_FEATURE_IDENTIFIER 0
 #endif
 #ifndef WOLFOX_FEATURE_BLUETOOTH
-#define WOLFOX_FEATURE_BLUETOOTH 1
+#define WOLFOX_FEATURE_BLUETOOTH 0
+#endif
+#ifndef WOLFOX_FEATURE_CAMERA
+#define WOLFOX_FEATURE_CAMERA 0
 #endif
 // WolFoxMaster.mm - WolFox v1.8.2 Full "Dark Blue Panel UI"
 #import <Foundation/Foundation.h>

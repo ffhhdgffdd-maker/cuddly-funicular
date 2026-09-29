@@ -47,6 +47,13 @@ expect_pattern "postinst قابل للتنفيذ" 'chmod 0755.*postinst' build_v
 expect_pattern "مصدر الكاميرا الافتراضية ضمن البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh
 expect_pattern "ربط CoreMedia" 'framework CoreMedia' build_v1_deb.sh
 expect_pattern "ربط CoreVideo" 'framework CoreVideo' build_v1_deb.sh
+expect_pattern "نسخ البناء الثلاث تعطل الكاميرا" 'WOLFOX_FEATURE_CAMERA=0' build_v1_deb.sh
+expect_pattern "ربط CoreBluetooth مشروط" 'WOLFOX_FEATURE_BLUETOOTH.*framework CoreBluetooth' build_v1_deb.sh
+expect_pattern "ربط AdSupport مشروط" 'WOLFOX_FEATURE_IDENTIFIER.*framework AdSupport' build_v1_deb.sh
+expect_pattern "حراسة هوكات Identifier" '#if WOLFOX_FEATURE_IDENTIFIER' WolFoxIntegrated.mm
+expect_pattern "حراسة هوكات Bluetooth" '#if WOLFOX_FEATURE_BLUETOOTH' WolFoxIntegrated.mm
+expect_pattern "حراسة هوكات Camera" '#if WOLFOX_FEATURE_CAMERA' WolFoxIntegrated.mm
+expect_pattern "فحص Mach-O ضمن المشروع" 'otool -L' test_macho_feature_isolation.sh
 
 if rg -q 'iOS 14|iOS14|14[.]0|14–26|14-26' build_v1_deb.sh Makefile; then
     echo "❌ ما زال هناك مرجع قديم إلى iOS 14 في ملفات البناء"

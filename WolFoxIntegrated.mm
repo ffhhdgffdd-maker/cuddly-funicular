@@ -1,23 +1,43 @@
 #import "WFRedactedLogger.h"
+
+#ifndef WOLFOX_FEATURE_IDENTIFIER
+#define WOLFOX_FEATURE_IDENTIFIER 0
+#endif
+#ifndef WOLFOX_FEATURE_BLUETOOTH
+#define WOLFOX_FEATURE_BLUETOOTH 0
+#endif
+#ifndef WOLFOX_FEATURE_CAMERA
+#define WOLFOX_FEATURE_CAMERA 0
+#endif
 // WolFoxIntegrated.mm - WolFox Pro Hooks v1.7.5
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#if WOLFOX_FEATURE_IDENTIFIER
 #import <AdSupport/ASIdentifierManager.h>
+#endif
 #import <WebKit/WebKit.h>
+#if WOLFOX_FEATURE_BLUETOOTH
 #import <CoreBluetooth/CoreBluetooth.h>
+#endif
 #import <CoreLocation/CoreLocation.h>
+#if WOLFOX_FEATURE_CAMERA
 #import <AVFoundation/AVFoundation.h>
+#endif
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import "WolFoxProHookManager.h"
 #import "WolFoxProStore.h"
+#if WOLFOX_FEATURE_BLUETOOTH
 #import "WFBluetoothProfileCodec.h"
 #import "WFBluetoothDelegateProxy.h"
+#endif
 #import "WFLicenseClient.h"
 #import "WFCompatibility.h"
 #import "WFHookDefaults.h"
+#if WOLFOX_FEATURE_CAMERA
 #import "WFVirtualCameraManager.h"
 #import "WFMediaLifecycleHooks.h"
+#endif
 
 @interface WolFoxController : NSObject
 + (instancetype)shared;
@@ -66,6 +86,7 @@ static BOOL WFGate(BOOL featureEnabled) {
     return featureEnabled && [WFLicenseClient isRuntimeLicenseValid];
 }
 
+#if WOLFOX_FEATURE_IDENTIFIER
 #pragma mark - Identifier hooks
 
 static NSUUID *WFActivePublicIdentifier(void) {
@@ -99,6 +120,8 @@ static NSString *hook_SAMKeychain_passwordForService(id self, SEL _cmd, NSString
         ? ((NSString *(*)(id, SEL, id, id))orig_SAMKeychain_passwordForService)(self, _cmd, service, account)
         : nil;
 }
+
+#endif
 
 #pragma mark - Location hooks
 
@@ -172,6 +195,7 @@ static id hook_WKWebView_init(WKWebView *self, SEL _cmd, CGRect frame, WKWebView
     return orig_WKWebView_init(self, _cmd, frame, configuration);
 }
 
+#if WOLFOX_FEATURE_BLUETOOTH
 #pragma mark - Bluetooth scan identity hooks
 
 // FIX: All const char keys must be initialized to 0 (was causing Clang error: uninitialized const)
@@ -289,6 +313,9 @@ static void hook_CBCentralManager_scan(CBCentralManager *self, SEL _cmd,
     }
 }
 
+#endif
+
+#if WOLFOX_FEATURE_CAMERA
 #pragma mark - AVCapture virtual camera hooks
 
 static const char kWFVideoOutputProxyKey = 0;
@@ -552,6 +579,7 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{
+#if WOLFOX_FEATURE_IDENTIFIER
         WFInstallInstanceHook(ASIdentifierManager.class,
                               @selector(advertisingIdentifier),
                               (IMP)hook_advertisingIdentifier,
@@ -569,7 +597,9 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                                (IMP)hook_SAMKeychain_passwordForService,
                                &orig_SAMKeychain_passwordForService);
         }
+#endif
 
+#if WOLFOX_FEATURE_CAMERA
         WFInstallInstanceHook(AVCaptureSession.class,
                               @selector(startRunning),
                               (IMP)hook_AVCaptureSession_startRunning,
@@ -630,6 +660,8 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                                   &orig_AVCapturePhoto_previewPixelBuffer);
         }
 
+#endif
+
         if (!WFVirtualPreviewStateObserver) {
             WFVirtualPreviewStateObserver = [[NSNotificationCenter defaultCenter]
                 addObserverForName:WFVirtualCameraStateDidChangeNotification
@@ -659,6 +691,7 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
             orig_WKWebView_init = (id (*)(WKWebView *, SEL, CGRect, WKWebViewConfiguration *))original;
         }
 
+#if WOLFOX_FEATURE_BLUETOOTH
         // CBCentralManager — initWithDelegate:queue:options:
         original = NULL;
         if (WFInstallInstanceHook(CBCentralManager.class,
@@ -693,6 +726,8 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
                               @selector(pressesBegan:withEvent:),
                               (IMP)hook_UIApplication_pressesBegan,
                               &orig_UIApplication_pressesBegan);
+
+#endif
 
         // UDID spoofing (deprecated API, still used by some apps)
 #pragma clang diagnostic push

@@ -37,6 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash wolfox_setup_build.sh
+      - name: Verify feature isolation in Mach-O
+        run: |
+          chmod +x test_macho_feature_isolation.sh
+          dylib="$(find . -maxdepth 1 -type f -name 'WolFox*.dylib' -print -quit)"
+          test -n "$dylib"
+          ./test_macho_feature_isolation.sh "$WOLFOX_FEATURE_PROFILE" "$dylib"
       - name: Package exact source and binaries
         run: |
           mkdir -p release
