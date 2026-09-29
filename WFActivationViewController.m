@@ -578,25 +578,25 @@
 - (NSString *)friendlyActivationMessage:(WFLicenseResult *)result {
     switch (result.status) {
         case WFLicenseStatusInvalid:
-            return @"الكود غير صحيح. تحقق منه وحاول مرة أخرى.";
+            return @"تعذر التفعيل: الكود غير صحيح. راجع الكود ثم أعد المحاولة.";
         case WFLicenseStatusDeviceRecovery:
-            return @"هذا الكود مرتبط بجهاز آخر. استخدم كوداً مخصصاً لهذا الجهاز.";
+            return @"تعذر التفعيل: الكود مرتبط بجهاز آخر.";
         case WFLicenseStatusNetworkError:
-            return @"تعذر الاتصال بخادم التفعيل. تحقق من الإنترنت ثم حاول مرة أخرى.";
+            return @"تعذر التفعيل: لا يوجد اتصال بخادم التفعيل. تحقق من الإنترنت ثم حاول مرة أخرى.";
         case WFLicenseStatusProjectDisabled:
-            return @"تعذر التحقق من إعدادات المشروع. تواصل مع الدعم.";
+            return @"تعذر التفعيل: المشروع غير متاح حالياً.";
         case WFLicenseStatusExpired:
-            return @"انتهت صلاحية هذا الكود. اطلب كوداً جديداً.";
+            return @"تعذر التفعيل: انتهت صلاحية الكود.";
         case WFLicenseStatusBlocked:
-            return @"تم إيقاف هذا الكود من لوحة الإدارة. تواصل مع الدعم.";
+            return @"تعذر التفعيل: تم إيقاف هذا الكود.";
         case WFLicenseStatusInvalidToken:
-            return @"انتهت جلسة التفعيل؛ أعد المحاولة بالكود نفسه";
+            return @"تعذر التفعيل: انتهت جلسة التحقق. أعد المحاولة.";
         case WFLicenseStatusUpdateRequired:
-            return @"يجب تثبيت الإصدار المطلوب قبل المتابعة";
+            return @"تعذر التفعيل: يلزم تحديث WolFox قبل المتابعة.";
         case WFLicenseStatusRateLimited:
-            return @"طلبات كثيرة خلال وقت قصير؛ حاول لاحقاً";
+            return @"تعذر التفعيل مؤقتاً بسبب كثرة المحاولات. حاول لاحقاً.";
         default:
-            return @"تعذر إكمال التفعيل حالياً";
+            return @"لم يتم التفعيل. حاول مرة أخرى.";
     }
 }
 
@@ -670,7 +670,7 @@
 }
 
 - (void)presentResultAlertForResult:(WFLicenseResult *)result success:(BOOL)success {
-    NSString *title = success ? @"تم التفعيل بنجاح" : @"فشل التفعيل";
+    NSString *title = success ? @"تم التفعيل بنجاح" : @"لم يتم التفعيل";
     NSString *message = success ? [self successActivationMessage:result] : [self friendlyActivationMessage:result];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
