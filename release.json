@@ -2,7 +2,7 @@
   "slug": "gps-hk-v2-cleanroom",
   "label": "GPS_HK V2 Cleanroom",
   "branch": "codex/gps-hk-v2-cleanroom",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "edition": "Full",
   "profile": "full-mosques",
   "interface_variant": 5,
