@@ -162,7 +162,7 @@ FILES=("WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFRedactedLogger.m" "WF
 # Shared UI/hooks reference these classes even when a feature's tab is hidden.
 # Keep their implementations linked in every profile; missing classes crash dyld
 # before any constructor or runtime fallback can run.
-FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
+FILES+=("WFInterfaceSettings.m" "WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)

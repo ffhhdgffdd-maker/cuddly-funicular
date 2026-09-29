@@ -1,4 +1,6 @@
 #import <Foundation/Foundation.h>
+#ifndef WF_INTERFACE_POLICY_H
+#define WF_INTERFACE_POLICY_H
 #ifndef WOLFOX_INTERFACE_VARIANT
 #define WOLFOX_INTERFACE_VARIANT 0
 #endif
@@ -17,3 +19,4 @@ static inline BOOL WFInterfaceTripleTapAllowed(NSInteger version, BOOL preferenc
 static inline BOOL WFInterfaceNeedsFallback(NSInteger version, BOOL icon, BOOL volume, BOOL taps) {
     (void)version; (void)taps; return !icon && !volume;
 }
+#endif

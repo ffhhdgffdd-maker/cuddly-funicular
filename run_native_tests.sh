@@ -11,3 +11,6 @@ clang -fobjc-arc -Wall -Wextra -I. tests/test_runtime_lifecycle.m WFBluetoothSca
 "$work/lifecycle"
 clang -fobjc-arc -Wall -Wextra -I. tests/test_input_validation.m WolFoxProStore.m WFRedactedLogger.m -framework Foundation -framework CoreBluetooth -framework CoreLocation -lsqlite3 -o "$work/input-validation"
 "$work/input-validation"
+
+clang -fobjc-arc -Wall -Wextra -Werror -I. tests/test_interface_settings.m WFInterfaceSettings.m -framework Foundation -o "$work/interface-settings"
+"$work/interface-settings"

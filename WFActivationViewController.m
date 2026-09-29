@@ -32,6 +32,8 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    self.view.tintColor = [WolFoxProTheme accent];
     self.view.backgroundColor = [[WolFoxProTheme royalBackground] colorWithAlphaComponent:0.98];
     
     // Tap to dismiss keyboard
@@ -69,11 +71,11 @@
     exitBtn.translatesAutoresizingMaskIntoConstraints = NO;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *exitConfig = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold];
-        [exitBtn setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:exitConfig] forState:UIControlStateNormal];
+        [exitBtn setImage:[WolFoxProTheme symbolNamed:@"xmark"] forState:UIControlStateNormal];
     }
     [exitBtn setTitleColor:[UIColor colorWithRed:0.96 green:0.30 blue:0.30 alpha:1.0] forState:UIControlStateNormal];
     exitBtn.tintColor = [UIColor colorWithRed:0.96 green:0.30 blue:0.30 alpha:1.0];
-    exitBtn.hidden = YES; // shown after first failed attempt
+    exitBtn.hidden = NO;
     [exitBtn addTarget:self action:@selector(closePressed) forControlEvents:UIControlEventTouchUpInside];
     [self.headerView addSubview:exitBtn];
     self.exitButton = exitBtn;
@@ -82,30 +84,18 @@
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.text = @"WolFox";
     titleLabel.textColor = [UIColor whiteColor];
-    titleLabel.font = [UIFont systemFontOfSize:19 weight:UIFontWeightBold];
+    titleLabel.font = [WolFoxProTheme fontOfSize:19 weight:UIFontWeightBold];
     titleLabel.textAlignment = NSTextAlignmentCenter;
     [self.headerView addSubview:titleLabel];
-
-    UIImageView *crownIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"crown.fill"]];
-    crownIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    crownIcon.tintColor = [WolFoxProTheme royalBlue];
-    crownIcon.contentMode = UIViewContentModeScaleAspectFit;
-    crownIcon.userInteractionEnabled = YES;
-    [crownIcon addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(copyActivationCode)]];
-    [self.headerView addSubview:crownIcon];
 
     [NSLayoutConstraint activateConstraints:@[
         [exitBtn.leadingAnchor constraintEqualToAnchor:self.headerView.leadingAnchor constant:20],
         [exitBtn.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
         [titleLabel.centerXAnchor constraintEqualToAnchor:self.headerView.centerXAnchor],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [crownIcon.trailingAnchor constraintEqualToAnchor:self.headerView.trailingAnchor constant:-20],
-        [crownIcon.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [crownIcon.widthAnchor constraintEqualToConstant:24],
-        [crownIcon.heightAnchor constraintEqualToConstant:24]
+        [titleLabel.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor]
     ]];
 
-    self.lockIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"lock.shield.fill"]];
+    self.lockIcon = [[UIImageView alloc] initWithImage:[WolFoxProTheme symbolNamed:@"lock.shield.fill"]];
     self.lockIcon.translatesAutoresizingMaskIntoConstraints = NO;
     self.lockIcon.tintColor = [WolFoxProTheme royalBlue];
     self.lockIcon.contentMode = UIViewContentModeScaleAspectFit;
@@ -115,7 +105,7 @@
     subtitle.translatesAutoresizingMaskIntoConstraints = NO;
     subtitle.text = @"WolFox";
     subtitle.textColor = [WolFoxProTheme textPrimary];
-    subtitle.font = [UIFont systemFontOfSize:23 weight:UIFontWeightBlack];
+    subtitle.font = [WolFoxProTheme fontOfSize:23 weight:UIFontWeightBold];
     subtitle.textAlignment = NSTextAlignmentCenter;
     [card addSubview:subtitle];
 
@@ -124,7 +114,7 @@
     desc.text = @"";
     desc.hidden = YES;
     desc.textColor = [UIColor colorWithWhite:0.73 alpha:1.0];
-    desc.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    desc.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightSemibold];
     desc.textAlignment = NSTextAlignmentCenter;
     [card addSubview:desc];
 
@@ -145,7 +135,7 @@
     self.codeField.smartQuotesType = UITextSmartQuotesTypeNo;
     self.codeField.textContentType = UITextContentTypeOneTimeCode;
     self.codeField.textAlignment = NSTextAlignmentCenter;
-    self.codeField.font = [UIFont monospacedSystemFontOfSize:17 weight:UIFontWeightBold];
+    self.codeField.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
     self.codeField.adjustsFontSizeToFitWidth = YES;
     self.codeField.minimumFontSize = 11.0;
     self.codeField.delegate = self;
@@ -162,7 +152,7 @@
     inlineCopyButton.tintColor = [WolFoxProTheme accent];
     inlineCopyButton.accessibilityLabel = @"نسخ كود التفعيل";
     if (@available(iOS 13.0, *)) {
-        [inlineCopyButton setImage:[UIImage systemImageNamed:@"doc.on.doc.fill"] forState:UIControlStateNormal];
+        [inlineCopyButton setImage:[WolFoxProTheme symbolNamed:@"doc.on.doc.fill"] forState:UIControlStateNormal];
     } else {
         [inlineCopyButton setTitle:@"نسخ" forState:UIControlStateNormal];
     }
@@ -189,7 +179,7 @@
     self.activateButton.adjustsImageWhenHighlighted = YES;
     [self.activateButton setTitle:@"تفعيل الاشتراك" forState:UIControlStateNormal];
     [self.activateButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.activateButton.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightBlack];
+    self.activateButton.titleLabel.font = [WolFoxProTheme fontOfSize:18 weight:UIFontWeightBold];
     
     // Add Shadow to Button
     self.activateButton.layer.shadowColor = [WolFoxProTheme royalBlue].CGColor;
@@ -210,7 +200,7 @@
     self.statusLabel.layer.borderWidth = 1.0;
     self.statusLabel.layer.borderColor = [[WolFoxProTheme danger] colorWithAlphaComponent:0.65].CGColor;
     self.statusLabel.hidden = YES;
-    self.statusLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    self.statusLabel.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightSemibold];
     self.statusLabel.textAlignment = NSTextAlignmentCenter;
     self.statusLabel.numberOfLines = 0;
     self.statusLabel.accessibilityTraits = UIAccessibilityTraitUpdatesFrequently;
@@ -224,7 +214,7 @@
     self.updateButton.layer.borderColor = [[WolFoxProTheme royalBlue] colorWithAlphaComponent:0.7].CGColor;
     [self.updateButton setTitle:@"تنزيل التحديث المطلوب" forState:UIControlStateNormal];
     [self.updateButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
-    self.updateButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
+    self.updateButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
     [self.updateButton addTarget:self action:@selector(openUpdateURL) forControlEvents:UIControlEventTouchUpInside];
     self.updateButton.hidden = !self.updateURL.length;
     [card addSubview:self.updateButton];
@@ -235,7 +225,7 @@
     self.showToolButton.layer.cornerRadius = 12.0;
     [self.showToolButton setTitle:@"فتح لوحة WolFox الآن" forState:UIControlStateNormal];
     [self.showToolButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.showToolButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
+    self.showToolButton.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold];
     self.showToolButton.accessibilityLabel = @"فتح لوحة WolFox بعد نجاح التفعيل";
     [self.showToolButton addTarget:self action:@selector(showToolPressed) forControlEvents:UIControlEventTouchUpInside];
     self.showToolButton.hidden = YES;
@@ -247,7 +237,7 @@
     self.skipButton.layer.cornerRadius = 12.0;
     [self.skipButton setTitle:@"البقاء في التطبيق وفتح اللوحة لاحقاً" forState:UIControlStateNormal];
     [self.skipButton setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
-    self.skipButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    self.skipButton.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightSemibold];
     self.skipButton.accessibilityLabel = @"إغلاق نتيجة التفعيل وفتح اللوحة لاحقاً";
     [self.skipButton addTarget:self action:@selector(skipPressed) forControlEvents:UIControlEventTouchUpInside];
     self.skipButton.hidden = YES;
@@ -256,7 +246,7 @@
     self.uuidLabel = [UILabel new];
     self.uuidLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.uuidLabel.textColor = [UIColor colorWithWhite:0.48 alpha:1.0];
-    self.uuidLabel.font = [UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightMedium];
+    self.uuidLabel.font = [WolFoxProTheme fontOfSize:10 weight:UIFontWeightMedium];
     self.uuidLabel.textAlignment = NSTextAlignmentCenter;
     self.uuidLabel.numberOfLines = 0;
     self.uuidLabel.text = [NSString stringWithFormat:@"معرّف الجهاز • %@", [WFLicenseClient deviceIdentifier]];
@@ -273,14 +263,14 @@
     self.waitLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.waitLabel.text = @"جارٍ التحقق من الكود";
     self.waitLabel.textColor = [UIColor whiteColor];
-    self.waitLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightBlack];
+    self.waitLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBold];
     self.waitLabel.textAlignment = NSTextAlignmentCenter;
     [self.loadingOverlay addSubview:self.waitLabel];
 
     self.timerLabel = [UILabel new];
     self.timerLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.timerLabel.textColor = [UIColor colorWithRed:0.08 green:0.45 blue:0.98 alpha:1.0];
-    self.timerLabel.font = [UIFont systemFontOfSize:38 weight:UIFontWeightBlack];
+    self.timerLabel.font = [WolFoxProTheme fontOfSize:38 weight:UIFontWeightBold];
     self.timerLabel.textAlignment = NSTextAlignmentCenter;
     self.timerLabel.text = @"•••";
     [self.loadingOverlay addSubview:self.timerLabel];
@@ -496,12 +486,12 @@
             self.skipHeightConstraint.constant = 40.0;
             self.timerLabel.hidden = YES;
             [self.lockIcon.layer removeAllAnimations];
-            self.lockIcon.image = [UIImage systemImageNamed:@"checkmark.shield.fill"];
+            self.lockIcon.image = [WolFoxProTheme symbolNamed:@"checkmark.shield.fill"];
             self.lockIcon.tintColor = [WolFoxProTheme success];
             self.statusLabel.textColor = [UIColor colorWithRed:0.45 green:1.0 blue:0.62 alpha:1.0];
             self.statusLabel.backgroundColor = [UIColor colorWithRed:0.04 green:0.25 blue:0.14 alpha:0.82];
             self.statusLabel.layer.borderColor = [[WolFoxProTheme success] colorWithAlphaComponent:0.78].CGColor;
-            self.statusLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+            self.statusLabel.font = [WolFoxProTheme fontOfSize:12.5 weight:UIFontWeightSemibold];
             // تفاصيل النجاح تعرض حصراً في الإشعار المستقل؛ لا نكررها داخل الصفحة.
             self.statusLabel.text = @"";
             self.statusLabel.hidden = YES;
@@ -528,7 +518,7 @@
                 [self showActivationError:[self friendlyActivationMessage:result]];
                 [self applyStatusStyleForResult:result];
                 [self.lockIcon.layer removeAllAnimations];
-                self.lockIcon.image = [UIImage systemImageNamed:@"exclamationmark.triangle.fill"];
+                self.lockIcon.image = [WolFoxProTheme symbolNamed:@"exclamationmark.triangle.fill"];
                 self.lockIcon.tintColor = [self statusColorForResult:result];
                 UINotificationFeedbackGenerator *feedback = [UINotificationFeedbackGenerator new];
                 [feedback prepare];

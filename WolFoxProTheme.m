@@ -153,8 +153,16 @@ static UIColor *WFEditionColor(CGFloat r, CGFloat g, CGFloat b) {
 + (NSTimeInterval)transitionDuration { return [self reduceMotionEnabled] ? 0.0 : 0.22; }
 
 + (UIFont *)fontOfSize:(double)size weight:(UIFontWeight)weight {
-    return [UIFont systemFontOfSize:size weight:weight];
+    // One system family for Arabic and Latin, with restrained, consistent weights.
+    return [UIFont systemFontOfSize:size weight:MIN(weight, UIFontWeightBold)];
 }
+
++ (UIImage *)symbolNamed:(NSString *)name {
+    UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightSemibold];
+    UIImage *image = [UIImage systemImageNamed:name withConfiguration:configuration];
+    return image ?: [UIImage systemImageNamed:@"square.dashed" withConfiguration:configuration];
+}
++ (UIColor *)borderColor { return [[self accent] colorWithAlphaComponent:0.18]; }
 
 + (UIBlurEffectStyle)blurStyle {
     if (@available(iOS 13.0, *)) {
@@ -166,4 +174,3 @@ static UIColor *WFEditionColor(CGFloat r, CGFloat g, CGFloat b) {
 }
 
 @end
-

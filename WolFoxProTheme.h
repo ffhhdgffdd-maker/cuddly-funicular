@@ -22,6 +22,8 @@
 + (BOOL)reduceMotionEnabled;
 
 + (UIFont *)fontOfSize:(double)size weight:(UIFontWeight)weight;
++ (UIImage *)symbolNamed:(NSString *)name;
++ (UIColor *)borderColor;
 + (UIBlurEffectStyle)blurStyle;
 
 @end
