@@ -401,7 +401,7 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     _iconLifecycle.enabled = self.enabled && [WFLicenseClient isRuntimeLicenseValid];
     _iconLifecycle.foreground = UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
     _iconLifecycle.cameraVisible = visible;
-    BOOL show = _iconLifecycle.shouldShowIcon;
+    BOOL show = self.shouldShowPickerIcon;
     if (show != _lastIconVisible) {
         _lastIconVisible = show;
         [[NSNotificationCenter defaultCenter] postNotificationName:WFVirtualCameraIconStateDidChangeNotification object:self];
@@ -413,7 +413,15 @@ static CVPixelBufferRef WFVirtualCameraCreatePixelBuffer(UIImage *image,
     } else if (!running && _visibilityTimer) { [_visibilityTimer invalidate]; _visibilityTimer = nil; }
 }
 
-- (BOOL)shouldShowPickerIcon { return _iconLifecycle.shouldShowIcon; }
+- (BOOL)pickerIconEnabled {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    return [defaults objectForKey:@"WF_CAMERA_PICKER_ICON_ENABLED"] == nil || [defaults boolForKey:@"WF_CAMERA_PICKER_ICON_ENABLED"];
+}
+- (void)setPickerIconEnabled:(BOOL)enabled {
+    [NSUserDefaults.standardUserDefaults setBool:enabled forKey:@"WF_CAMERA_PICKER_ICON_ENABLED"];
+    [self refreshCameraVisibility];
+}
+- (BOOL)shouldShowPickerIcon { return self.pickerIconEnabled && _iconLifecycle.shouldShowIcon; }
 - (void)setToolVisible:(BOOL)visible {
     if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self setToolVisible:visible]; }); return; }
     _iconLifecycle.toolVisible = visible; [self refreshCameraVisibility];

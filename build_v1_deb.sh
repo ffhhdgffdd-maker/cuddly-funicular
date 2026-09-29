@@ -7,7 +7,30 @@ cd "$PROJECT_DIR"
 
 # Runtime target: iOS 15.8 through iOS 27.0
 WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
+WOLFOX_FEATURE_PROFILE="${WOLFOX_FEATURE_PROFILE:-location-id-bluetooth}"
 VERSION="${WOLFOX_VERSION:-2.0.0}"
+WOLFOX_FEATURE_IDENTIFIER=0
+WOLFOX_FEATURE_BLUETOOTH=0
+WOLFOX_FEATURE_CAMERA=0
+
+case "$WOLFOX_FEATURE_PROFILE" in
+    location)
+        FEATURE_SUFFIX="Location"
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=0 -DWOLFOX_FEATURE_BLUETOOTH=0 -DWOLFOX_FEATURE_CAMERA=0)
+        ;;
+    location-id)
+        FEATURE_SUFFIX="LocationIdentifier"
+        WOLFOX_FEATURE_IDENTIFIER=1
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=1 -DWOLFOX_FEATURE_BLUETOOTH=0 -DWOLFOX_FEATURE_CAMERA=0)
+        ;;
+    location-id-bluetooth)
+        FEATURE_SUFFIX="LocationIdentifierBluetooth"
+        WOLFOX_FEATURE_IDENTIFIER=1
+        WOLFOX_FEATURE_BLUETOOTH=1
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=1 -DWOLFOX_FEATURE_BLUETOOTH=1 -DWOLFOX_FEATURE_CAMERA=0)
+        ;;
+    *) echo "❌ ملف مميزات غير معروف: $WOLFOX_FEATURE_PROFILE"; exit 1 ;;
+esac
 if [ "$WOLFOX_EDITION" = "Lite" ]; then
     PRODUCT_NAME="WolFoxLite"
     PACKAGE_ID="com.wolfox.gpspro.lite"
@@ -17,6 +40,8 @@ else
     PACKAGE_ID="com.wolfox.gpspro"
     PACKAGE_TITLE="WolFox"
 fi
+PRODUCT_NAME="${PRODUCT_NAME}_${FEATURE_SUFFIX}"
+PACKAGE_ID="${PACKAGE_ID}.${WOLFOX_FEATURE_PROFILE//-/.}"
 
 # Version 3 profiles are isolated by package ID and MobileSubstrate filename.
 # A package targets exactly one application, including the two Lite and
@@ -139,12 +164,24 @@ else
 fi
 [ "${#TARGET_BUNDLES[@]}" -gt 0 ] || { echo "❌ لا توجد Bundle IDs صالحة؛ تم منع الحقن العام"; exit 1; }
 
-FILES=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFRedactedLogger.m" "WFNetworkPairingStore.m" "WFVirtualCameraManager.mm" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
+FILES=("WFRedactedLogger.m" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
+# Identifier transfer and Bluetooth profile codec are implemented in the
+# existing WolFox sources; do not add non-existent standalone .m files.
+if [ "$WOLFOX_FEATURE_PROFILE" = "location-id-bluetooth" ]; then
+    FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
+fi
+if [ "${WOLFOX_FEATURE_CAMERA:-0}" = "1" ]; then
+    FILES+=("WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFVirtualCameraManager.mm")
+fi
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)
 COMMON_FLAGS+=(-DWOLFOX_INTERFACE_VARIANT="$INTERFACE_VARIANT")
-BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,dynamic_lookup -framework UIKit -framework Foundation -framework CoreLocation -framework CoreBluetooth -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework QuartzCore -framework AdSupport -framework WebKit -framework UserNotifications -lsqlite3)
+COMMON_FLAGS+=("${FEATURE_DEFINES[@]}")
+BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,dynamic_lookup -framework UIKit -framework Foundation -framework CoreLocation -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework QuartzCore -framework WebKit -framework UserNotifications -lsqlite3)
+if [ "${WOLFOX_FEATURE_IDENTIFIER:-0}" = "1" ]; then BASE_LINK_FLAGS+=( -framework AdSupport ); fi
+if [ "${WOLFOX_FEATURE_BLUETOOTH:-0}" = "1" ]; then BASE_LINK_FLAGS+=( -framework CoreBluetooth ); fi
+if [ "${WOLFOX_FEATURE_CAMERA:-0}" = "1" ]; then BASE_LINK_FLAGS+=( -framework CoreMedia -framework CoreVideo ); fi
 LINK_FLAGS=("${BASE_LINK_FLAGS[@]}")
 [ "$WOLFOX_EDITION" = "Lite" ] && COMMON_FLAGS+=(-DWOLFOX_LITE=1)
 if [ "${WOLFOX_HARDENING:-1}" != "0" ]; then
@@ -155,6 +192,7 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " $PACKAGE_TITLE v$VERSION — iOS 15.8 إلى iOS $MAX_TARGET_IOS"
 echo " SDK: $SDK_BASENAME"
+echo " Features: $WOLFOX_FEATURE_PROFILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"
@@ -212,18 +250,25 @@ make_deb() {
 { Filter = { Bundles = ( $(printf '"%s",' "${TARGET_BUNDLES[@]}" | sed 's/,$//') ); }; }
 EOF
     chmod 0644 "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.plist"
-    local conflicts="" candidate
-    local host_bundle="${PROFILE_BUNDLE:-${TARGET_BUNDLES[0]}}"
-    local -a candidates=(com.wolfox.gpspro com.wolfox.gpspro.lite)
-    if [ "$host_bundle" = "com.tahakom.mytahakom" ]; then
-        candidates+=(com.wolfox.gpspro.v3.control.full com.wolfox.gpspro.v3.lite.tahakom com.wolfox.gpspro.v3.full.tahakom)
-    else
-        candidates+=(com.wolfox.gpspro.v3.mosques.full com.wolfox.gpspro.v3.lite.mosques com.wolfox.gpspro.v3.full.mosques)
+    local conflicts=""
+    if [ -n "${WOLFOX_PROFILE:-}" ]; then
+        if [ "$PROFILE_BUNDLE" = "com.tahakom.mytahakom" ]; then
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.control.full, com.wolfox.gpspro.v3.lite.tahakom, com.wolfox.gpspro.v3.full.tahakom"
+        else
+            conflicts="com.wolfox.gpspro, com.wolfox.gpspro.lite, com.wolfox.gpspro.v3.mosques.full, com.wolfox.gpspro.v3.lite.mosques, com.wolfox.gpspro.v3.full.mosques"
+        fi
+        conflicts="$conflicts, com.wolfox.gpspro.v4.bluetooth.${PROFILE_BUNDLE}, com.wolfox.gpspro.v5.bluetooth.${PROFILE_BUNDLE}"
+        local candidate
+        local -a conflict_items
+        IFS=',' read -r -a conflict_items <<< "$conflicts"
+        conflicts=""
+        for candidate in "${conflict_items[@]}"; do
+            candidate="${candidate#${candidate%%[![:space:]]*}}"
+            if [ "$candidate" != "$PACKAGE_ID" ]; then
+                conflicts="${conflicts:+$conflicts, }$candidate"
+            fi
+        done
     fi
-    for generation in 3 4 5; do candidates+=("com.wolfox.gpspro.v${generation}.bluetooth.${host_bundle}"); done
-    for candidate in "${candidates[@]}"; do
-        if [ "$candidate" != "$PACKAGE_ID" ]; then conflicts="${conflicts:+$conflicts, }$candidate"; fi
-    done
     {
         printf 'Package: %s\n' "$PACKAGE_ID"
         if [ -n "$conflicts" ]; then printf 'Conflicts: %s\n' "$conflicts"; fi
@@ -240,7 +285,9 @@ EOF
     } > "$root/DEBIAN/control"
     cat > "$root/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
-# Loading the new library is left to the next user-initiated host launch.
+# Installation is non-disruptive; the user may perform a host reload manually.
+# Do not terminate or restart SpringBoard from package installation.
+echo "WolFox installed; user-initiated host launch/reload is required."
 exit 0
 EOF
     chmod 0644 "$root/DEBIAN/control"
@@ -258,4 +305,3 @@ EOF
 }
 make_deb rootful
 make_deb rootless
-

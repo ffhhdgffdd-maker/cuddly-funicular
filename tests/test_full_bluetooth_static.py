@@ -17,16 +17,18 @@ assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
 assert 'statusBtn' not in ui and '@"crown.fill"' in ui
 assert '_titleLabel.text = @"WolFox";' in ui
 assert 'chooseRecoveryMethodAndHide:YES' in ui and 'applyRecoveryMethod:method' in ui
-assert '- (void)toggleSpoofQuickPanel:(__unused UIButton *)sender { [self showUI]; }' in ui
+assert '- (void)showUI {' in ui
 assert 'self.spoofQuickPanel = [[' not in ui
 interface = ui.split('- (void)setupInterfacePage {')[1].split('- (void)changeRecoveryMethod')[0]
 assert 'تشغيل الموقع' not in interface and 'Bluetooth' not in interface and 'إعدادات الكاميرا' not in interface
-assert 'اختيار طريقة الإخفاء والاستعادة' in interface
+for token in ['WF_RECOVERY_ICON_ENABLED', 'WF_RECOVERY_VOLUME_ENABLED', 'WF_RECOVERY_SCREENSHOT_ENABLED']:
+    assert token in interface, token
 bt = ui.split('- (void)setupBluetoothPage {')[1].split('- (void)btProfileDeactivated')[0]
 for token in ['tag:8102', 'tag:8120', 'startBTScan', 'importBluetoothFile', 'exportBluetoothFile']:
     assert token in bt, token
-assert 'shouldShowPickerIcon' in ui and 'previewIsVisible' in camera
-for token in ['WFPhotoDelegateForCapture', 'WFTrackPhotoUploadTask', 'hook_AVCaptureSession_stopRunning']:
+assert 'WOLFOX_FEATURE_CAMERA=0' in (root/'build_v1_deb.sh').read_text()
+assert 'WFCameraLifecycle.m' not in (root/'build_v1_deb.sh').read_text().split('if [ "${WOLFOX_FEATURE_CAMERA:-0}" = "1" ]')[0]
+for token in ['WOLFOX_FEATURE_CAMERA', '#if WOLFOX_FEATURE_CAMERA']:
     assert token in hooks, token
 assert 'NSBluetoothAlwaysUsageDescription' in (root/'WFBluetoothScanSession.h').read_text()
 print('Feature ownership, real hooks, full-menu recovery and no host-exit wiring guards passed')
