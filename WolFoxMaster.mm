@@ -1306,8 +1306,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     servicesCard.layer.borderWidth = 1.0;
     servicesCard.layer.borderColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.34].CGColor;
     [_scrollDashboard addSubview:servicesCard];
-    // Map Card
-    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 10, w - 30, 330)];
+    // Reference layout: map style first, a large map, then search and actions.
+    UISegmentedControl *mapStyle = [[UISegmentedControl alloc] initWithItems:@[@"خريطة", @"قمر صناعي", @"هجين"]];
+    mapStyle.frame = CGRectMake(15, 8, w - 30, 40);
+    mapStyle.selectedSegmentIndex = [WolFoxProStore shared].mapStyle;
+    mapStyle.accessibilityLabel = @"نوع الخريطة";
+    [mapStyle addTarget:self action:@selector(referenceMapStyleChanged:) forControlEvents:UIControlEventValueChanged];
+    [_scrollDashboard addSubview:mapStyle];
+    CGFloat mapHeight = MIN(440.0, MAX(280.0, self.view.bounds.size.height * 0.48));
+    UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(0, 56, w, mapHeight)];
+    servicesCard.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 58);
     _mapCard = mapCard;
     mapCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     mapCard.layer.cornerRadius = 16; mapCard.clipsToBounds = YES;
@@ -1366,11 +1374,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     [servicesCard addSubview:self.searchBar];
     objc_setAssociatedObject(self, "_map_search_host", servicesCard, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     // Style Toggle Button
-    UIButton *styleBtn = [self mapCircleBtn:@"map.fill" x:10 y:mapCard.bounds.size.height - 54];
-    styleBtn.tintColor = [UIColor colorWithRed:0.35 green:0.74 blue:1.0 alpha:1.0];
-    styleBtn.accessibilityLabel = @"تغيير نمط الخريطة";
-    [styleBtn addTarget:self action:@selector(toggleMapStyle) forControlEvents:UIControlEventTouchUpInside];
-    [mapCard addSubview:styleBtn];
+
     
     // Real Location Button
     UIButton *realLocBtn = [self mapCircleBtn:@"person.fill" x:62 y:mapCard.bounds.size.height - 54];
@@ -1381,7 +1385,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 
     // A full-width action keeps expansion discoverable on narrow screens.
     UIButton *expandBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    expandBtn.frame = CGRectMake(15, CGRectGetMaxY(mapCard.frame) + 12, w - 30, 48);
+    expandBtn.frame = CGRectMake(15, CGRectGetMaxY(servicesCard.frame) + 12, w - 30, 48);
     expandBtn.backgroundColor = [WolFoxProTheme surfacePrimary];
     expandBtn.layer.cornerRadius = 14;
     expandBtn.layer.borderWidth = 1.0;
@@ -1498,6 +1502,14 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIView *locationControls = [self settingsCard:@"الموقع" y:cy height:122];
     [self addComponentSwitch:@"تفعيل تغيير الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:locationControls y:44];
     cy += 134;
+    UIButton *hideMain = [self royalBtn:@"إخفاء واجهة WolFox" icon:@"eye.slash" color:[WolFoxProTheme danger] y:cy];
+    [hideMain addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:hideMain];
+    cy += 67;
+    UIButton *toolsMain = [self royalBtn:@"المعرّف · Bluetooth · رفع الصور" icon:@"square.grid.2x2" color:[WolFoxProTheme accent] y:cy];
+    [toolsMain addTarget:self action:@selector(openUnifiedTools) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:toolsMain];
+    cy += 67;
     UIView *scheduleCard = [[UIView alloc] initWithFrame:CGRectMake(15, cy, w - 30, 72)];
     scheduleCard.backgroundColor = [WolFoxProTheme surfacePrimary];
     scheduleCard.layer.cornerRadius = 18;
@@ -2204,6 +2216,15 @@ static BOOL WFMasterProcessIsEligible(void) {
     _expandedMapContainer = nil;
     _expandedMapCloseButton = nil;
     UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, _mapCard);
+}
+
+- (void)openUnifiedTools { [self switchPage:1]; }
+
+- (void)referenceMapStyleChanged:(UISegmentedControl *)sender {
+    if (sender.selectedSegmentIndex < 0 || sender.selectedSegmentIndex > 2) return;
+    [WolFoxProStore shared].mapStyle = sender.selectedSegmentIndex;
+    self.mapView.mapType = (MKMapType)sender.selectedSegmentIndex;
+    [[WolFoxProStore shared] saveSettings];
 }
 
 - (void)toggleMapStyle {

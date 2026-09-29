@@ -25,7 +25,8 @@ assert 'versionLabel' in header and '_spoofStatusLabel' in header
 status = ui.split('- (void)refreshSpoofHeaderStatus {')[1].split('- (void)tabBtnPressed:')[0]
 assert 'isRuntimeLicenseValid' in status and 'bluetoothActive' not in status
 gps = ui.split('- (void)setupGPSPage {')[1].split('#pragma mark - Unified virtual camera')[0]
-assert 'Bluetooth' not in gps and 'tag:8102' not in gps
+assert 'tag:8102' not in gps
+assert '@selector(openUnifiedTools)' in gps
 assert 'اختيار هذا الموقع' not in ui
 assert 'handleMapTap:' in gps and 'showLocationHistory' in gps
 assert 'updateIntervalChanged:' in gps
