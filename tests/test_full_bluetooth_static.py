@@ -18,9 +18,12 @@ assert 'central != _btManager' in ui
 assert '(bluetooth ? WFBLEMaxFileBytes : WFIdentifierTransferMaxBytes) + 1' in ui
 assert 'setupSettingsPage' not in ui and 'openSettingsPage' not in ui
 assert 'statusBtn' not in ui
-header = ui.split('// Header contains only')[1].split('// 2. Top Tabs Bar')[0]
+header = ui.split('// Header keeps the product name')[1].split('// 2. Top Tabs Bar')[0]
 assert header.count('[UIButton buttonWithType:') == 1
 assert '@selector(requestHideTool)' in header
+assert 'closeTool.frame = CGRectMake(w - 54, safeTop, 44, 44);' in header
+assert '_titleLabel.textAlignment = NSTextAlignmentLeft;' in header
+assert '_titleLabel.textAlignment = NSTextAlignmentCenter;' not in header
 assert 'versionLabel' in header and '_spoofStatusLabel' in header
 status = ui.split('- (void)refreshSpoofHeaderStatus {')[1].split('- (void)tabBtnPressed:')[0]
 assert 'isRuntimeLicenseValid' in status and 'bluetoothActive' not in status

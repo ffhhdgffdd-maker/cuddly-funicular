@@ -446,13 +446,13 @@ static BOOL WFMasterProcessIsEligible(void) {
     _blurView.frame = self.view.bounds;
     [self.view addSubview:_blurView];
     
-    // Header contains only the product name, build version and license state.
+    // Header keeps the product name on the left, opposite the close button on the right.
     _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, headerHeight)];
     _header.backgroundColor = [WolFoxProTheme royalBackground];
     [self.view addSubview:_header];
-    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, safeTop, w - 32, 26)];
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, safeTop + 7, MAX(120, w - 96), 30)];
     _titleLabel.text = @"WolFox";
-    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:23 weight:UIFontWeightBold];
     _titleLabel.textColor = UIColor.whiteColor;
     [_header addSubview:_titleLabel];
