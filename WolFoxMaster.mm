@@ -464,7 +464,6 @@ static BOOL WFMasterProcessIsEligible(void) {
     
     _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, safeTop + 7, edition ? MAX(120.0, w - 190.0) : 135, 26)];
     _titleLabel.text = @"WolFox";
-    if (unifiedMasajid) _titleLabel.text = @"المساجد";
     _titleLabel.textAlignment = NSTextAlignmentLeft;
     _titleLabel.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBlack];
     _titleLabel.textColor = [WolFoxProTheme textPrimary];
@@ -783,11 +782,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupMasajidUnifiedPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
     CGFloat availableHeight = MAX(_scrollDashboard.bounds.size.height, 520.0);
-    CGFloat mapHeight = MIN(MAX(availableHeight * 0.58, 390.0), 520.0);
+    CGFloat mapHeight = MIN(MAX(availableHeight * 0.54, 360.0), 500.0);
     UIView *mapCard = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, mapHeight)];
     mapCard.backgroundColor = UIColor.blackColor;
     mapCard.clipsToBounds = YES;
     [_scrollDashboard addSubview:mapCard];
+
     UISegmentedControl *mapMode = [[UISegmentedControl alloc] initWithItems:@[@"خريطة", @"قمر صناعي"]];
     mapMode.frame = CGRectMake(12, 10, w - 24, 38);
     mapMode.selectedSegmentIndex = [WolFoxProStore shared].mapStyle == MKMapTypeSatellite ? 1 : 0;
@@ -796,53 +796,106 @@ static BOOL WFMasterProcessIsEligible(void) {
     mapMode.accessibilityLabel = @"اختيار نمط الخريطة";
     [mapMode addTarget:self action:@selector(masajidMapModeChanged:) forControlEvents:UIControlEventValueChanged];
     [mapCard addSubview:mapMode];
+
     self.mapView = [[MKMapView alloc] initWithFrame:CGRectMake(0, 58, w, mapHeight - 58)];
     self.mapView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.mapView.delegate = self;
     self.mapView.mapType = (MKMapType)[WolFoxProStore shared].mapStyle;
     [mapCard addSubview:self.mapView];
     UIButton *gps = [self mapCircleBtn:@"location.fill" x:18 y:78];
-    gps.tintColor = UIColor.whiteColor; gps.backgroundColor = [UIColor colorWithRed:0.08 green:0.78 blue:0.22 alpha:0.92];
+    gps.tintColor = UIColor.whiteColor;
+    gps.backgroundColor = [UIColor colorWithRed:0.08 green:0.78 blue:0.22 alpha:0.92];
     gps.accessibilityLabel = @"الموقع الحقيقي GPS";
-    [gps addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside]; [mapCard addSubview:gps];
+    [gps addTarget:self action:@selector(requestRealLocation) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:gps];
     UIButton *north = [self mapCircleBtn:@"location.north.fill" x:18 y:136];
-    north.tintColor = UIColor.whiteColor; north.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.92];
+    north.tintColor = UIColor.whiteColor;
+    north.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.92];
     north.accessibilityLabel = @"التمركز على الموقع المختار";
-    [north addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside]; [mapCard addSubview:north];
-    UIButton *camera = [self mapCircleBtn:@"camera.fill" x:18 y:mapHeight - 62];
-    camera.tintColor = UIColor.whiteColor; camera.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.58];
-    camera.accessibilityLabel = @"اختيار صورة للكاميرا الافتراضية";
-    [camera addTarget:self action:@selector(openVirtualCameraImagePicker:) forControlEvents:UIControlEventTouchUpInside]; [mapCard addSubview:camera];
+    [north addTarget:self action:@selector(centerMapOnPin) forControlEvents:UIControlEventTouchUpInside];
+    [mapCard addSubview:north];
     [self.mapView addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)]];
     if ([WolFoxProStore shared].spoofActive) [self updateMapPin:[WolFoxProStore shared].currentFakeCoords]; else [self showRealLocation];
-    CGFloat y = mapHeight + 12.0;
-    UIButton *(^addAction)(NSString *, UIColor *, NSString *, SEL) = ^UIButton *(NSString *title, UIColor *color, NSString *identifier, SEL selector) {
+
+    CGFloat y = mapHeight + 14.0;
+    CGFloat gap = 10.0;
+    CGFloat buttonWidth = (w - 30.0 - gap) / 2.0;
+    void (^addSection)(NSString *, NSString *, UIColor *, NSInteger, CGFloat, CGFloat) = ^(NSString *title, NSString *identifier, UIColor *color, NSInteger page, CGFloat x, CGFloat top) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.frame = CGRectMake(15, y, w - 30, 58); button.backgroundColor = color; button.layer.cornerRadius = 14.0;
-        [button setTitle:title forState:UIControlStateNormal]; [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        button.titleLabel.font = [WolFoxProTheme fontOfSize:15 weight:UIFontWeightBold]; button.accessibilityIdentifier = identifier;
-        [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside]; [_scrollDashboard addSubview:button]; return button;
+        button.frame = CGRectMake(x, top, buttonWidth, 58);
+        button.backgroundColor = color;
+        button.layer.cornerRadius = 14.0;
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        button.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
+        button.accessibilityIdentifier = identifier;
+        button.tag = page;
+        [button addTarget:self action:@selector(masajidSectionPressed:) forControlEvents:UIControlEventTouchUpInside];
+        [_scrollDashboard addSubview:button];
     };
-    UIButton *search = addAction(@"ابحث عن موقع", [UIColor colorWithWhite:0.22 alpha:1.0], @"masajid.search", @selector(masajidSearchPressed));
-    search.frame = CGRectMake(15, y, (w - 45.0) / 2.0, 58);
-    UIButton *favorites = addAction(@"المفضلة", [UIColor colorWithRed:0.68 green:0.22 blue:0.92 alpha:1.0], @"masajid.favorites", @selector(showSavedLocations));
-    favorites.frame = CGRectMake(CGRectGetMaxX(search.frame) + 15, y, search.bounds.size.width, 58); y += 70;
-    UIButton *hide = addAction(@"إخفاء زر الأداة", [WolFoxProTheme danger], @"masajid.hide", @selector(requestHideTool)); hide.frame = CGRectMake(15, y, w - 30, 58); y += 70;
-    UIView *switchCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 132)]; switchCard.backgroundColor = [WolFoxProTheme surfacePrimary]; switchCard.layer.cornerRadius = 16.0; [_scrollDashboard addSubview:switchCard];
-    [self addComponentSwitch:@"تفعيل تغيير الموقع" tag:8100 on:[WolFoxProStore shared].spoofActive card:switchCard y:6];
-    [self addComponentSwitch:@"تفعيل زر رفع الصور" tag:8103 on:[WFVirtualCameraManager shared].enabled card:switchCard y:68]; y += 144;
-    UIButton *device = addAction(@"تغيير معرّف الجهاز", [UIColor colorWithRed:1.0 green:0.55 blue:0.04 alpha:1.0], @"masajid.device-id", @selector(copyDeviceUDID)); device.frame = CGRectMake(15, y, w - 30, 58); y += 70;
-    UIButton *choose = addAction(@"اختر هذا الموقع", [UIColor colorWithRed:0.04 green:0.48 blue:0.96 alpha:1.0], @"masajid.choose-location", @selector(masajidChooseCurrentLocation)); choose.frame = CGRectMake(15, y, w - 30, 58);
-    y += 82;
+
+    UILabel *locationTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 28)];
+    locationTitle.text = @"الموقع";
+    locationTitle.textAlignment = NSTextAlignmentRight;
+    locationTitle.textColor = [WolFoxProTheme textPrimary];
+    locationTitle.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
+    [_scrollDashboard addSubview:locationTitle];
+    y += 36;
+    UIButton *search = [UIButton buttonWithType:UIButtonTypeSystem];
+    search.frame = CGRectMake(15, y, buttonWidth, 52);
+    search.backgroundColor = [WolFoxProTheme surfacePrimary];
+    search.layer.cornerRadius = 13.0;
+    [search setTitle:@"البحث" forState:UIControlStateNormal];
+    [search setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
+    search.accessibilityIdentifier = @"masajid.location.search";
+    [search addTarget:self action:@selector(masajidSearchPressed) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:search];
+    UIButton *favorites = [UIButton buttonWithType:UIButtonTypeSystem];
+    favorites.frame = CGRectMake(CGRectGetMaxX(search.frame) + gap, y, buttonWidth, 52);
+    favorites.backgroundColor = [WolFoxProTheme surfacePrimary];
+    favorites.layer.cornerRadius = 13.0;
+    [favorites setTitle:@"المفضلة" forState:UIControlStateNormal];
+    [favorites setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
+    favorites.accessibilityIdentifier = @"masajid.location.favorites";
+    [favorites addTarget:self action:@selector(showSavedLocations) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:favorites];
+    y += 62;
+    UIButton *history = [UIButton buttonWithType:UIButtonTypeSystem];
+    history.frame = CGRectMake(15, y, w - 30, 48);
+    history.backgroundColor = [[WolFoxProTheme accent] colorWithAlphaComponent:0.16];
+    history.layer.cornerRadius = 13.0;
+    [history setTitle:@"التاريخ والمسارات المحفوظة" forState:UIControlStateNormal];
+    [history setTitleColor:[WolFoxProTheme textPrimary] forState:UIControlStateNormal];
+    history.accessibilityIdentifier = @"masajid.location.history";
+    [history addTarget:self action:@selector(showSavedRoutes) forControlEvents:UIControlEventTouchUpInside];
+    [_scrollDashboard addSubview:history];
+    y += 62;
+
+    UIView *gpsCard = [[UIView alloc] initWithFrame:CGRectMake(15, y, w - 30, 76)];
+    gpsCard.backgroundColor = [WolFoxProTheme surfacePrimary];
+    gpsCard.layer.cornerRadius = 14.0;
+    [_scrollDashboard addSubview:gpsCard];
+    [self addComponentSwitch:@"تفعيل إعدادات GPS" tag:8100 on:[WolFoxProStore shared].spoofActive card:gpsCard y:10];
+    y += 88;
+
     UILabel *sectionsTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 28)];
-    sectionsTitle.text = @"أقسام الإدارة"; sectionsTitle.textAlignment = NSTextAlignmentRight; sectionsTitle.textColor = [WolFoxProTheme textPrimary]; sectionsTitle.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
-    [_scrollDashboard addSubview:sectionsTitle]; y += 38;
-    CGFloat sectionWidth = (w - 45.0) / 2.0;
-    UIButton *bluetoothSection = addAction(@"Bluetooth", [UIColor colorWithRed:0.18 green:0.70 blue:0.86 alpha:1.0], @"masajid.bluetooth-management", @selector(openBluetoothFromHeader:)); bluetoothSection.frame = CGRectMake(15, y, sectionWidth, 54);
-    UIButton *cameraSection = addAction(@"الكاميرا", [WolFoxProTheme accent], @"masajid.camera-settings", @selector(openCameraSettings)); cameraSection.frame = CGRectMake(CGRectGetMaxX(bluetoothSection.frame) + 15, y, sectionWidth, 54); y += 66;
-    UIButton *interfaceSection = addAction(@"الإخفاء والاستعادة", [UIColor colorWithRed:0.46 green:0.36 blue:0.82 alpha:1.0], @"masajid.interface-settings", @selector(openInterfacePage)); interfaceSection.frame = CGRectMake(15, y, sectionWidth, 54);
-    UIButton *routesSection = addAction(@"المسارات المحفوظة", [UIColor colorWithRed:0.20 green:0.62 blue:0.34 alpha:1.0], @"masajid.saved-routes", @selector(showSavedRoutes)); routesSection.frame = CGRectMake(CGRectGetMaxX(interfaceSection.frame) + 15, y, sectionWidth, 54);
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 82);
+    sectionsTitle.text = @"الأقسام";
+    sectionsTitle.textAlignment = NSTextAlignmentRight;
+    sectionsTitle.textColor = [WolFoxProTheme textPrimary];
+    sectionsTitle.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
+    [_scrollDashboard addSubview:sectionsTitle];
+    y += 36;
+    addSection(@"المعرف", @"masajid.identifier-section", [UIColor colorWithRed:1.0 green:0.55 blue:0.04 alpha:1.0], 1, 15, y);
+    addSection(@"Bluetooth", @"masajid.bluetooth-section", [UIColor colorWithRed:0.18 green:0.70 blue:0.86 alpha:1.0], 2, 15 + buttonWidth + gap, y);
+    y += 68;
+    addSection(@"الكاميرا", @"masajid.camera-section", [WolFoxProTheme accent], 3, 15, y);
+    addSection(@"WolFox", @"masajid.wolfox-section", [UIColor colorWithRed:0.46 green:0.36 blue:0.82 alpha:1.0], 4, 15 + buttonWidth + gap, y);
+    y += 76;
+    _scrollDashboard.contentSize = CGSizeMake(w, y);
+}
+
+- (void)masajidSectionPressed:(UIButton *)button {
+    [self switchPage:button.tag];
 }
 - (void)masajidMapModeChanged:(UISegmentedControl *)control {
     MKMapType type = control.selectedSegmentIndex == 1 ? MKMapTypeSatellite : MKMapTypeStandard;
