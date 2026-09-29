@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-cd "${0%/*}" || exit 1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
 pattern_count=0
 expect_pattern() {
     local label="$1" pattern="$2" file="${3:-.}"
