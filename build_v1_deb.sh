@@ -229,8 +229,14 @@ python3 "$PROJECT_DIR/tools/verify_macho_bindings.py" "$OUTPUT_DYLIB"
 
 make_deb() {
     local mode="$1" root="$BUILD_DIR/pkg-$1" prefix=""
+    local package_arch="iphoneos-arm"
     rm -rf "$root"; mkdir -p "$root/DEBIAN"
-    if [ "$mode" = "rootless" ]; then prefix="$root/var/jb"; else prefix="$root"; fi
+    if [ "$mode" = "rootless" ]; then
+        prefix="$root/var/jb"
+        package_arch="iphoneos-arm64"
+    else
+        prefix="$root"
+    fi
     mkdir -p "$prefix/Library/MobileSubstrate/DynamicLibraries"
     cp "$OUTPUT_DYLIB" "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.dylib"
     chmod 0644 "$prefix/Library/MobileSubstrate/DynamicLibraries/$PRODUCT_NAME.dylib"
@@ -263,7 +269,7 @@ EOF
         cat <<EOF
 Name: $PACKAGE_TITLE
 Version: $VERSION
-Architecture: iphoneos-arm
+Architecture: $package_arch
 Depends: firmware (>= 15.8)
 Description: $PACKAGE_TITLE
 Maintainer: WFX
