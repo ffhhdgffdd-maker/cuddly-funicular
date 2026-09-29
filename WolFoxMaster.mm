@@ -4543,9 +4543,9 @@ static BOOL WFMasterProcessIsEligible(void) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf || !WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
         if (strongSelf.lastSystemVolumeNotificationTime >= candidateTime - 0.03) return;
-        NSTimeInterval now = NSDate.timeIntervalSinceReferenceDate;
-        if (now - strongSelf.lastFallbackVolumePulseTime < 0.18) return;
-        strongSelf.lastFallbackVolumePulseTime = now;
+        // Deduplicate KVO and button-hook delivery without dropping rapid 100–150 ms presses.
+        if (candidateTime - strongSelf.lastFallbackVolumePulseTime < 0.08) return;
+        strongSelf.lastFallbackVolumePulseTime = candidateTime;
         [strongSelf recordVolumeButtonPress];
     });
 }
