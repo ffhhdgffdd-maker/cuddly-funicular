@@ -28,7 +28,9 @@ assert 'Bluetooth' not in gps and 'tag:8102' not in gps
 assert 'اختيار هذا الموقع' not in ui
 assert 'handleMapTap:' in gps and 'showLocationHistory' in gps
 assert 'updateIntervalChanged:' in gps
-assert '@[@0, @1, @3, @2, @4]' in ui  # Bluetooth section stays reachable in Full.
+assert 'NSArray *tabPages = @[@0, @1, @4];' in ui  # New design has three primary sections.
+assert '- (void)openBluetoothTool { [self switchPage:2]; }' in ui  # Bluetooth remains reachable from Tools.
+assert '- (void)openCameraTool { [self switchPage:3]; }' in ui  # Camera remains reachable from Tools.
 assert 'setupSaudiPlacesMapPage' not in ui
 camera_page = ui.split('- (void)setupVirtualCameraCardAtY:')[1].split('- (void)selectVirtualCameraImage')[0]
 assert 'pickerIconEnabled' in camera_page
