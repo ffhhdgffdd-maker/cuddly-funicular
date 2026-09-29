@@ -2893,29 +2893,43 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)setupToolsPage {
     CGFloat w = _scrollDashboard.bounds.size.width;
-    UILabel *heading = [[UILabel alloc] initWithFrame:CGRectMake(16, 16, w - 32, 28)];
-    heading.text = @"الأدوات";
+    CGFloat y = 14;
+
+    UILabel *heading = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 30)];
+    heading.text = @"أدوات WolFox";
     heading.textAlignment = NSTextAlignmentRight;
     heading.textColor = [WolFoxProTheme textPrimary];
     heading.font = [WolFoxProTheme fontOfSize:20 weight:UIFontWeightBold];
     [_scrollDashboard addSubview:heading];
-    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(16, 48, w - 32, 28)];
-    hint.text = @"اختر الأداة التي تريد إدارتها.";
+    y += 40;
+
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 34)];
+    hint.text = @"كل وظيفة داخل قسم مستقل — بدون تكرار الإعدادات.";
     hint.textAlignment = NSTextAlignmentRight;
     hint.textColor = [WolFoxProTheme textSecondary];
-    hint.font = [WolFoxProTheme fontOfSize:13 weight:UIFontWeightRegular];
+    hint.font = [WolFoxProTheme fontOfSize:12.5 weight:UIFontWeightMedium];
     [_scrollDashboard addSubview:hint];
-    CGFloat y = 88;
+    y += 48;
+
 #if WOLFOX_FEATURE_IDENTIFIER
-    [_scrollDashboard addSubview:[self toolsSectionButton:@"المعرّف" subtitle:@"حفظ المعرّفات وتعديلها واستيرادها." icon:@"person.text.rectangle" y:y action:@selector(openIdentifierTool)]];
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"المعرّف" subtitle:@"UUID و IDFA و IDFV والاستيراد والتصدير" icon:@"person.text.rectangle.fill" y:y action:@selector(openIdentifierTool)]];
     y += 94;
 #endif
 #if WOLFOX_FEATURE_BLUETOOTH
-    [_scrollDashboard addSubview:[self toolsSectionButton:@"Bluetooth" subtitle:@"البحث والأجهزة المحفوظة والتشغيل." icon:@"antenna.radiowaves.left.and.right" y:y action:@selector(openBluetoothTool)]];
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"Bluetooth" subtitle:@"البحث، الحفظ، الاستيراد، التصدير والتشغيل" icon:@"antenna.radiowaves.left.and.right" y:y action:@selector(openBluetoothTool)]];
     y += 94;
 #endif
-    [_scrollDashboard addSubview:[self toolsSectionButton:@"الكاميرا" subtitle:@"الصورة المختارة وإعدادات التصوير." icon:@"camera" y:y action:@selector(openCameraTool)]];
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 98);
+    [_scrollDashboard addSubview:[self toolsSectionButton:@"رفع الصور والكاميرا" subtitle:@"اختيار صورة وتطبيق إعدادات الكاميرا الافتراضية" icon:@"photo.on.rectangle.angled" y:y action:@selector(openCameraTool)]];
+    y += 94;
+
+    UIView *quick = [self settingsCard:@"إجراءات سريعة" y:y height:186];
+    UIButton *interface = [self royalBtnInside:quick t:@"الإخفاء والإظهار" i:@"eye" c:[WolFoxProTheme accent] y:46];
+    [interface addTarget:self action:@selector(openInterfacePage) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *subscription = [self royalBtnInside:quick t:@"معلومات الاشتراك" i:@"checkmark.seal" c:[WolFoxProTheme accent] y:108];
+    [subscription addTarget:self action:@selector(showSubscriptionInfo) forControlEvents:UIControlEventTouchUpInside];
+    y += 204;
+
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 24);
 }
 
 - (void)setupIDPage {
