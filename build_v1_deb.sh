@@ -159,11 +159,10 @@ fi
 [ "${#TARGET_BUNDLES[@]}" -gt 0 ] || { echo "❌ لا توجد Bundle IDs صالحة؛ تم منع الحقن العام"; exit 1; }
 
 FILES=("WFCameraLifecycle.m" "WFMediaLifecycleHooks.mm" "WFRedactedLogger.m" "WFVirtualCameraManager.mm" "WolFoxProCellModel.m" "WolFoxProTheme.m" "WolFoxProStore.m" "WFSpoofScheduleManager.m" "WFLicenseClient.m" "WFActivationViewController.m" "WolFoxProHookManager.m" "WolFoxIntegrated.mm" "WolFoxMaster.mm")
-if [ "$WOLFOX_FEATURE_PROFILE" = "location-id" ] || [ "$WOLFOX_FEATURE_PROFILE" = "location-id-bluetooth" ]; then
-    FILES+=("WFIdentifierTransfer.m")
-fi
+# Identifier transfer and Bluetooth profile codec are implemented in the
+# existing WolFox sources; do not add non-existent standalone .m files.
 if [ "$WOLFOX_FEATURE_PROFILE" = "location-id-bluetooth" ]; then
-    FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m" "WFBluetoothProfileCodec.m")
+    FILES+=("WFBluetoothScanSession.m" "WFBluetoothDelegateProxy.m" "WFNetworkPairingStore.m")
 fi
 for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف مفقود: $file"; exit 1; }; done
 
