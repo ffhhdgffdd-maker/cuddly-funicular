@@ -7,7 +7,24 @@ cd "$PROJECT_DIR"
 
 # Runtime target: iOS 15.8 through iOS 27.0
 WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
+WOLFOX_FEATURE_PROFILE="${WOLFOX_FEATURE_PROFILE:-location-id-bluetooth}"
 VERSION="${WOLFOX_VERSION:-2.0.0}"
+
+case "$WOLFOX_FEATURE_PROFILE" in
+    location)
+        FEATURE_SUFFIX="Location"
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=0 -DWOLFOX_FEATURE_BLUETOOTH=0)
+        ;;
+    location-id)
+        FEATURE_SUFFIX="LocationIdentifier"
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=1 -DWOLFOX_FEATURE_BLUETOOTH=0)
+        ;;
+    location-id-bluetooth)
+        FEATURE_SUFFIX="LocationIdentifierBluetooth"
+        FEATURE_DEFINES=(-DWOLFOX_FEATURE_LOCATION=1 -DWOLFOX_FEATURE_IDENTIFIER=1 -DWOLFOX_FEATURE_BLUETOOTH=1)
+        ;;
+    *) echo "❌ ملف مميزات غير معروف: $WOLFOX_FEATURE_PROFILE"; exit 1 ;;
+esac
 if [ "$WOLFOX_EDITION" = "Lite" ]; then
     PRODUCT_NAME="WolFoxLite"
     PACKAGE_ID="com.wolfox.gpspro.lite"
@@ -17,6 +34,8 @@ else
     PACKAGE_ID="com.wolfox.gpspro"
     PACKAGE_TITLE="WolFox"
 fi
+PRODUCT_NAME="${PRODUCT_NAME}_${FEATURE_SUFFIX}"
+PACKAGE_ID="${PACKAGE_ID}.${WOLFOX_FEATURE_PROFILE//-/.}"
 
 # Version 3 profiles are isolated by package ID and MobileSubstrate filename.
 # A package targets exactly one application, including the two Lite and
@@ -144,6 +163,7 @@ for file in "${FILES[@]}"; do [ -f "$PROJECT_DIR/$file" ] || { echo "❌ ملف 
 
 COMMON_FLAGS=(-isysroot "$SDK_PATH" -I"$THEOS_INC" -I"$PROJECT_DIR" -I"$PROJECT_DIR/sdk_compat_headers" -include "$GENERATED_LICENSE_CONFIG" -miphoneos-version-min="$MIN_IOS" -fobjc-arc -fobjc-exceptions -fblocks -O2 -Wall -Wextra -Werror=return-type -Wno-deprecated-declarations -Wno-unused-parameter -Wno-unused-function)
 COMMON_FLAGS+=(-DWOLFOX_INTERFACE_VARIANT="$INTERFACE_VARIANT")
+COMMON_FLAGS+=("${FEATURE_DEFINES[@]}")
 BASE_LINK_FLAGS=(-fuse-ld=lld -isysroot "$SDK_PATH" -miphoneos-version-min="$MIN_IOS" -dynamiclib -install_name "@rpath/$PRODUCT_NAME.dylib" -Wl,-ObjC -Wl,-undefined,dynamic_lookup -framework UIKit -framework Foundation -framework CoreLocation -framework CoreBluetooth -framework MapKit -framework Security -framework Photos -framework PhotosUI -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework QuartzCore -framework AdSupport -framework WebKit -framework UserNotifications -lsqlite3)
 LINK_FLAGS=("${BASE_LINK_FLAGS[@]}")
 [ "$WOLFOX_EDITION" = "Lite" ] && COMMON_FLAGS+=(-DWOLFOX_LITE=1)
@@ -155,6 +175,7 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " $PACKAGE_TITLE v$VERSION — iOS 15.8 إلى iOS $MAX_TARGET_IOS"
 echo " SDK: $SDK_BASENAME"
+echo " Features: $WOLFOX_FEATURE_PROFILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"
