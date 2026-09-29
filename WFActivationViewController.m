@@ -10,6 +10,7 @@
 #import "WFRedactedLogger.h"
 
 @interface WFActivationViewController () <UITextFieldDelegate>
+@property (nonatomic, assign) BOOL didPresentCodePrompt;
 @property (nonatomic, strong) UIView *card;
 @property (nonatomic, strong) NSLayoutConstraint *cardCenterY;
 @property (nonatomic, strong) UITextField *codeField;
@@ -353,6 +354,48 @@
     ]];
     [self activationCodeEditingChanged:self.codeField];
     if (self.noticeMessage.length) [self showActivationError:self.noticeMessage];
+    self.card.hidden = YES;
+    self.view.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.35];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if (!self.didPresentCodePrompt) {
+        self.didPresentCodePrompt = YES;
+        [self presentCodePrompt];
+    }
+}
+
+- (void)presentCodePrompt {
+    if (self.presentedViewController) return;
+    self.card.hidden = YES;
+    UIAlertController *prompt = [UIAlertController alertControllerWithTitle:@"تفعيل WolFox" message:@"أدخل كود التفعيل:" preferredStyle:UIAlertControllerStyleAlert];
+    prompt.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    [prompt addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.placeholder = @"كود التفعيل";
+        field.text = self.codeField.text;
+        field.textAlignment = NSTextAlignmentRight;
+        field.keyboardType = UIKeyboardTypeASCIICapable;
+        field.autocorrectionType = UITextAutocorrectionTypeNo;
+        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        field.accessibilityLabel = @"كود التفعيل";
+    }];
+    __weak typeof(self) weakSelf = self;
+    [prompt addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *action) {
+        [prompt dismissViewControllerAnimated:YES completion:^{ [weakSelf closePressed]; }];
+    }]];
+    [prompt addAction:[UIAlertAction actionWithTitle:@"تفعيل" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        NSString *code = [weakSelf normalizedActivationCode:prompt.textFields.firstObject.text];
+        [prompt dismissViewControllerAnimated:YES completion:^{
+            if (!code.length) { [weakSelf presentCodePrompt]; return; }
+            weakSelf.codeField.text = code;
+            weakSelf.activateButton.enabled = YES;
+            weakSelf.card.hidden = NO;
+            weakSelf.card.alpha = 1;
+            [weakSelf activatePressed];
+        }];
+    }]];
+    [self presentViewController:prompt animated:YES completion:nil];
 }
 
 - (void)dealloc {
@@ -639,10 +682,8 @@
         if (success) {
             [self showToolPressed];
         } else {
-            [UIView animateWithDuration:0.18 animations:^{ self.card.alpha = 1.0; } completion:^(__unused BOOL finished) {
-                self.codeField.enabled = YES;
-                [self.codeField becomeFirstResponder];
-            }];
+            self.codeField.enabled = YES;
+            [alert dismissViewControllerAnimated:YES completion:^{ [self presentCodePrompt]; }];
         }
     }]];
     [self presentViewController:alert animated:YES completion:nil];
