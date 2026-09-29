@@ -833,7 +833,16 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self addComponentSwitch:@"تفعيل زر رفع الصور" tag:8103 on:[WFVirtualCameraManager shared].enabled card:switchCard y:68]; y += 144;
     UIButton *device = addAction(@"تغيير معرّف الجهاز", [UIColor colorWithRed:1.0 green:0.55 blue:0.04 alpha:1.0], @"masajid.device-id", @selector(copyDeviceUDID)); device.frame = CGRectMake(15, y, w - 30, 58); y += 70;
     UIButton *choose = addAction(@"اختر هذا الموقع", [UIColor colorWithRed:0.04 green:0.48 blue:0.96 alpha:1.0], @"masajid.choose-location", @selector(masajidChooseCurrentLocation)); choose.frame = CGRectMake(15, y, w - 30, 58);
-    _scrollDashboard.contentSize = CGSizeMake(w, y + 78);
+    y += 82;
+    UILabel *sectionsTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, y, w - 36, 28)];
+    sectionsTitle.text = @"أقسام الإدارة"; sectionsTitle.textAlignment = NSTextAlignmentRight; sectionsTitle.textColor = [WolFoxProTheme textPrimary]; sectionsTitle.font = [WolFoxProTheme fontOfSize:17 weight:UIFontWeightBold];
+    [_scrollDashboard addSubview:sectionsTitle]; y += 38;
+    CGFloat sectionWidth = (w - 45.0) / 2.0;
+    UIButton *bluetoothSection = addAction(@"Bluetooth", [UIColor colorWithRed:0.18 green:0.70 blue:0.86 alpha:1.0], @"masajid.bluetooth-management", @selector(openBluetoothFromHeader:)); bluetoothSection.frame = CGRectMake(15, y, sectionWidth, 54);
+    UIButton *cameraSection = addAction(@"الكاميرا", [WolFoxProTheme accent], @"masajid.camera-settings", @selector(openCameraSettings)); cameraSection.frame = CGRectMake(CGRectGetMaxX(bluetoothSection.frame) + 15, y, sectionWidth, 54); y += 66;
+    UIButton *interfaceSection = addAction(@"الإخفاء والاستعادة", [UIColor colorWithRed:0.46 green:0.36 blue:0.82 alpha:1.0], @"masajid.interface-settings", @selector(openInterfacePage)); interfaceSection.frame = CGRectMake(15, y, sectionWidth, 54);
+    UIButton *routesSection = addAction(@"المسارات المحفوظة", [UIColor colorWithRed:0.20 green:0.62 blue:0.34 alpha:1.0], @"masajid.saved-routes", @selector(showSavedRoutes)); routesSection.frame = CGRectMake(CGRectGetMaxX(interfaceSection.frame) + 15, y, sectionWidth, 54);
+    _scrollDashboard.contentSize = CGSizeMake(w, y + 82);
 }
 - (void)masajidMapModeChanged:(UISegmentedControl *)control {
     MKMapType type = control.selectedSegmentIndex == 1 ? MKMapTypeSatellite : MKMapTypeStandard;
@@ -3482,7 +3491,17 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)requestHideTool {
     [self cancelBTScan];
-    [[WolFoxController shared] chooseRecoveryMethodAndHide:YES];
+    if (self.presentedViewController) return;
+    UIAlertController *confirm = [UIAlertController alertControllerWithTitle:@"إخفاء الأداة؟"
+        message:@"سيتم إخفاء الواجهة الآن. يمكنك إظهارها بالطريقة التي ستختارها في الخطوة التالية."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [confirm addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [confirm addAction:[UIAlertAction actionWithTitle:@"متابعة الإخفاء" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
+        [confirm dismissViewControllerAnimated:YES completion:^{
+            [[WolFoxController shared] chooseRecoveryMethodAndHide:YES];
+        }];
+    }]];
+    [self presentViewController:confirm animated:YES completion:nil];
 }
 
 - (void)componentSwitchChanged:(UISwitch *)sender {
@@ -4691,8 +4710,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"كيف ستعيد إظهار WolFox؟"
         message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
         preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"تصوير الشاشة"];
-    NSArray<NSNumber *> *methods = @[@(WFRecoveryIcon), @(WFRecoveryVolume), @(WFRecoveryScreenshot)];
+    NSArray *titles = @[@"أيقونة GPS العائمة", @"أزرار الصوت", @"الأيقونة + أزرار الصوت", @"تصوير الشاشة"];
+    NSArray<NSNumber *> *methods = @[@(WFRecoveryIcon), @(WFRecoveryVolume), @(WFRecoveryBoth), @(WFRecoveryScreenshot)];
     for (NSInteger i = 0; i < titles.count; i++) {
         WFRecoveryMethod method = (WFRecoveryMethod)methods[i].integerValue;
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
@@ -5056,6 +5075,7 @@ static BOOL WFMasterProcessIsEligible(void) {
         [[WFVirtualCameraManager shared] setToolVisible:NO];
         [self refreshFloatingStatusIcon];
         [self restoreHostKeyWindow];
+        [self showRecoveryHint];
 #ifdef DEBUG
         WFLog(@"[WolFox][UI] dismiss_confirmed_volume_hook_stays_active");
 #endif
@@ -5135,7 +5155,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)showRecoveryHint {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, MAX(52, self.overlayWindow.safeAreaInsets.top + 12), self.overlayWindow.bounds.size.width - 40, 64)];
-    hint.text = WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"]);
+    hint.text = [NSString stringWithFormat:@"تم إخفاء الأداة بنجاح\n%@", WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"])];
     hint.numberOfLines = 2; hint.textAlignment = NSTextAlignmentCenter;
     hint.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     hint.textColor = [WolFoxProTheme textPrimary]; hint.backgroundColor = [WolFoxProTheme surfacePrimary];
