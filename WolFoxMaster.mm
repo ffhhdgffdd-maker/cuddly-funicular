@@ -3134,7 +3134,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 - (void)importIDProPage {
     [self.view endEditing:YES];
     UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"استيراد المعرّف" message:@"اختر المصدر. يُعرض المعرّف للمراجعة قبل حفظه وتفعيله." preferredStyle:UIAlertControllerStyleAlert];
-    [menu addAction:[UIAlertAction actionWithTitle:@"من ملف GPS Plus أو WolFox" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importIdentifierFile]; }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"من ملف WolFox" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importIdentifierFile]; }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"من الحافظة" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importIdentifierClipboard]; }]];
     if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"sa.gov.moia.mosques-2"])
         [menu addAction:[UIAlertAction actionWithTitle:@"من التطبيق الحالي" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) { [self importMosquesIdentifier]; }]];
@@ -3209,7 +3209,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
             return;
         }
     }
-    [self showIdentifierMessage:@"تعذر قراءة معرّف التطبيق الحالي. قد لا يكون محفوظًا أو متاحًا لهذه النسخة. اختر استيراد من ملف GPS Plus أو أدخل UUID يدويًا."];
+    [self showIdentifierMessage:@"تعذر قراءة معرّف التطبيق الحالي. قد لا يكون محفوظًا أو متاحًا لهذه النسخة. اختر استيراد من ملف WolFox أو أدخل UUID يدويًا."];
 }
 
 - (void)copyDeviceUDID {
