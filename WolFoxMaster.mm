@@ -4954,8 +4954,12 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         [[WFVirtualCameraManager shared] setToolVisible:NO];
         [self refreshFloatingStatusIcon];
         [self restoreHostKeyWindow];
+        self.overlayWindow.hidden = YES;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self prepareMenuRecoveryGesture];
+        });
 #ifdef DEBUG
-        WFLog(@"[WolFox][UI] dismiss_confirmed_volume_hook_stays_active");
+        WFLog(@"[WolFox][UI] dismiss_hidden_recovery_gesture_armed");
 #endif
     }]; 
 }
