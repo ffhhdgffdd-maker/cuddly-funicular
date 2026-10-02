@@ -103,6 +103,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 @property (nonatomic, assign) NSTimeInterval lastFallbackVolumePulseTime;
 @property (nonatomic, assign) NSInteger sequentialTapCount;
 @property (nonatomic, assign) NSTimeInterval lastSequentialTapTime;
+@property (nonatomic, assign) NSTimeInterval lastMenuRecoveryActionTime;
 + (instancetype)shared;
 - (void)showUI;
 - (void)closeMainPanelOnly;
@@ -4461,6 +4462,9 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateEnded || !self.mainVC.view.hidden || self.mainVC.presentedViewController) return;
+    NSTimeInterval now = CACurrentMediaTime();
+    if (now - self.lastMenuRecoveryActionTime < 0.60) return;
+    self.lastMenuRecoveryActionTime = now;
     // الاستعادة لا تعتمد على موضع النقر؛ أي مكان صالح بعد اكتمال عدد النقرات.
     [self showUI];
 }
@@ -4821,12 +4825,15 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 }
 
 - (void)handleThreeSequentialTaps:(UITapGestureRecognizer *)gesture {
-    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     BOOL taps = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
     if (!WFInterfaceTripleTapAllowed(WOLFOX_INTERFACE_VARIANT, taps)) return;
-    if (gesture.state != UIGestureRecognizerStateEnded) return;
+    if (gesture.state != UIGestureRecognizerStateEnded || !self.mainVC.view.hidden || self.mainVC.presentedViewController) return;
+    NSTimeInterval now = CACurrentMediaTime();
+    if (now - self.lastMenuRecoveryActionTime < 0.60) return;
+    self.lastMenuRecoveryActionTime = now;
     // لا تحصر الاستعادة في منتصف الشاشة؛ استجب للنقرات في أي موضع.
-    [self toggleUI];
+    [self showUI];
 }
 - (void)toggleUI {
 #ifdef DEBUG
