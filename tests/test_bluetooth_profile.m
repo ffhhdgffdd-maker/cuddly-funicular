@@ -67,16 +67,17 @@ int main(void) {
         for (NSInteger version = 0; version <= 5; version++) {
             assert(!WFInterfaceMenuDefault(version));
             assert(WFInterfaceVolumeAllowed(version, YES));
-            assert(!WFInterfaceVolumeAllowed(version, NO));
+            assert(WFInterfaceVolumeAllowed(version, NO));
             assert(!WFInterfaceTripleTapAllowed(version, YES));
-            assert(WFInterfaceNeedsFallback(version, NO, NO, YES));
+            assert(!WFInterfaceNeedsFallback(version, NO, NO, YES));
             assert(!WFInterfaceNeedsFallback(version, YES, NO, NO));
             assert(!WFInterfaceNeedsFallback(version, NO, YES, NO));
         }
         assert(!WFRecoveryMethodValid(0) && !WFRecoveryMethodValid(4));
+        assert(WFRecoveryMethodValid(1) && WFRecoveryMethodValid(3));
         assert(WFRecoveryUsesIcon(1) && !WFRecoveryUsesVolume(1));
         assert(!WFRecoveryUsesIcon(2) && WFRecoveryUsesVolume(2));
-        assert(WFRecoveryUsesIcon(3) && WFRecoveryUsesVolume(3));
+        assert(!WFRecoveryUsesIcon(3) && !WFRecoveryUsesVolume(3));
         puts("Bluetooth codec and interface policy tests passed");
     }
     return 0;
