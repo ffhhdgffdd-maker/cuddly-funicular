@@ -1,5 +1,8 @@
 #import "WFRedactedLogger.h"
 #import "WFSpoofScheduleManager.h"
+
+// Temporary launch-diagnostic build: keep schedule code compiled but do not start it.
+#define WOLFOX_DIAGNOSTIC_DISABLE_SCHEDULE 1
 #import <UIKit/UIKit.h>
 #import <math.h>
 #import "WolFoxProStore.h"
@@ -36,11 +39,16 @@
 }
 
 - (void)start {
+#if WOLFOX_DIAGNOSTIC_DISABLE_SCHEDULE
+    // Diagnostic build only: isolate launch crashes from schedule startup.
+    return;
+#else
     // Defer the first evaluation until WolFoxController has finished
     // registering its observers and the main run loop is active.
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updateTimerState];
     });
+#endif
 }
 
 - (BOOL)hasCommittedSchedule {

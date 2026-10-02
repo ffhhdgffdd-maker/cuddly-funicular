@@ -26,6 +26,9 @@
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import "WolFoxProHookManager.h"
+
+// Temporary launch-diagnostic build: keep hook code compiled but do not install it.
+#define WOLFOX_DIAGNOSTIC_DISABLE_LOCATION_HOOK 1
 #import "WolFoxProStore.h"
 #if WOLFOX_FEATURE_BLUETOOTH
 #import "WFBluetoothProfileCodec.h"
@@ -581,7 +584,9 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
 #ifdef DEBUG
     WFLog(@"[WolFox][BOOT] dylib_loaded process=%@", NSProcessInfo.processInfo.processName);
 #endif
+#if !WOLFOX_DIAGNOSTIC_DISABLE_LOCATION_HOOK
     [[WolFoxProHookManager shared] installHooks];
+#endif
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{
