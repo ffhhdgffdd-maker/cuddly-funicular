@@ -35,7 +35,13 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)start { [self updateTimerState]; }
+- (void)start {
+    // Defer the first evaluation until WolFoxController has finished
+    // registering its observers and the main run loop is active.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateTimerState];
+    });
+}
 
 - (BOOL)hasCommittedSchedule {
     WolFoxProStore *store = [WolFoxProStore shared];
