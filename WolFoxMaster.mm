@@ -68,6 +68,11 @@ static BOOL WFMasterProcessIsEligible(void) {
     return bundleID.length && ![bundleID hasPrefix:@"com.apple."] && ![process containsString:@"springboard"] && ![process containsString:@"backboard"];
 }
 
+static NSUInteger WFConfiguredMenuTapCount(void) {
+    NSInteger value = [[NSUserDefaults standardUserDefaults] integerForKey:@"WF_MENU_TAP_COUNT"];
+    return (value == 2 || value == 5) ? (NSUInteger)value : 3U;
+}
+
 @interface WolFoxController : NSObject <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) WolFoxMainViewController *mainVC;
 @property (nonatomic, strong) UIButton *floatingIcon;
@@ -3305,6 +3310,15 @@ static BOOL WFMasterProcessIsEligible(void) {
         return YES;
     }];
 }
+- (void)screenTapCountChanged:(UISegmentedControl *)control {
+    NSArray<NSNumber *> *values = @[@2, @3, @5];
+    if (control.selectedSegmentIndex < 0 || control.selectedSegmentIndex >= (NSInteger)values.count) return;
+    NSInteger count = values[control.selectedSegmentIndex].integerValue;
+    [[NSUserDefaults standardUserDefaults] setInteger:count forKey:@"WF_MENU_TAP_COUNT"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [[WolFoxController shared] prepareMenuRecoveryGesture];
+    [self showToast:[NSString stringWithFormat:@"تم حفظ الاستعادة بعد %ld نقرات على الشاشة", (long)count]];
+}
 
 - (void)floatingIconSizeChanged:(UISegmentedControl *)control {
     [[NSUserDefaults standardUserDefaults] setInteger:control.selectedSegmentIndex forKey:@"WF_FLOATING_STATUS_SIZE_INDEX"];
@@ -3430,7 +3444,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)setupInterfacePage {
     CGFloat w = _scrollDashboard.bounds.size.width, y = 12;
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:368];
+    UIView *card = [self settingsCard:@"الواجهة والتحكم" y:y height:430];
     UILabel *current = [[UILabel alloc] initWithFrame:CGRectMake(15, 44, card.bounds.size.width - 30, 60)];
     current.text = WFRecoveryDescription([defaults integerForKey:@"WF_RECOVERY_METHOD"]);
     current.textColor = [WolFoxProTheme textSecondary]; current.numberOfLines = 3;
@@ -3438,20 +3452,39 @@ static BOOL WFMasterProcessIsEligible(void) {
     [card addSubview:current];
     UIButton *method = [self royalBtnInside:card t:@"اختيار طريقة الإخفاء والاستعادة" i:@"hand.tap" c:[WolFoxProTheme accent] y:112];
     [method addTarget:self action:@selector(changeRecoveryMethod) forControlEvents:UIControlEventTouchUpInside];
+    UILabel *tapLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 160, card.bounds.size.width - 30, 20)];
+    tapLabel.text = @"عدد نقرات الشاشة للاستعادة";
+    tapLabel.textColor = [WolFoxProTheme textSecondary];
+    tapLabel.textAlignment = NSTextAlignmentRight;
+    tapLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
+    [card addSubview:tapLabel];
+    UISegmentedControl *tapCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
+    tapCount.frame = CGRectMake(15, 182, card.bounds.size.width - 30, 38);
+    NSUInteger savedTapCount = WFConfiguredMenuTapCount();
+    tapCount.selectedSegmentIndex = savedTapCount == 2 ? 0 : savedTapCount == 5 ? 2 : 1;
+    tapCount.accessibilityLabel = @"عدد نقرات الشاشة لاستعادة WolFox";
+    [tapCount addTarget:self action:@selector(screenTapCountChanged:) forControlEvents:UIControlEventValueChanged];
+    [card addSubview:tapCount];
+    UILabel *volumeLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 224, card.bounds.size.width - 30, 20)];
+    volumeLabel.text = @"عدد ضغطات الصوت للاستعادة";
+    volumeLabel.textColor = [WolFoxProTheme textSecondary];
+    volumeLabel.textAlignment = NSTextAlignmentRight;
+    volumeLabel.font = [WolFoxProTheme fontOfSize:12 weight:UIFontWeightSemibold];
+    [card addSubview:volumeLabel];
     UISegmentedControl *pressCount = [[UISegmentedControl alloc] initWithItems:@[@"ضغطتان", @"٣ ضغطات", @"٥ ضغطات"]];
-    pressCount.frame = CGRectMake(15, 182, card.bounds.size.width - 30, 38);
+    pressCount.frame = CGRectMake(15, 246, card.bounds.size.width - 30, 38);
     NSInteger count = [defaults integerForKey:@"WF_VOLUME_PRESS_COUNT"];
     pressCount.selectedSegmentIndex = count == 2 ? 0 : count == 5 ? 2 : 1;
     pressCount.accessibilityLabel = @"عدد ضغطات الصوت لاستعادة WolFox";
     [pressCount addTarget:self action:@selector(volumePressCountChanged:) forControlEvents:UIControlEventValueChanged];
     [card addSubview:pressCount];
-    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:232 action:^(UISwitch *toggle) {
+    [card addSubview:[self royalSwitchInside:card t:@"فتح WolFox تلقائيًا عند تشغيل التطبيق" i:@"rectangle.on.rectangle" isOn:[defaults boolForKey:WFMenuVisibleOnLaunchKey] y:296 action:^(UISwitch *toggle) {
         [defaults setBool:toggle.on forKey:WFMenuVisibleOnLaunchKey];
         [self showToast:toggle.on ? @"تم حفظ فتح WolFox عند تشغيل التطبيق" : @"تم إيقاف الفتح التلقائي لـ WolFox"];
     }]];
-    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:306];
+    UIButton *reset = [self royalBtnInside:card t:@"إعادة موضع أيقونة WolFox" i:@"arrow.counterclockwise" c:[WolFoxProTheme accent] y:370];
     [reset addTarget:self action:@selector(resetFloatingIconPosition) forControlEvents:UIControlEventTouchUpInside];
-    y += 380;
+    y += 442;
     UIButton *hide = [self royalBtnInside:_scrollDashboard t:@"إخفاء الأداة" i:@"eye.slash" c:[WolFoxProTheme accent] y:y];
     [hide addTarget:self action:@selector(requestHideTool) forControlEvents:UIControlEventTouchUpInside];
     _scrollDashboard.contentSize = CGSizeMake(w, y + 80);
@@ -4400,7 +4433,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) return;
     [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
     UITapGestureRecognizer *gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleHostMenuRecoveryTap:)];
-    gesture.numberOfTapsRequired = 3;
+    gesture.numberOfTapsRequired = WFConfiguredMenuTapCount();
     gesture.numberOfTouchesRequired = 1;
     gesture.cancelsTouchesInView = NO;
     gesture.delaysTouchesBegan = NO;
@@ -4744,7 +4777,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     
     // إظهار الواجهة بثلاث نقرات متتابعة بإصبع واحد داخل منتصف الشاشة
     UITapGestureRecognizer *tripleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleThreeSequentialTaps:)];
-    tripleTap.numberOfTapsRequired = 3;
+    tripleTap.numberOfTapsRequired = WFConfiguredMenuTapCount();
     tripleTap.numberOfTouchesRequired = 1;
     tripleTap.cancelsTouchesInView = NO;
     [self.overlayWindow addGestureRecognizer:tripleTap];
