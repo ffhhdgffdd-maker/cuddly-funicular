@@ -33,6 +33,8 @@
 #define WF_TWEAK_VERSION @"2.0.0-Full"
 #endif
 
+#endif /* WF_TWEAK_VERSION */
+
 #ifndef WF_APP_VERSION
 #define WF_APP_VERSION WF_TWEAK_VERSION
 #endif
@@ -45,5 +47,4 @@
 #define WF_WOLFOX_PACKAGE_ID @"com.wolfox.gpspro"
 #endif
 
-#endif /* WF_TWEAK_VERSION */
 #endif /* WF_LICENSE_CONFIG_H */
