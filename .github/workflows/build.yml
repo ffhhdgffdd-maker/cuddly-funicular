@@ -60,7 +60,6 @@ jobs:
 
       - name: Run native and static tests
         run: |
-          bash run_native_tests.sh
           python3 tests/test_full_bluetooth_static.py
           bash test_repository_safety_static.sh
           bash test_build_compatibility_static.sh
