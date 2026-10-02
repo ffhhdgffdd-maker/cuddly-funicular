@@ -9,6 +9,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
+#import <math.h>
 #import "WolFoxProHookManager.h"
 #import "WolFoxProStore.h"
 #import "WFBluetoothProfileCodec.h"
@@ -77,14 +78,14 @@ static IMP orig_advertisingIdentifier;
 static NSUUID *hook_advertisingIdentifier(ASIdentifierManager *self, SEL _cmd) {
     NSUUID *uuid = WFActivePublicIdentifier();
     if (uuid) return uuid;
-    return ((NSUUID *(*)(id, SEL))orig_advertisingIdentifier)(self, _cmd);
+    return orig_advertisingIdentifier ? ((NSUUID *(*)(id, SEL))orig_advertisingIdentifier)(self, _cmd) : nil;
 }
 
 static IMP orig_identifierForVendor;
 static NSUUID *hook_identifierForVendor(UIDevice *self, SEL _cmd) {
     NSUUID *uuid = WFActivePublicIdentifier();
     if (uuid) return uuid;
-    return ((NSUUID *(*)(id, SEL))orig_identifierForVendor)(self, _cmd);
+    return orig_identifierForVendor ? ((NSUUID *(*)(id, SEL))orig_identifierForVendor)(self, _cmd) : nil;
 }
 
 // flutter_udid 3.0.1 reads its cached UUID through SAMKeychain. Keep the
@@ -105,13 +106,13 @@ static NSString *hook_SAMKeychain_passwordForService(id self, SEL _cmd, NSString
 static IMP orig_CLLocation_coordinate;
 static CLLocationCoordinate2D hook_CLLocation_coordinate(CLLocation *self, SEL _cmd) {
     if (objc_getAssociatedObject(self, &WFSpoofedLocationAssociationKey)) {
-        return ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd);
+        return orig_CLLocation_coordinate ? ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd) : CLLocationCoordinate2DMake(NAN, NAN);
     }
     WolFoxProStore *store = [WolFoxProStore shared];
     if (WFGate(store.spoofActive)) {
         CLLocationCoordinate2D fake = store.currentFakeCoords;
         if (!CLLocationCoordinate2DIsValid(fake)) {
-            return ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd);
+            return orig_CLLocation_coordinate ? ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd) : CLLocationCoordinate2DMake(NAN, NAN);
         }
         if (store.jitterActive) {
             fake.latitude  += ((double)arc4random_uniform(100) - 50.0) / 2000000.0;
@@ -119,7 +120,7 @@ static CLLocationCoordinate2D hook_CLLocation_coordinate(CLLocation *self, SEL _
         }
         return fake;
     }
-    return ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd);
+    return orig_CLLocation_coordinate ? ((CLLocationCoordinate2D (*)(id, SEL))orig_CLLocation_coordinate)(self, _cmd) : CLLocationCoordinate2DMake(NAN, NAN);
 }
 
 static IMP orig_CLLocationManager_location;
@@ -128,7 +129,7 @@ static CLLocation *hook_CLLocationManager_location(CLLocationManager *self, SEL 
     if (WFGate(store.spoofActive)) {
         CLLocationCoordinate2D fake = store.currentFakeCoords;
         if (!CLLocationCoordinate2DIsValid(fake)) {
-            return ((CLLocation *(*)(id, SEL))orig_CLLocationManager_location)(self, _cmd);
+            return orig_CLLocationManager_location ? ((CLLocation *(*)(id, SEL))orig_CLLocationManager_location)(self, _cmd) : nil;
         }
         if (store.jitterActive) {
             fake.latitude  += ((double)arc4random_uniform(100) - 50.0) / 2000000.0;
@@ -146,7 +147,7 @@ static CLLocation *hook_CLLocationManager_location(CLLocationManager *self, SEL 
         objc_setAssociatedObject(location, &WFSpoofedLocationAssociationKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return location;
     }
-    return ((CLLocation *(*)(id, SEL))orig_CLLocationManager_location)(self, _cmd);
+    return orig_CLLocationManager_location ? ((CLLocation *(*)(id, SEL))orig_CLLocationManager_location)(self, _cmd) : nil;
 }
 
 #pragma mark - JSON and WebView hooks
@@ -154,7 +155,7 @@ static CLLocation *hook_CLLocationManager_location(CLLocationManager *self, SEL 
 static id (*orig_WKWebView_init)(WKWebView *, SEL, CGRect, WKWebViewConfiguration *);
 static id hook_WKWebView_init(WKWebView *self, SEL _cmd, CGRect frame, WKWebViewConfiguration *configuration) {
     if (!configuration) {
-        return orig_WKWebView_init(self, _cmd, frame, configuration);
+        return orig_WKWebView_init ? orig_WKWebView_init(self, _cmd, frame, configuration) : nil;
     }
     NSUUID *activeIdentifier = WFActivePublicIdentifier();
     if (activeIdentifier && configuration.userContentController) {
@@ -169,7 +170,7 @@ static id hook_WKWebView_init(WKWebView *self, SEL _cmd, CGRect frame, WKWebView
                                                   forMainFrameOnly:NO];
         [configuration.userContentController addUserScript:script];
     }
-    return orig_WKWebView_init(self, _cmd, frame, configuration);
+    return orig_WKWebView_init ? orig_WKWebView_init(self, _cmd, frame, configuration) : nil;
 }
 
 #pragma mark - Bluetooth scan identity hooks
@@ -193,7 +194,7 @@ static NSString *hook_CBPeripheral_name(CBPeripheral *self, SEL _cmd) {
         NSString *name = objc_getAssociatedObject(self, &kWFCBNameKey);
         if (name.length) return name;
     }
-    return ((NSString *(*)(id, SEL))orig_CBPeripheral_name)(self, _cmd);
+    return orig_CBPeripheral_name ? ((NSString *(*)(id, SEL))orig_CBPeripheral_name)(self, _cmd) : nil;
 }
 
 static IMP orig_CBPeripheral_identifier;
@@ -212,7 +213,7 @@ static NSUUID *hook_CBPeripheral_identifier(CBPeripheral *self, SEL _cmd) {
         NSUUID *identifier = objc_getAssociatedObject(self, &kWFCBUUIDKey);
         if (identifier) return identifier;
     }
-    return ((NSUUID *(*)(id, SEL))orig_CBPeripheral_identifier)(self, _cmd);
+    return orig_CBPeripheral_identifier ? ((NSUUID *(*)(id, SEL))orig_CBPeripheral_identifier)(self, _cmd) : nil;
 }
 
 static WolFoxCBProxy *WFCreateBluetoothProxy(id delegate) {
@@ -253,6 +254,7 @@ static id hook_CBCentralManager_initWithDelegate(CBCentralManager *self, SEL _cm
                                                   dispatch_queue_t queue,
                                                   NSDictionary *options)
 {
+    if (!orig_CBCentralManager_initWithDelegate) return nil;
     Class wolfoxClass = NSClassFromString(@"WolFoxMainViewController");
     if (!delegate || object_getClass(delegate) == WolFoxCBProxy.class || (wolfoxClass && [delegate isKindOfClass:wolfoxClass])) {
         return orig_CBCentralManager_initWithDelegate(self, _cmd, delegate, queue, options);
@@ -429,18 +431,22 @@ static void hook_AVCaptureSession_stopRunning(AVCaptureSession *self, SEL cmd) {
 static IMP orig_NSURLSession_uploadData, orig_NSURLSession_uploadDataCompletion;
 static IMP orig_NSURLSession_uploadFile, orig_NSURLSession_uploadFileCompletion;
 static id hook_NSURLSession_uploadData(NSURLSession *self, SEL cmd, NSURLRequest *request, NSData *data) {
+    if (!orig_NSURLSession_uploadData) return nil;
     NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id))orig_NSURLSession_uploadData)(self, cmd, request, data);
     WFTrackPhotoUploadTask(task, data); return task;
 }
 static id hook_NSURLSession_uploadDataCompletion(NSURLSession *self, SEL cmd, NSURLRequest *request, NSData *data, id completion) {
+    if (!orig_NSURLSession_uploadDataCompletion) return nil;
     NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id, id))orig_NSURLSession_uploadDataCompletion)(self, cmd, request, data, completion);
     WFTrackPhotoUploadTask(task, data); return task;
 }
 static id hook_NSURLSession_uploadFile(NSURLSession *self, SEL cmd, NSURLRequest *request, NSURL *file) {
+    if (!orig_NSURLSession_uploadFile) return nil;
     NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id))orig_NSURLSession_uploadFile)(self, cmd, request, file);
     WFTrackPhotoFileUploadTask(task, file); return task;
 }
 static id hook_NSURLSession_uploadFileCompletion(NSURLSession *self, SEL cmd, NSURLRequest *request, NSURL *file, id completion) {
+    if (!orig_NSURLSession_uploadFileCompletion) return nil;
     NSURLSessionUploadTask *task = ((id (*)(id, SEL, id, id, id))orig_NSURLSession_uploadFileCompletion)(self, cmd, request, file, completion);
     WFTrackPhotoFileUploadTask(task, file); return task;
 }
