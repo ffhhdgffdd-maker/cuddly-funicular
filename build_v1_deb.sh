@@ -43,6 +43,15 @@ case "${WOLFOX_PROFILE:-}" in
         PACKAGE_ID="com.wolfox.gpspro.v3.${PROFILE//-/.}"
         PACKAGE_TITLE="WolFox"
         ;;
+    universal-full)
+        PROFILE="universal-full"
+        PROFILE_BUNDLE=""
+        VERSION="${WOLFOX_VERSION:-3.0.1}"
+        WOLFOX_EDITION="Full"
+        PRODUCT_NAME="WolFox3_universal_full"
+        PACKAGE_ID="com.wolfox.gpspro.v3.universal.full"
+        PACKAGE_TITLE="WolFox Universal"
+        ;;
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
 
@@ -258,4 +267,3 @@ EOF
 }
 make_deb rootful
 make_deb rootless
-
