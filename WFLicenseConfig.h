@@ -31,6 +31,8 @@
 #define WF_TWEAK_VERSION WOLFOX_LICENSE_APP_VERSION
 #else
 #define WF_TWEAK_VERSION @"2.0.0-Full"
+#endif
+
 #ifndef WF_APP_VERSION
 #define WF_APP_VERSION WF_TWEAK_VERSION
 #endif
