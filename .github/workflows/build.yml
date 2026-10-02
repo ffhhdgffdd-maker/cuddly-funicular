@@ -1,7 +1,7 @@
-name: WolFox — Universal Full
+name: WolFox — Universal Lite
 on:
   push:
-    branches: [build/universal-full-20261002]
+    branches: [build/universal-lite-20261002]
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,8 +22,8 @@ jobs:
     env:
       THEOS: ${{ github.workspace }}/.theos
       WOLFOX_VERSION: '3.0.1'
-      WOLFOX_EDITION: 'Full'
-      WOLFOX_PROFILE: 'universal-full'
+      WOLFOX_EDITION: 'Lite'
+      WOLFOX_PROFILE: 'universal-lite'
       WOLFOX_INTERFACE_VARIANT: '0'
       WOLFOX_TARGET_BUNDLE_IDS: '@file'
       WOLFOX_PROJECT_BUNDLE_ID: 'com.wolfox.gpspro'
@@ -39,7 +39,7 @@ jobs:
         run: python3 tools/collect_release.py
       - uses: actions/upload-artifact@v4
         with:
-          name: WolFox-universal-full-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          name: WolFox-universal-lite-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
           path: release/
           if-no-files-found: error
           retention-days: 14
