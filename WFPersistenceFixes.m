@@ -137,9 +137,8 @@ static void WFInstallPersistenceFixes(void) {
         WFSwapInstanceMethod(WolFoxProStore.class, @selector(saveLocation:), @selector(wf_saveLocationKeepingFavorites:));
         WFSwapInstanceMethod(WolFoxProStore.class, @selector(updateLocation:), @selector(wf_updateLocationKeepingFavorites:));
         WFSwapInstanceMethod(WolFoxProStore.class, @selector(deleteLocationID:), @selector(wf_deleteLocationKeepingFavorites:));
-
-        if ([WFLicenseClient hasStoredLicense] && [WFLicenseClient storedCode].length) {
-            [WFLicenseClient verifySavedLicenseWithCompletion:^(__unused WFLicenseResult *result) {}];
-        }
+        // Keychain access, persistence singleton creation, and network
+        // validation are intentionally excluded from a dylib constructor.
+        // WolFoxMaster performs validation after UIApplicationDidFinishLaunching.
     }
 }
