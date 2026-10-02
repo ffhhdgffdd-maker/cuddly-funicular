@@ -4543,7 +4543,11 @@ static BOOL WFMasterProcessIsEligible(void) {
                 UIAlertController *saved = [UIAlertController alertControllerWithTitle:@"تم الحفظ" message:message preferredStyle:UIAlertControllerStyleAlert];
                 [saved addAction:[UIAlertAction actionWithTitle:hide ? @"إخفاء الأداة الآن" : @"حسنًا" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
                     [saved dismissViewControllerAnimated:YES completion:^{
-                        if (hide) [self dismissUI];
+                        if (hide) {
+                            // الإخفاء يخفي اللوحة فقط؛ تبقى الأيقونة العائمة متاحة للاستعادة.
+                            [self setFloatingStatusIconVisible:YES];
+                            [self dismissUI];
+                        }
                         else [self.mainVC switchPage:4];
                     }];
                 }]];
@@ -4906,6 +4910,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self prepareHiddenVolumeListening];
     [self closeSpoofQuickPanel:nil];
     [self closeFloatingControlPanel:nil];
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"WF_FLOATING_STATUS_VISIBLE"];
+    self.floatingIcon.hidden = NO;
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0;
     self.cameraIcon.hidden = YES;
@@ -4914,6 +4920,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     } completion:^(BOOL f){
         self.mainVC.view.hidden = YES;
         self.overlayWindow.hidden = NO;
+        self.floatingIcon.hidden = NO;
         [[WFVirtualCameraManager shared] setToolVisible:NO];
         [self refreshFloatingStatusIcon];
         [self restoreHostKeyWindow];
