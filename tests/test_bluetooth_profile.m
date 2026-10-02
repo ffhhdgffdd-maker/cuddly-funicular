@@ -67,9 +67,9 @@ int main(void) {
         for (NSInteger version = 0; version <= 5; version++) {
             assert(!WFInterfaceMenuDefault(version));
             assert(WFInterfaceVolumeAllowed(version, YES));
-            assert(WFInterfaceVolumeAllowed(version, NO));
+            assert(!WFInterfaceVolumeAllowed(version, NO));
             assert(!WFInterfaceTripleTapAllowed(version, YES));
-            assert(!WFInterfaceNeedsFallback(version, NO, NO, YES));
+            assert(WFInterfaceNeedsFallback(version, NO, NO, YES));
             assert(!WFInterfaceNeedsFallback(version, YES, NO, NO));
             assert(!WFInterfaceNeedsFallback(version, NO, YES, NO));
         }
