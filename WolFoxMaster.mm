@@ -4475,7 +4475,22 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 }
 
 - (void)virtualCameraImageSelectedForController:(__unused NSNotification *)notification {
-    [[WFVirtualCameraManager shared] refreshCameraVisibility];
+    if (!NSThread.isMainThread) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf virtualCameraImageSelectedForController:nil]; });
+        return;
+    }
+    WFVirtualCameraManager *manager = [WFVirtualCameraManager shared];
+    [manager refreshCameraVisibility];
+    // Restore the picker icon only after the new image has replaced the old one.
+    if (self.reopenCameraIconAfterPicker) {
+        [self toggleCameraIcon:YES];
+        self.reopenCameraIconAfterPicker = NO;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            if (manager.enabled) [self toggleCameraIcon:YES];
+        });
+    }
 }
 
 - (void)licenseStateChanged:(NSNotification *)notification {
@@ -5156,7 +5171,8 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 #if WOLFOX_LITE
     show = NO;
 #else
-    show = show && [WFVirtualCameraManager shared].shouldShowPickerIcon && [WFLicenseClient isRuntimeLicenseValid];
+    BOOL restoringAfterPicker = show && self.reopenCameraIconAfterPicker;
+    show = show && (restoringAfterPicker || [WFVirtualCameraManager shared].shouldShowPickerIcon) && [WFLicenseClient isRuntimeLicenseValid];
 #endif
     if (show) {
         self.overlayWindow.hidden = NO;
@@ -5212,6 +5228,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf prepareCleanVirtualPhotoCapture]; });
         return;
     }
+    self.reopenCameraIconAfterPicker = self.cameraIcon && !self.cameraIcon.hidden;
     [self closeFloatingControlPanel:nil];
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0.0;
