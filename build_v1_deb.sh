@@ -52,6 +52,23 @@ case "${WOLFOX_PROFILE:-}" in
         PACKAGE_ID="com.wolfox.gpspro.v3.universal.full"
         PACKAGE_TITLE="WolFox"
         ;;
+    fun-gps-hok)
+        PROFILE="fun-gps-hok"
+        PROFILE_BUNDLE="Fun.gps.hok"
+        if [ -n "${WOLFOX_TARGET_BUNDLE_IDS:-}" ] && [ "$WOLFOX_TARGET_BUNDLE_IDS" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ فلتر التطبيق لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        if [ -n "${WOLFOX_PROJECT_BUNDLE_ID:-}" ] && [ "$WOLFOX_PROJECT_BUNDLE_ID" != "$PROFILE_BUNDLE" ]; then
+            echo "❌ ربط الترخيص لا يطابق ملف التعريف $PROFILE"; exit 1
+        fi
+        WOLFOX_TARGET_BUNDLE_IDS="$PROFILE_BUNDLE"
+        WOLFOX_PROJECT_BUNDLE_ID="$PROFILE_BUNDLE"
+        VERSION="${WOLFOX_VERSION:-3.0.1}"
+        WOLFOX_EDITION="Full"
+        PRODUCT_NAME="WolFox3_fun_gps_hok"
+        PACKAGE_ID="com.wolfox.gpspro.v3.fun.gps.hok"
+        PACKAGE_TITLE="WolFox"
+        ;;
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
 

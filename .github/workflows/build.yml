@@ -1,7 +1,7 @@
-name: WolFox — Universal Full
+name: WolFox — Fun.gps.hok Full
 on:
   push:
-    branches: [build/universal-full-20261002]
+    branches: [build/fun-gps-hok-20261002]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,10 +23,10 @@ jobs:
       THEOS: ${{ github.workspace }}/.theos
       WOLFOX_VERSION: '3.0.1'
       WOLFOX_EDITION: 'Full'
-      WOLFOX_PROFILE: 'universal-full'
+      WOLFOX_PROFILE: 'fun-gps-hok'
       WOLFOX_INTERFACE_VARIANT: '0'
-      WOLFOX_TARGET_BUNDLE_IDS: '@file'
-      WOLFOX_PROJECT_BUNDLE_ID: 'com.wolfox.gpspro'
+      WOLFOX_TARGET_BUNDLE_IDS: 'Fun.gps.hok'
+      WOLFOX_PROJECT_BUNDLE_ID: 'Fun.gps.hok'
       WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
       WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
     steps:
@@ -39,7 +39,7 @@ jobs:
         run: python3 tools/collect_release.py
       - uses: actions/upload-artifact@v4
         with:
-          name: WolFox-universal-full-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          name: WolFox-fun-gps-hok-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
           path: release/
           if-no-files-found: error
           retention-days: 14
