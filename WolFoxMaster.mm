@@ -4245,6 +4245,12 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)showToast:(NSString *)text {
+    if (![NSThread isMainThread]) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf showToast:text]; });
+        return;
+    }
+    if (!self.isViewLoaded || !self.view) return;
     NSString *title = @"WolFox";
     UIColor *stateColor = [WolFoxProTheme accent];
     NSString *stateIcon = @"info.circle.fill";
@@ -4526,7 +4532,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)applicationBecameActiveForVolume:(NSNotification *)notification {
     (void)notification;
     [self prepareMenuRecoveryGesture];
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey] || self.mainVC.view.hidden) {
+    if (self.mainVC && ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey] || self.mainVC.view.hidden)) {
         [self prepareHiddenVolumeListening];
     }
 }
@@ -4578,7 +4584,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     if (!WFInterfaceVolumeAllowed(WOLFOX_INTERFACE_VARIANT, [WolFoxProStore shared].volumeGestureEnabled)) return;
     WFVolumeRevealSequence sequence = self.volumeSequence;
-    BOOL reveal = WFVolumeRevealRecord(&sequence, NSProcessInfo.processInfo.systemUptime,
+    BOOL reveal = self.mainVC && WFVolumeRevealRecord(&sequence, NSProcessInfo.processInfo.systemUptime,
                                       self.mainVC.view.hidden && !self.mainVC.presentedViewController);
     self.volumeSequence = sequence;
     if (reveal) {
@@ -4657,11 +4663,22 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)showActivationScreen {
+    if (![NSThread isMainThread]) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf showActivationScreen]; });
+        return;
+    }
+    if (!self.mainVC || !self.overlayWindow) return;
     [self showActivationScreenWithResult:[WFLicenseClient lastLicenseResult]];
 }
 
 - (void)showActivationScreenWithResult:(WFLicenseResult *)result {
-    if (!self.mainVC) return;
+    if (![NSThread isMainThread]) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf showActivationScreenWithResult:result]; });
+        return;
+    }
+    if (!self.mainVC || !self.overlayWindow) return;
     if (self.mainVC.presentedViewController) return; // already showing
 #ifdef DEBUG
     WFLog(@"[WolFox][ACT] presenting_activation");
@@ -4695,7 +4712,13 @@ static BOOL WFMasterProcessIsEligible(void) {
         self.mainVC.view.alpha = 0;
     }];
 }
-- (void)showUI { 
+- (void)showUI {
+    if (![NSThread isMainThread]) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf showUI]; });
+        return;
+    }
+    if (!self.mainVC || !self.overlayWindow) return;
     [[WFVirtualCameraManager shared] setToolVisible:YES];
 #ifdef DEBUG
     WFLog(@"[WolFox][UI] show_main_requested");
@@ -4725,6 +4748,12 @@ static BOOL WFMasterProcessIsEligible(void) {
     }]; 
 }
 - (void)dismissUI {
+    if (![NSThread isMainThread]) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf dismissUI]; });
+        return;
+    }
+    if (!self.mainVC || !self.overlayWindow) return;
     [self.mainVC cancelBTScan];
     self.volumeSequence = (WFVolumeRevealSequence){0};
 #ifdef DEBUG
