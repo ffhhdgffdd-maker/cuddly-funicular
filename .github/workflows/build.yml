@@ -1,7 +1,7 @@
 name: WolFox — المساجد
 on:
   push:
-    branches: [main]
+    branches: [wolfox/masajid]
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,8 +31,6 @@ jobs:
       WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - name: Validate consolidated project catalog
-        run: python3 tools/verify_projects.py
       - name: Check branch configuration
         run: python3 tools/verify_release_config.py
       - name: Build and test

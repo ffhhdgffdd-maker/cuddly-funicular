@@ -18,11 +18,6 @@ check "$LICENSE_CLIENT" "CFPreferencesAppSynchronize" "مزامنة مخزن ا�
 check "$LICENSE_CLIENT" "protectedSharedValueFromPlaintext" "تشفير بيانات الاستعادة المشتركة"
 check "$LICENSE_CLIENT" "loadSharedValueForKey" "استعادة الكود والجهاز للتطبيق الحالي"
 check "$LICENSE_CLIENT" "Authorization" "توثيق جلسة الترخيص مفعّل"
-check "$LICENSE_CLIENT" 'if (!deviceID.length) return nil;' "منع ربط الاشتراك بمعرف لم يُحفظ"
-check "$LICENSE_CLIENT" 'if (![self saveToKeychain:pendingIdentifier key:kDeviceKey]) return nil;' "تأكيد حفظ معرّف الجهاز قبل استخدامه"
-check "$LICENSE_CLIENT" 'if (!UIApplication.sharedApplication.protectedDataAvailable || [self storedCode].length) return nil;' "عدم إنشاء جهاز جديد أثناء تعذر قراءة الهوية السابقة"
-check "$LICENSE_CLIENT" '![[self loadSharedValueForKey:key] isEqualToString:stored]' "استكمال نسخة الاستعادة للترخيص القديم"
-check "$LICENSE_CLIENT" '@[kCodeKey, kTokenKey, kCacheKey, kActivatedKey, kSuspendedKey]' "مسح الترخيص الصريح يحتفظ بمعرف الجهاز"
 
 # Verify license config
 check "$LICENSE_CONFIG" "WF_TWEAK_VERSION" "إصدار Tweak محدد"

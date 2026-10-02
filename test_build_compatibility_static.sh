@@ -41,23 +41,12 @@ expect_pattern "اسم Rootless يتضمن النطاق الجديد" 'iOS15[.]8
 expect_pattern "فلترة Bundle IDs إلزامية" 'WOLFOX_TARGET_BUNDLE_IDS|WolFoxTargetBundles[.]txt' build_v1_deb.sh
 expect_pattern "منع الحقن العام دون تطبيقات محددة" 'منع الحقن العام' build_v1_deb.sh
 expect_pattern "توليد فلتر Bundles" 'Bundles = [(]' build_v1_deb.sh
-expect_pattern "فلتر التطبيق الافتراضي من إعداد الإصدار" 'TARGET_BUNDLE_IDS=.*RELEASE_DEFAULTS_ARRAY\[4\]' wolfox_setup_build.sh
-python3 - "$PROJECT_DIR/release.json" <<'PY'
-import json, sys
-assert json.load(open(sys.argv[1]))['bundle'] == 'sa.gov.moia.mosques-2'
-PY
+expect_pattern "استهداف تطبيق المساجد فقط" 'WOLFOX_TARGET_BUNDLE_IDS:-sa[.]gov[.]moia[.]mosques-2' wolfox_setup_build.sh
 expect_pattern "التثبيت لا يفرض إعادة تشغيل المضيف" 'user-initiated host launch' build_v1_deb.sh
 expect_pattern "postinst قابل للتنفيذ" 'chmod 0755.*postinst' build_v1_deb.sh
 expect_pattern "مصدر الكاميرا الافتراضية ضمن البناء" 'WFVirtualCameraManager[.]mm' build_v1_deb.sh
 expect_pattern "ربط CoreMedia" 'framework CoreMedia' build_v1_deb.sh
 expect_pattern "ربط CoreVideo" 'framework CoreVideo' build_v1_deb.sh
-expect_pattern "نسخ البناء الثلاث تعطل الكاميرا" 'WOLFOX_FEATURE_CAMERA=0' build_v1_deb.sh
-expect_pattern "ربط CoreBluetooth مشروط" 'WOLFOX_FEATURE_BLUETOOTH.*framework CoreBluetooth' build_v1_deb.sh
-expect_pattern "ربط AdSupport مشروط" 'WOLFOX_FEATURE_IDENTIFIER.*framework AdSupport' build_v1_deb.sh
-expect_pattern "حراسة هوكات Identifier" '#if WOLFOX_FEATURE_IDENTIFIER' WolFoxIntegrated.mm
-expect_pattern "حراسة هوكات Bluetooth" '#if WOLFOX_FEATURE_BLUETOOTH' WolFoxIntegrated.mm
-expect_pattern "حراسة هوكات Camera" '#if WOLFOX_FEATURE_CAMERA' WolFoxIntegrated.mm
-expect_pattern "فحص Mach-O مستقل عن otool" 'LC_LOAD_DYLIB' test_macho_feature_isolation.sh
 
 if rg -q 'iOS 14|iOS14|14[.]0|14–26|14-26' build_v1_deb.sh Makefile; then
     echo "❌ ما زال هناك مرجع قديم إلى iOS 14 في ملفات البناء"

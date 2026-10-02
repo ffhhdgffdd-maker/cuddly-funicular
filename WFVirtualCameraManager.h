@@ -19,7 +19,6 @@ FOUNDATION_EXPORT NSNotificationName const WFVirtualCameraIconStateDidChangeNoti
 
 @property (nonatomic, assign, getter=isEnabled) BOOL enabled;
 @property (nonatomic, assign) BOOL rememberLastImage;
-@property (nonatomic, assign) BOOL pickerIconEnabled;
 @property (nonatomic, readonly) BOOL hasCurrentImage;
 @property (nonatomic, readonly) BOOL hasStoredImage;
 @property (nonatomic, strong, readonly, nullable) UIImage *currentImage;
