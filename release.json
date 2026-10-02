@@ -1,7 +1,7 @@
 {
   "slug": "universal-full",
   "label": "Universal Full",
-  "branch": "build/universal-full-20261002",
+  "branch": "fix/universal-panel-package-conflict-20261003",
   "version": "3.0.1",
   "edition": "Full",
   "profile": "universal-full",
