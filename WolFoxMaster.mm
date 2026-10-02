@@ -4543,11 +4543,7 @@ static BOOL WFMasterProcessIsEligible(void) {
                 UIAlertController *saved = [UIAlertController alertControllerWithTitle:@"تم الحفظ" message:message preferredStyle:UIAlertControllerStyleAlert];
                 [saved addAction:[UIAlertAction actionWithTitle:hide ? @"إخفاء الأداة الآن" : @"حسنًا" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
                     [saved dismissViewControllerAnimated:YES completion:^{
-                        if (hide) {
-                            // الإخفاء يخفي اللوحة فقط؛ تبقى الأيقونة العائمة متاحة للاستعادة.
-                            [self setFloatingStatusIconVisible:YES];
-                            [self dismissUI];
-                        }
+                        if (hide) [self dismissUI];
                         else [self.mainVC switchPage:4];
                     }];
                 }]];
@@ -4904,14 +4900,18 @@ static BOOL WFMasterProcessIsEligible(void) {
     [self.mainVC closeExpandedMapIfNeeded];
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedback impactOccurred];
-    [self enableMenuRecoveryShortcut];
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:WFUIHiddenOnLaunchKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    [defaults setBool:YES forKey:WFUIHiddenOnLaunchKey];
+    // نمط الإخفاء الحالي: لا تعرض الأيقونة العائمة؛ الاستعادة بثلاث نقرات في منتصف الشاشة.
+    [defaults setBool:NO forKey:@"WF_FLOATING_STATUS_VISIBLE"];
+    [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
+    [defaults synchronize];
+    [self setFloatingStatusIconVisible:NO];
+    [self prepareMenuRecoveryGesture];
     [self prepareHiddenVolumeListening];
     [self closeSpoofQuickPanel:nil];
     [self closeFloatingControlPanel:nil];
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"WF_FLOATING_STATUS_VISIBLE"];
-    self.floatingIcon.hidden = NO;
+    self.floatingIcon.hidden = YES;
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0;
     self.cameraIcon.hidden = YES;
@@ -4920,7 +4920,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     } completion:^(BOOL f){
         self.mainVC.view.hidden = YES;
         self.overlayWindow.hidden = NO;
-        self.floatingIcon.hidden = NO;
+        self.floatingIcon.hidden = YES;
         [[WFVirtualCameraManager shared] setToolVisible:NO];
         [self refreshFloatingStatusIcon];
         [self restoreHostKeyWindow];
