@@ -178,7 +178,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     if (sqlite3_prepare_v2(_db, sql, -1, &stmt, NULL) == SQLITE_OK) {
         sqlite3_bind_int64(stmt, 1, ID);
         if (sqlite3_step(stmt) == SQLITE_DONE) {
-            NSUInteger index = [_mutableLocations indexOfObjectPassingTest:^BOOL(WolFoxProLocation *l, NSUInteger idx, BOOL *stop) {
+            NSUInteger index = [_mutableLocations indexOfObjectPassingTest:^BOOL(WolFoxProLocation *l, __unused NSUInteger idx, BOOL *stop) {
                 if (l.ID != ID) return NO;
                 *stop = YES;
                 return YES;
@@ -461,7 +461,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 }
 
 - (void)deleteIdentifierUUID:(NSString *)uuid {
-    NSUInteger index = [_mutableIdentifiers indexOfObjectPassingTest:^BOOL(WolFoxProIdentifier *i, NSUInteger idx, BOOL *stop) {
+    NSUInteger index = [_mutableIdentifiers indexOfObjectPassingTest:^BOOL(WolFoxProIdentifier *i, __unused NSUInteger idx, BOOL *stop) {
         if (![i.uuid isEqualToString:uuid]) return NO;
         *stop = YES;
         return YES;
@@ -494,7 +494,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     if (!profile.profileID.length) profile.profileID = NSUUID.UUID.UUIDString;
     stored.profileID = profile.profileID; stored.capturedAt = profile.capturedAt ?: NSDate.date;
     @synchronized(self) {
-        NSUInteger index = [_bleProfiles indexOfObjectPassingTest:^BOOL(WolFoxBleProfile *p, NSUInteger idx, BOOL *stop) {
+        NSUInteger index = [_bleProfiles indexOfObjectPassingTest:^BOOL(WolFoxBleProfile *p, __unused NSUInteger idx, __unused BOOL *stop) {
             return [p.profileID isEqual:stored.profileID];
         }];
         if (index != NSNotFound) [_bleProfiles removeObjectAtIndex:index];
@@ -559,4 +559,3 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 }
 
 @end
-

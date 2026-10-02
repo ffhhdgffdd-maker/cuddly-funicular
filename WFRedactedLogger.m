@@ -46,7 +46,7 @@ static id WFSanitizeObject(id object, NSString *key) {
     if ([object isKindOfClass:NSString.class]) return WFRedactString((NSString *)object);
     if ([object isKindOfClass:NSDictionary.class]) {
         NSMutableDictionary *safe = [NSMutableDictionary dictionary];
-        [(NSDictionary *)object enumerateKeysAndObjectsUsingBlock:^(id childKey, id childValue, BOOL *stop) {
+        [(NSDictionary *)object enumerateKeysAndObjectsUsingBlock:^(id childKey, id childValue, __unused BOOL *stop) {
             NSString *stringKey = [childKey isKindOfClass:NSString.class] ? childKey : [childKey description];
             safe[stringKey] = WFSanitizeObject(childValue, stringKey);
         }];
