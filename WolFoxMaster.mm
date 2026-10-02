@@ -4602,7 +4602,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         message:@"اختر طريقة الاستعادة. ستُحفظ الطريقة قبل إخفاء الواجهة، وسيبقى التطبيق مفتوحًا."
         preferredStyle:UIAlertControllerStyleAlert];
     NSArray *titles = @[@"أيقونة WolFox", @"أزرار الصوت", @"تصوير الشاشة"];
-    for (NSInteger i = 0; i < titles.count; i++) {
+    for (NSUInteger i = 0; i < titles.count; i++) {
         WFRecoveryMethod method = (WFRecoveryMethod)(i + 1);
         [alert addAction:[UIAlertAction actionWithTitle:titles[i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
             [self applyRecoveryMethod:method];
