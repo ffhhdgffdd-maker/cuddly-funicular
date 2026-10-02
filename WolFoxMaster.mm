@@ -164,6 +164,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 - (void)floatingIconOpacityChanged:(UISlider *)slider;
 - (void)resetFloatingIconPosition;
 - (void)openInterfacePage;
+- (void)closePanelWithoutHiding;
 - (void)requestHideTool;
 - (void)finishConfirmedChange;
 - (void)confirmInternalChange:(NSString *)title apply:(BOOL (^)(void))apply;
@@ -3333,6 +3334,17 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)openInterfacePage { [self switchPage:4]; }
+- (void)confirmInterfaceHide {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"إخفاء واجهة الأداة؟"
+        message:@"سيتم إخفاء واجهة الأداة الحالية فقط. لن يتم تغيير الموقع أو معرّف الجهاز أو أي إعداد تزييف."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"إخفاء الواجهة" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        [self cancelBTScan];
+        [[WolFoxController shared] dismissUI];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
 
 - (void)finishConfirmedChange {
     [[WolFoxProStore shared] saveSettings];
@@ -3358,8 +3370,16 @@ static BOOL WFMasterProcessIsEligible(void) {
 }
 
 - (void)requestHideTool {
-    [self cancelBTScan];
-    [[WolFoxController shared] dismissUI];
+    [self confirmInterfaceHide];
+}
+
+- (void)closePanelWithoutHiding {
+    [self.view endEditing:YES];
+    [self closeExpandedMapIfNeeded];
+    if (self.presentedViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+    [self showToast:@"تم إغلاق النافذة فقط؛ الأداة ما زالت ظاهرة."];
 }
 
 - (void)componentSwitchChanged:(UISwitch *)sender {
@@ -3713,7 +3733,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 }
 
-- (void)dismiss { [self requestHideTool]; }
+- (void)dismiss { [self closePanelWithoutHiding]; }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
     for (UIView *view = touch.view; view && view != self.mapView; view = view.superview) {
