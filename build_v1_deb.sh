@@ -198,6 +198,8 @@ cat > "$GENERATED_LICENSE_CONFIG" <<EOF
 #define WOLFOX_LICENSE_PROJECT_KEY_LENGTH $PROJECT_KEY_LENGTH
 #define WOLFOX_LICENSE_PROJECT_KEY_BYTES { $PROJECT_KEY_BYTES }
 #define WOLFOX_LICENSE_PROJECT_BUNDLE_ID @"$(escape_objc_string "$PROJECT_BUNDLE_ID_VALUE")"
+#define WF_WOLFOX_EDITION @"$(escape_objc_string "$WOLFOX_EDITION")"
+#define WF_WOLFOX_PACKAGE_ID @"$(escape_objc_string "$PACKAGE_ID")"
 #define WF_TWEAK_VERSION @"$(escape_objc_string "$VERSION")"
 #define WOLFOX_LICENSE_APP_VERSION @"$(escape_objc_string "$VERSION")"
 EOF
@@ -238,6 +240,8 @@ EOF
     else
         candidates+=(com.wolfox.gpspro.v3.mosques.full com.wolfox.gpspro.v3.lite.mosques com.wolfox.gpspro.v3.full.mosques)
     fi
+    # Full and Lite share WolFox.dylib/WolFox.plist; never install both.
+    candidates+=(com.wolfox.gpspro.v3.universal.full com.wolfox.gpspro.v3.universal.lite)
     for generation in 3 4 5; do candidates+=("com.wolfox.gpspro.v${generation}.bluetooth.${host_bundle}"); done
     for candidate in "${candidates[@]}"; do
         if [ "$candidate" != "$PACKAGE_ID" ]; then conflicts="${conflicts:+$conflicts, }$candidate"; fi

@@ -146,6 +146,9 @@ static const NSUInteger kMaximumRequestAttempts = 2;
         @"device_id": deviceID,
         @"bundle_id": WF_PROJECT_BUNDLE_ID,
         @"app_version": WF_APP_VERSION,
+        @"edition": WF_WOLFOX_EDITION,
+        @"package_id": WF_WOLFOX_PACKAGE_ID,
+        @"tweak_version": WF_APP_VERSION,
         // أسماء توافقية للإصدارات السابقة من API.
         @"license_code": code ?: @"",
         @"device_uuid": deviceID,
