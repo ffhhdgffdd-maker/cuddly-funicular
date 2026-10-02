@@ -45,4 +45,5 @@
 #define WF_WOLFOX_PACKAGE_ID @"com.wolfox.gpspro"
 #endif
 
+#endif /* WF_TWEAK_VERSION */
 #endif /* WF_LICENSE_CONFIG_H */
