@@ -1,7 +1,7 @@
 {
   "slug": "universal-lite",
   "label": "WolFox Lite",
-  "branch": "build/universal-lite-20261002",
+  "branch": "fix/universal-lite-panel-package-conflict-20261003",
   "version": "3.0.1",
   "edition": "Lite",
   "profile": "universal-lite",
