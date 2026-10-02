@@ -4316,13 +4316,15 @@ static BOOL WFMasterProcessIsEligible(void) {
         WFLog(@"[WolFox][UI] controller_init");
 #endif
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-        [self enableMenuRecoveryShortcut];
         if (![defaults objectForKey:WFUIHiddenOnLaunchKey]) [defaults setBool:NO forKey:WFUIHiddenOnLaunchKey];
-        // Startup-sensitive UIKit and audio work stays on the main queue.
+        // Startup-sensitive store, UIKit, audio, and schedule work must run
+        // together on the main queue, after mainVC has been created.
         void (^prepareRuntimeUI)(void) = ^{
+            [self enableMenuRecoveryShortcut];
             [self setupUI];
             [self setupVolumeObserver];
             [self prepareMenuRecoveryGesture];
+            [[WFSpoofScheduleManager shared] start];
         };
         if ([NSThread isMainThread]) prepareRuntimeUI();
         else dispatch_async(dispatch_get_main_queue(), prepareRuntimeUI);
@@ -4334,7 +4336,6 @@ static BOOL WFMasterProcessIsEligible(void) {
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(virtualCameraImageSelectedForController:) name:WFVirtualCameraImageDidSelectNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(spoofStateChangedForController:) name:WFSpoofStateDidChangeNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hostWindowBecameKey:) name:UIWindowDidBecomeKeyNotification object:nil];
-        [[WFSpoofScheduleManager shared] start];
     } 
     return self; 
 }
