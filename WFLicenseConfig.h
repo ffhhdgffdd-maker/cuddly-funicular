@@ -47,4 +47,12 @@
 #define WF_WOLFOX_PACKAGE_ID @"com.wolfox.gpspro"
 #endif
 
+#ifndef WF_WOLFOX_EDITION
+#define WF_WOLFOX_EDITION @"Full"
+#endif
+
+#ifndef WF_WOLFOX_PACKAGE_ID
+#define WF_WOLFOX_PACKAGE_ID @"com.wolfox.gpspro"
+#endif
+
 #endif /* WF_LICENSE_CONFIG_H */
