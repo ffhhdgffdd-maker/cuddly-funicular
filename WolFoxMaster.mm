@@ -5262,7 +5262,14 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (void)openVirtualCameraImagePicker:(UIButton *)sender {
     (void)sender;
-    if (![WFVirtualCameraManager shared].shouldShowPickerIcon) return;
+    if (!NSThread.isMainThread) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf openVirtualCameraImagePicker:nil]; });
+        return;
+    }
+    // لا نتحقق من shouldShowPickerIcon هنا: زر الرفع داخل لوحة التحكم
+    // يُستخدم أثناء toolVisible، وحينها تكون shouldShowPickerIcon = NO عمداً.
+    // حالة العرض والـpresenter يتحقق منهما مدير الصور نفسه.
 
     UIViewController *presenter = nil;
     if (!self.mainVC.view.hidden && self.mainVC.view.window) {
