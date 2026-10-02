@@ -100,6 +100,7 @@ static BOOL WFMasterProcessIsEligible(void) {
 @property (nonatomic, assign) NSTimeInterval lastSequentialTapTime;
 + (instancetype)shared;
 - (void)showUI;
+- (void)closeMainPanelOnly;
 - (void)dismissUI;
 - (void)toggleUI;
 - (void)toggleCameraIcon:(BOOL)show;
@@ -468,7 +469,8 @@ static BOOL WFMasterProcessIsEligible(void) {
     
     UIButton *closeBtn = [self headerCircleBtn:@"xmark" color:[WolFoxProTheme danger] x:w - 58];
     [closeBtn addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
-    closeBtn.accessibilityLabel = @"إخفاء الأداة مع إبقاء طريقة الاستعادة المحددة";
+    closeBtn.accessibilityLabel = @"إغلاق اللوحة فقط";
+    closeBtn.accessibilityHint = @"يغلق لوحة WolFox ويبقي الأداة ظاهرة";
     [_header addSubview:closeBtn];
     
     UIButton *crownBtn = [self headerCircleBtn:@"crown.fill" color:[WolFoxProTheme accent] x:w - 110];
@@ -3727,7 +3729,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
 }
 
-- (void)dismiss { [self requestHideTool]; }
+- (void)dismiss { [[WolFoxController shared] closeMainPanelOnly]; }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)g {
     if (g.state != UIGestureRecognizerStateBegan) return;
@@ -4798,7 +4800,7 @@ static BOOL WFMasterProcessIsEligible(void) {
     }
     
     if (self.mainVC.view.hidden) [self showUI];
-    else [self chooseRecoveryMethodAndHide:YES];
+    else [self closeMainPanelOnly];
 }
 
 - (void)showActivationScreen {
@@ -4869,6 +4871,26 @@ static BOOL WFMasterProcessIsEligible(void) {
 #endif
         [self.mainVC presentOnboardingIfNeeded];
     }]; 
+}
+- (void)closeMainPanelOnly {
+    if (!self.mainVC) return;
+    [self.mainVC cancelBTScan];
+    [self.mainVC closeExpandedMapIfNeeded];
+    [self.mainVC dismissViewControllerAnimated:NO completion:nil];
+    [UIView animateWithDuration:[WolFoxProTheme transitionDuration] animations:^{
+        self.mainVC.view.alpha = 0.0;
+    } completion:^(__unused BOOL finished) {
+        self.mainVC.view.hidden = YES;
+        self.mainVC.view.alpha = 0.0;
+        self.overlayWindow.hidden = NO;
+        self.floatingIcon.hidden = NO;
+        [[WFVirtualCameraManager shared] setToolVisible:YES];
+        [self refreshFloatingStatusIcon];
+        [self restoreHostKeyWindow];
+#ifdef DEBUG
+        WFLog(@"[WolFox][UI] panel_closed_tool_remains_visible");
+#endif
+    }];
 }
 - (void)dismissUI {
     [self.mainVC cancelBTScan]; 
@@ -4958,7 +4980,8 @@ static BOOL WFMasterProcessIsEligible(void) {
 
 - (void)handleFloatingStatusLongPress:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateBegan) return;
-    [self chooseRecoveryMethodAndHide:YES];
+    // الضغط المطول ليس أمر إخفاء؛ الإخفاء الصريح يمر فقط عبر زر "إخفاء الأداة".
+    [self showUI];
 }
 
 - (void)showRecoveryHint {
