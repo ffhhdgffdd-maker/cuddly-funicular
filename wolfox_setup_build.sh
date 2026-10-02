@@ -17,7 +17,7 @@ SDK_RELEASE_TAG="master-146e41f"
 SDK_RELEASE_BASE="https://github.com/theos/sdks/releases/download/${SDK_RELEASE_TAG}"
 WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
 WOLFOX_VERSION="${WOLFOX_VERSION:-2.0.0-Full}"
-if [ "${WOLFOX_PROFILE:-}" = "universal-full" ]; then
+if [[ "${WOLFOX_PROFILE:-}" == universal-* ]]; then
     TARGET_BUNDLE_IDS="${WOLFOX_TARGET_BUNDLE_IDS:-}"
     [ "$TARGET_BUNDLE_IDS" = "@file" ] && TARGET_BUNDLE_IDS=""
 else
