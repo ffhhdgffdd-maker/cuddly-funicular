@@ -4453,10 +4453,8 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (void)handleHostMenuRecoveryTap:(UITapGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateEnded || !self.mainVC.view.hidden || self.mainVC.presentedViewController) return;
-    UIView *host = gesture.view;
-    CGRect bounds = host.bounds;
-    CGRect center = CGRectInset(bounds, CGRectGetWidth(bounds) * 0.25, CGRectGetHeight(bounds) * 0.25);
-    if (CGRectContainsPoint(center, [gesture locationInView:host])) [self showUI];
+    // الاستعادة لا تعتمد على موضع النقر؛ أي مكان صالح بعد اكتمال عدد النقرات.
+    [self showUI];
 }
 
 - (void)virtualCameraStateChangedForController:(__unused NSNotification *)notification {
@@ -4819,12 +4817,8 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     BOOL taps = ![defaults objectForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"] || [defaults boolForKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
     if (!WFInterfaceTripleTapAllowed(WOLFOX_INTERFACE_VARIANT, taps)) return;
     if (gesture.state != UIGestureRecognizerStateEnded) return;
-    CGPoint point = [gesture locationInView:self.overlayWindow];
-    CGRect bounds = self.overlayWindow.bounds;
-    CGRect centerArea = CGRectInset(bounds, CGRectGetWidth(bounds) * 0.25, CGRectGetHeight(bounds) * 0.25);
-    if (CGRectContainsPoint(centerArea, point)) {
-        [self toggleUI];
-    }
+    // لا تحصر الاستعادة في منتصف الشاشة؛ استجب للنقرات في أي موضع.
+    [self toggleUI];
 }
 - (void)toggleUI {
 #ifdef DEBUG
@@ -4938,7 +4932,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     [feedback impactOccurred];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     [defaults setBool:YES forKey:WFUIHiddenOnLaunchKey];
-    // نمط الإخفاء الحالي: لا تعرض الأيقونة العائمة؛ الاستعادة بثلاث نقرات في منتصف الشاشة.
+    // نمط الإخفاء الحالي: لا تعرض الأيقونة العائمة؛ الاستعادة بعدد نقرات على أي موضع.
     [defaults setBool:NO forKey:@"WF_FLOATING_STATUS_VISIBLE"];
     [defaults setBool:YES forKey:@"WF_MENU_TRIPLE_TAP_ENABLED"];
     [defaults synchronize];
