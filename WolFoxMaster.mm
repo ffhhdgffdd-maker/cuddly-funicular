@@ -4483,12 +4483,19 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     WFVirtualCameraManager *manager = [WFVirtualCameraManager shared];
     [manager refreshCameraVisibility];
     // Restore the picker icon only after the new image has replaced the old one.
-    if (self.reopenCameraIconAfterPicker) {
+    if (manager.enabled) {
+        // A picker can be opened from the control panel while the icon is
+        // already hidden; a successful replacement must still restore it.
+        self.reopenCameraIconAfterPicker = YES;
         [self toggleCameraIcon:YES];
         self.reopenCameraIconAfterPicker = NO;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
-            if (manager.enabled) [self toggleCameraIcon:YES];
+            if (manager.enabled) {
+                self.reopenCameraIconAfterPicker = YES;
+                [self toggleCameraIcon:YES];
+                self.reopenCameraIconAfterPicker = NO;
+            }
         });
     }
 }
@@ -5228,7 +5235,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf prepareCleanVirtualPhotoCapture]; });
         return;
     }
-    self.reopenCameraIconAfterPicker = self.cameraIcon && !self.cameraIcon.hidden;
+    self.reopenCameraIconAfterPicker = YES;
     [self closeFloatingControlPanel:nil];
     [self.cameraIcon.layer removeAllAnimations];
     self.cameraIcon.alpha = 0.0;
