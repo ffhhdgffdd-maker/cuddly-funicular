@@ -5,6 +5,12 @@ root = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(root)
 cfg = json.loads((root/'release.json').read_text())
 product, version, bundle = cfg['product'], cfg['version'], cfg['bundle']
+target_spec = cfg.get('target_bundles', bundle)
+if target_spec == '@file':
+    target_bundles = [line.strip() for line in (root/'WolFoxTargetBundles.txt').read_text().splitlines()
+                      if line.strip() and not line.lstrip().startswith('#')]
+else:
+    target_bundles = [target_spec]
 out = root/'release'; out.mkdir(exist_ok=True)
 dylib = root/f'{product}.dylib'
 magic, cpu = struct.unpack('<II', dylib.read_bytes()[:8])
@@ -20,13 +26,13 @@ for mode in ('Rootful', 'Rootless'):
         prefix = dest/('var/jb' if mode == 'Rootless' else '')/'Library/MobileSubstrate/DynamicLibraries'
         assert hashlib.sha256((prefix/f'{product}.dylib').read_bytes()).hexdigest() == digest
         plist = (prefix/f'{product}.plist').read_text()
-        assert re.findall(r'"([^"]+)"', plist) == [bundle], 'Filter must target only this host'
+        assert re.findall(r'"([^"]+)"', plist) == target_bundles, 'Filter does not match target allowlist'
     shutil.copy2(deb,out/deb.name)
 shutil.copy2(dylib,out/dylib.name)
-for name in ('release.json','WOLFOX_REVIEW_AR.md','BRANCHES_AR.md'):
+for name in ('release.json','WOLFOX_REVIEW_AR.md','BRANCHES_AR.md','WolFoxTargetBundles.txt'):
     shutil.copy2(root/name,out/name)
 commit = subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-info = {'commit':commit,'run':os.environ.get('GITHUB_RUN_ID'),'branch':cfg['branch'],'version':version,'target':bundle,'device_tested':False}
+info = {'commit':commit,'run':os.environ.get('GITHUB_RUN_ID'),'branch':cfg['branch'],'version':version,'target_count':len(target_bundles),'target_file':'WolFoxTargetBundles.txt','device_tested':False}
 (out/'BUILD_INFO.json').write_text(json.dumps(info,ensure_ascii=False,indent=2)+'\n')
 subprocess.run(['git','archive','--format=zip',f'--output={out}/WolFox-Source.zip',commit],check=True)
 checks = [f'{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}' for f in sorted(out.iterdir()) if f.is_file() and f.name!='SHA256SUMS.txt']

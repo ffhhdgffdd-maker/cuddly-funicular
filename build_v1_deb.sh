@@ -50,7 +50,7 @@ case "${WOLFOX_PROFILE:-}" in
         WOLFOX_EDITION="Full"
         PRODUCT_NAME="WolFox3_universal_full"
         PACKAGE_ID="com.wolfox.gpspro.v3.universal.full"
-        PACKAGE_TITLE="WolFox Universal"
+        PACKAGE_TITLE="WolFox"
         ;;
     *) echo "❌ ملف تعريف غير معروف: $WOLFOX_PROFILE"; exit 1 ;;
 esac
