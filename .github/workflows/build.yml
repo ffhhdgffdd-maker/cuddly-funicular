@@ -1,45 +1,132 @@
-name: WolFox — Universal Lite
+name: WolFox — Full and Lite
+
 on:
   push:
-    branches: [build/universal-lite-20261002]
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
+
+env:
+  WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
+  WOLFOX_PROJECT_BUNDLE_ID: com.wolfox.gpspro
+  WOLFOX_TARGET_BUNDLE_IDS: '@file'
+  WOLFOX_INTERFACE_VARIANT: '0'
+  WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+
 concurrency:
   group: wolfox-release-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   native-tests:
+    name: Native tests
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - run: bash run_native_tests.sh
       - run: python3 tests/test_full_bluetooth_static.py
+
   build:
+    name: Build ${{ matrix.edition }}
     needs: native-tests
     runs-on: ubuntu-24.04
     timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: Full
+            config: release-full.json
+            profile: universal-full
+          - edition: Lite
+            config: release-lite.json
+            profile: universal-lite
     env:
       THEOS: ${{ github.workspace }}/.theos
       WOLFOX_VERSION: '3.0.1'
-      WOLFOX_EDITION: 'Lite'
-      WOLFOX_PROFILE: 'universal-lite'
-      WOLFOX_INTERFACE_VARIANT: '0'
-      WOLFOX_TARGET_BUNDLE_IDS: '@file'
-      WOLFOX_PROJECT_BUNDLE_ID: 'com.wolfox.gpspro'
-      WOLFOX_PANEL_BASE_URL: https://gps.p3nd.fun/api/v1
-      WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
+      WOLFOX_EDITION: ${{ matrix.edition }}
+      WOLFOX_PROFILE: ${{ matrix.profile }}
+      WOLFOX_RELEASE_CONFIG: ${{ matrix.config }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select release configuration
+        run: cp "$WOLFOX_RELEASE_CONFIG" release.json
+
+      - name: Install static-test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+      - name: Run native and static tests
+        run: |
+          python3 tests/test_full_bluetooth_static.py
+          bash test_repository_safety_static.sh
+          bash test_build_compatibility_static.sh
+          bash test_ui_edition_consistency_static.sh
+
       - name: Check branch configuration
         run: python3 tools/verify_release_config.py
+
       - name: Build and test
         run: bash wolfox_setup_build.sh
+
       - name: Verify packages and matching source
         run: python3 tools/collect_release.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload ${{ matrix.edition }} artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: WolFox-universal-lite-3.0.1-${{ github.run_number }}-${{ github.run_attempt }}
+          name: WolFox-${{ matrix.edition }}-${{ github.run_number }}-${{ github.run_attempt }}
           path: release/
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Full and Lite artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: WolFox-*-*
+          path: dist
+          merge-multiple: false
+
+      - name: Prepare uniquely named release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          for edition in Full Lite; do
+            artifact=$(find dist -mindepth 1 -maxdepth 1 -type d -name "WolFox-${edition}-*" -print -quit)
+            test -n "$artifact"
+            for mode in Rootful Rootless; do
+              source_file=$(find "$artifact/release" -maxdepth 1 -type f -name "*_${mode}.deb" -print -quit)
+              test -n "$source_file"
+              cp "$source_file" "release-assets/WolFox-${edition}-v3.0.1-iOS15.8-27.0-${mode}.deb"
+            done
+          done
+          sha256sum release-assets/*.deb > release-assets/SHA256SUMS.deb.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "WolFox $GITHUB_REF_NAME — Full وLite" \
+            --generate-notes \
+            release-assets/*
