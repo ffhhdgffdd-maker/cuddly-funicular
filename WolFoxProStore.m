@@ -101,7 +101,13 @@ static NSString *WFDefaultIdentifierBundleID(void) {
     NSString *path = [directory stringByAppendingPathComponent:@"wolfox_pro.db"];
     if (sqlite3_open([path UTF8String], &_db) != SQLITE_OK) {
         if (_db) sqlite3_close(_db);
+        _db = NULL;
         sqlite3_open(":memory:", &_db);
+    }
+    if (!_db) {
+        WFLog(@"[WolFox][STORE] sqlite_unavailable");
+        _mutableLocations = [NSMutableArray new];
+        return;
     }
     
     char *err = NULL;
@@ -115,6 +121,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 
 - (void)loadLocations {
     _mutableLocations = [NSMutableArray new];
+    if (!_db) return;
     const char *sql = "SELECT id, name, lat, lon, alt FROM locations ORDER BY id DESC;";
     sqlite3_stmt *stmt = NULL;
     if (sqlite3_prepare_v2(_db, sql, -1, &stmt, NULL) == SQLITE_OK) {
@@ -132,6 +139,7 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 }
 
 - (long long)saveLocation:(WolFoxProLocation *)l {
+    if (!_db || !l || !l.name.length || !CLLocationCoordinate2DIsValid(l.coordinate)) return 0;
     sqlite3_stmt *stmt = NULL;
     const char *sql = "INSERT INTO locations (name, lat, lon, alt) VALUES (?, ?, ?, ?);";
     if (sqlite3_prepare_v2(_db, sql, -1, &stmt, NULL) == SQLITE_OK) {
@@ -197,7 +205,9 @@ static NSString *WFDefaultIdentifierBundleID(void) {
 - (void)loadSettings {
     @synchronized(self) {
     NSUserDefaults *u = [NSUserDefaults standardUserDefaults];
-    if ([u objectForKey:@"WF_PRO_SPOOF_ACT"] == nil) { self.spoofActive = NO; [u setBool:NO forKey:@"WF_PRO_SPOOF_ACT"]; } else { self.spoofActive = [u boolForKey:@"WF_PRO_SPOOF_ACT"]; }
+    // Load the ivar directly during initialization; publishing a notification
+    // from inside init can re-enter partially initialized observers.
+    if ([u objectForKey:@"WF_PRO_SPOOF_ACT"] == nil) { _spoofActive = NO; [u setBool:NO forKey:@"WF_PRO_SPOOF_ACT"]; } else { _spoofActive = [u boolForKey:@"WF_PRO_SPOOF_ACT"]; }
     // FIXED: routeActive لا يُحفظ بين الجلسات — الـ timer ينتهي مع العملية
     self.routeActive = NO;
     if ([u objectForKey:@"WF_PRO_JITTER_ACT"] == nil) {
