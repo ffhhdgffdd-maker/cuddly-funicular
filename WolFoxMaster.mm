@@ -4430,7 +4430,10 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     }
     UIWindow *host = [self hostKeyWindow] ?: self.previousKeyWindow;
     if (!host || host == self.overlayWindow) return;
-    if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) return;
+    if (self.menuRecoveryHostWindow == host && self.menuRecoveryTapGesture.view == host) {
+        self.menuRecoveryTapGesture.numberOfTapsRequired = WFConfiguredMenuTapCount();
+        return;
+    }
     [self.menuRecoveryTapGesture.view removeGestureRecognizer:self.menuRecoveryTapGesture];
     UITapGestureRecognizer *gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleHostMenuRecoveryTap:)];
     gesture.numberOfTapsRequired = WFConfiguredMenuTapCount();
