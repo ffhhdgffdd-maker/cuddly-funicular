@@ -4416,7 +4416,14 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     if (gestureRecognizer == self.menuRecoveryTapGesture) {
-        return self.mainVC.view.hidden && !self.mainVC.presentedViewController;
+        return self.mainVC && self.mainVC.view.hidden && !self.mainVC.presentedViewController;
+    }
+    return YES;
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    (void)touch;
+    if (gestureRecognizer == self.menuRecoveryTapGesture) {
+        return self.mainVC && self.mainVC.view.hidden && !self.mainVC.presentedViewController;
     }
     return YES;
 }
@@ -4438,6 +4445,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     UITapGestureRecognizer *gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleHostMenuRecoveryTap:)];
     gesture.numberOfTapsRequired = WFConfiguredMenuTapCount();
     gesture.numberOfTouchesRequired = 1;
+    gesture.requiresExclusiveTouchType = NO;
     gesture.cancelsTouchesInView = NO;
     gesture.delaysTouchesBegan = NO;
     gesture.delaysTouchesEnded = NO;
