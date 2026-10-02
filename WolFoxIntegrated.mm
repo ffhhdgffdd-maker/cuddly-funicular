@@ -581,6 +581,10 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
 #ifdef DEBUG
     WFLog(@"[WolFox][BOOT] dylib_loaded process=%@", NSProcessInfo.processInfo.processName);
 #endif
+    // Constructors run before the host application has completed its launch
+    // lifecycle. Defer runtime hook installation to the main queue so
+    // UIKit/CoreLocation/CoreBluetooth class state is initialized safely.
+    dispatch_async(dispatch_get_main_queue(), ^{
     [[WolFoxProHookManager shared] installHooks];
 
     static dispatch_once_t once;
@@ -750,5 +754,6 @@ __attribute__((constructor)) static void WolFox_Pro_Hooks_Init(void) {
 #ifdef DEBUG
         WFLog(@"[WolFox][BOOT] hooks_install_complete");
 #endif
+        });
     });
 }
