@@ -48,7 +48,7 @@ case "${WOLFOX_PROFILE:-}" in
         PROFILE_BUNDLE=""
         VERSION="${WOLFOX_VERSION:-3.0.1}"
         WOLFOX_EDITION="Full"
-        PRODUCT_NAME="WolFox3_universal_full"
+        PRODUCT_NAME="WolFox"
         PACKAGE_ID="com.wolfox.gpspro.v3.universal.full"
         PACKAGE_TITLE="WolFox"
         ;;
