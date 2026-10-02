@@ -24,14 +24,14 @@ static inline NSString *WFIdentifierFromTransfer(NSData *data, NSString *bundleI
     if (uuid) return uuid;
     id payload = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
     if (!payload) {
-        // GPS Plus v4 export uses byte-wise XOR 0x5A, not plain text.
+        // WolFox legacy export uses byte-wise XOR 0x5A, not plain text.
         NSMutableData *decoded = [data mutableCopy];
         unsigned char *bytes = (unsigned char *)decoded.mutableBytes;
         for (NSUInteger i = 0; i < decoded.length; i++) bytes[i] ^= 0x5A;
         payload = [NSJSONSerialization JSONObjectWithData:decoded options:0 error:NULL];
     }
     if (![payload isKindOfClass:NSDictionary.class]) {
-        if (errorMessage) *errorMessage = @"الملف غير صالح. اختر ملف تصدير GPS Plus أو WolFox أو ملف UUID نصي.";
+        if (errorMessage) *errorMessage = @"الملف غير صالح. اختر ملف تصدير WolFox أو ملف UUID نصي.";
         return nil;
     }
     NSDictionary *document = payload;
