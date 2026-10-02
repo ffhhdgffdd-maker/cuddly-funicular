@@ -58,6 +58,11 @@ jobs:
       - name: Select release configuration
         run: cp "$WOLFOX_RELEASE_CONFIG" release.json
 
+      - name: Install static-test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Run native and static tests
         run: |
           python3 tests/test_full_bluetooth_static.py
