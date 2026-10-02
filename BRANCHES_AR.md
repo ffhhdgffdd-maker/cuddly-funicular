@@ -1,17 +1,27 @@
-# دليل المشاريع والفروع المؤرشفة
+# فروع WolFox
 
-أصبح `main` الفرع البعيد الوحيد النشط في GitHub. حُذفت الفروع البعيدة الـ43 بعد تأكيد المستخدم، وأُبقي `main` كما هو. حُفظت لقطات المصدر السابقة داخل [`projects/`](projects/README_AR.md) ولم تُنشأ مستودعات جديدة.
+الأسماء أدناه لتمييز الفروع والبناء فقط؛ الاسم داخل التطبيق WolFox.
 
-## بنية المشاريع
+| النسخة | الفرع | اللون | التطبيق المضيف |
+|---|---|---|---|
+| V2 Lite | `wolfox/v2-lite` | أزرق أصلي | `sa.gov.moia.mosques-2` |
+| V2 Full | `wolfox/v2-full` | أزرق أصلي | `sa.gov.moia.mosques-2` |
+| المساجد | `wolfox/masajid` | أزرق هادئ | `sa.gov.moia.mosques-2` |
+| التحكم | `wolfox/control` | أزرق | `com.tahakom.mytahakom` |
+| Bluetooth V3 | `wolfox/bluetooth-v3-blue` | أزرق هادئ | `sa.gov.moia.mosques-2` |
+| Bluetooth V4 | `wolfox/bluetooth-v4` | أزرق هادئ | `sa.gov.moia.mosques-2` |
+| Bluetooth V5 | `wolfox/bluetooth-v5` | أزرق هادئ | `sa.gov.moia.mosques-2` |
+| V3 أزرق — التحكم | `wolfox/v3-blue-control` | أزرق | `com.tahakom.mytahakom` |
+| V3 فيروزي — المساجد | `wolfox/v3-teal-masajid` | فيروزي | `sa.gov.moia.mosques-2` |
+| V3 كهرماني — Lite التحكم | `wolfox/v3-amber-lite-control` | كهرماني | `com.tahakom.mytahakom` |
+| V3 كهرماني — Lite المساجد | `wolfox/v3-amber-lite-masajid` | كهرماني | `sa.gov.moia.mosques-2` |
+| V3 بنفسجي — Full التحكم | `wolfox/v3-purple-full-control` | بنفسجي | `com.tahakom.mytahakom` |
+| V3 بنفسجي — Full المساجد | `wolfox/v3-purple-full-masajid` | بنفسجي | `sa.gov.moia.mosques-2` |
+| V3 أزرق أصلي | `wolfox/v3-blue-original` | أزرق أصلي | `sa.gov.moia.mosques-2` |
+| V3 بنفسجي ليلي أصلي | `wolfox/v3-violet-original` | بنفسجي ليلي | `sa.gov.moia.mosques-2` |
 
-- يحتوي `projects/` على **32 مجلداً مشروعياً** و**44 لقطة مصدر**.
-- عندما يتوفر `release.json` يُشتق اسم المجلد من معرّف المشروع والملف والإصدار والواجهة وBundle والثيم.
-- إذا تكررت الإعدادات نفسها، تُجمع لقطات الفروع ذات الإعداد المطابق داخل مجلد مشروع واحد، في `branches/` مجلد مستقل لكل فرع سابق.
-- الفروع التي لم تحتوِ على `release.json` حُفظت في مجلدات بأسماء مشتقة من اسم الفرع، ووسمها الفهرس بأنها لقطات بلا إعداد إصدار.
-- يحتوي كل مجلد مشروع على `PROJECT.json` و`README_AR.md`، ويحفظ الفهرس اسم الفرع والـcommit وعدد الملفات وبصمة شجرة المصدر متى توفرت.
+كل فرع يملك release.json وWorkflow وحزم Rootful وRootless ومصدره المطابق. ملفات الألوان مأخوذة من سجل المصدر، ويثبت release.json مرجعها. إصدارات الصيانة 2.0.1 و3.0.1 و4.0.1 و5.0.1 تمنع خلط الحزم الجديدة مع البناء السابق.
 
-## البناء
+تبقى فروع codex القديمة وv2-interface-settings-unified وفرع revert محفوظة كمراجع تاريخية؛ لا تُحذف. codex/private-ipa-portal خاص ببوابة الويب وليس نسخة تطبيق iOS. إنشاء فروع هذه الدفعة لا يغير main.
 
-ملفات البناء الفعالة موجودة في جذر المستودع وتعمل على `main`. ملفات Workflows الموجودة داخل لقطات `projects/.../branches/...` تاريخية فقط، ولا تشغّلها GitHub Actions. راجع `README.md` و`README_AR.md` لمسارات البناء والاختبارات.
-
-> أسماء الفروع الأصلية محفوظة كبيانات مصدرية داخل `projects/index.json` وملفات `PROJECT.json`؛ وهي لم تعد فروعاً بعيدة قابلة للدفع أو السحب.
+كافة الوظائف غير مختبرة على جهاز حقيقي. لا يفرض تثبيت الحزمة إعادة تشغيل SpringBoard أو قتل التطبيق؛ تحميل المكتبة الجديدة يتم عند فتح المضيف من جديد بواسطة المستخدم.

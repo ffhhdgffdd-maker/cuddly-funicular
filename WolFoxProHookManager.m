@@ -42,57 +42,45 @@ char WFSpoofedLocationAssociationKey = 0;
     if (![self beginForwarding]) return;
     self.manager = m;
     id strongDelegate = self.originalDelegate;
-    NSArray<CLLocation *> *incoming = [l copy] ?: @[];
     @try {
-        CLLocation *orig = incoming.lastObject;
+        CLLocation *orig = l.lastObject;
         if (orig) [WolFoxProHookManager shared].lastRealLocation = orig;
         WolFoxProStore *store = [WolFoxProStore shared];
         CLLocationCoordinate2D fake = store.currentFakeCoords;
         BOOL shouldSpoof = store.spoofActive &&
                            [WFLicenseClient isRuntimeLicenseValid] &&
                            CLLocationCoordinate2DIsValid(fake);
-        NSArray<CLLocation *> *payload = incoming;
-        CLLocation *legacyNew = orig;
-        CLLocation *legacyOld = incoming.count > 1 ? incoming[incoming.count - 2] : nil;
         if (shouldSpoof) {
             if (store.jitterActive) {
                 fake.latitude  += ((double)arc4random_uniform(100) - 50.0) / 2000000.0;
                 fake.longitude += ((double)arc4random_uniform(100) - 50.0) / 2000000.0;
             }
+
             double fakeAltitude = orig ? orig.altitude : WFDefaultAltitudeMeters;
             if (store.jitterActive && WFDefaultAltitudeJitterEnabled) {
                 fakeAltitude = WFApplyAltitudeJitter(fakeAltitude);
             }
-            CLLocation *spoofed = [[CLLocation alloc] initWithCoordinate:fake altitude:fakeAltitude
-                                                        horizontalAccuracy:5.0
-                                                          verticalAccuracy:5.0
-                                                                  timestamp:[NSDate date]];
+            CLLocation *spoofed = [[CLLocation alloc] initWithCoordinate:fake altitude:fakeAltitude horizontalAccuracy:5.0 verticalAccuracy:5.0 timestamp:[NSDate date]];
             objc_setAssociatedObject(spoofed, &WFSpoofedLocationAssociationKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            payload = @[spoofed];
-            legacyNew = spoofed;
-        }
-        void (^forward)(void) = ^{
-            @try {
-                if (!strongDelegate) return;
-                if ([strongDelegate respondsToSelector:@selector(locationManager:didUpdateLocations:)]) {
-                    [strongDelegate locationManager:m didUpdateLocations:payload];
-                } else if ([strongDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)]) {
-                    [strongDelegate locationManager:m didUpdateToLocation:legacyNew fromLocation:legacyOld];
-                }
-            } @catch (NSException *e) {
-#ifdef DEBUG
-                WFLog(@"[WolFox][GPS] delegate_forward_exception=%@", e.name);
-#endif
-            } @finally {
-                [self endForwarding];
+            if (strongDelegate && [strongDelegate respondsToSelector:@selector(locationManager:didUpdateLocations:)]) {
+                [strongDelegate locationManager:m didUpdateLocations:@[spoofed]];
+            } else if (strongDelegate && [strongDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)]) {
+                [strongDelegate locationManager:m didUpdateToLocation:spoofed fromLocation:orig];
             }
-        };
-        if ([NSThread isMainThread]) forward();
-        else dispatch_async(dispatch_get_main_queue(), forward);
+        } else {
+            if (strongDelegate && [strongDelegate respondsToSelector:@selector(locationManager:didUpdateLocations:)]) {
+                [strongDelegate locationManager:m didUpdateLocations:l];
+            } else if (strongDelegate && [strongDelegate respondsToSelector:@selector(locationManager:didUpdateToLocation:fromLocation:)]) {
+                CLLocation *newLocation = l.lastObject;
+                CLLocation *oldLocation = l.count > 1 ? l[l.count - 2] : nil;
+                [strongDelegate locationManager:m didUpdateToLocation:newLocation fromLocation:oldLocation];
+            }
+        }
     } @catch (NSException *e) {
 #ifdef DEBUG
-        WFLog(@"[WolFox][GPS] delegate_prepare_exception=%@", e.name);
+        WFLog(@"[WolFox][GPS] delegate_forward_exception=%@", e.name);
 #endif
+    } @finally {
         [self endForwarding];
     }
 }
@@ -202,12 +190,6 @@ char WFSpoofedLocationAssociationKey = 0;
 }
 
 - (void)deliverFakeUpdate {
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self deliverFakeUpdate];
-        });
-        return;
-    }
     WolFoxProStore *store = [WolFoxProStore shared];
     if (!store.spoofActive || ![WFLicenseClient isRuntimeLicenseValid]) {
         return;
@@ -255,19 +237,8 @@ char WFSpoofedLocationAssociationKey = 0;
 }
 
 - (void)startRouteWithWaypoints:(NSArray<CLLocation *> *)waypoints speedKmh:(double)speed {
-    if (![NSThread isMainThread]) {
-        NSArray<CLLocation *> *snapshot = [waypoints copy];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self startRouteWithWaypoints:snapshot speedKmh:speed];
-        });
-        return;
-    }
     [self stopRoute];
     if (waypoints.count < 2 || ![WFLicenseClient isRuntimeLicenseValid]) return;
-    for (id waypoint in waypoints) {
-        if (![waypoint isKindOfClass:[CLLocation class]] ||
-            !CLLocationCoordinate2DIsValid([(CLLocation *)waypoint coordinate])) return;
-    }
     // Route points are WolFox-internal CLLocation objects. Mark them so the
     // global coordinate hook returns their original coordinates while route
     // math is being calculated.
@@ -321,12 +292,6 @@ char WFSpoofedLocationAssociationKey = 0;
 }
 
 - (void)stopRoute {
-    if (![NSThread isMainThread]) {
-        dispatch_sync(dispatch_get_main_queue(), ^{
-            [self stopRoute];
-        });
-        return;
-    }
     _routeGeneration++;
     [_routeTimer invalidate]; _routeTimer = nil;
     _routeWaypoints = nil; _waypointIndex = 0;
@@ -338,18 +303,11 @@ char WFSpoofedLocationAssociationKey = 0;
 }
 
 - (void)updateRouteStep {
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self updateRouteStep];
-        });
-        return;
-    }
-    WolFoxProStore *store = [WolFoxProStore shared];
-    if (!store.routeActive) return;
     if (![WFLicenseClient isRuntimeLicenseValid]) {
         [self stopRoute];
         return;
     }
+    WolFoxProStore *store = [WolFoxProStore shared];
 
     // Legacy single-target mode (from WolFoxMaster toggleRouteSimulation)
     if (!_routeWaypoints) {

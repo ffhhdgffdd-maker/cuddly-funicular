@@ -259,7 +259,7 @@
     self.uuidLabel.font = [UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightMedium];
     self.uuidLabel.textAlignment = NSTextAlignmentCenter;
     self.uuidLabel.numberOfLines = 0;
-    self.uuidLabel.text = [NSString stringWithFormat:@"معرّف الجهاز • %@", [WFLicenseClient deviceIdentifier] ?: @"بانتظار فتح القفل أو استعادة التخزين"];
+    self.uuidLabel.text = [NSString stringWithFormat:@"معرّف الجهاز • %@", [WFLicenseClient deviceIdentifier]];
     [card addSubview:self.uuidLabel];
 
     self.loadingOverlay = [[UIView alloc] initWithFrame:CGRectZero];

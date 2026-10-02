@@ -15,27 +15,9 @@ SDK_VERSION="16.5"
 COMPAT_SDK_VERSION="13.7"
 SDK_RELEASE_TAG="master-146e41f"
 SDK_RELEASE_BASE="https://github.com/theos/sdks/releases/download/${SDK_RELEASE_TAG}"
-# Use the checked-in release profile as the manual-build default. Explicit
-# environment values remain available for a separately configured profile.
-RELEASE_DEFAULTS="$(python3 - "$SOURCE_DIR/release.json" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    cfg = json.load(f)
-for key in ("version", "edition", "profile", "interface_variant", "bundle"):
-    value = cfg.get(key)
-    if value is None or isinstance(value, (dict, list)):
-        raise SystemExit(f"Invalid or missing release.json field: {key}")
-    print(value)
-PY
-)"
-mapfile -t RELEASE_DEFAULTS_ARRAY <<< "$RELEASE_DEFAULTS"
-[ "${#RELEASE_DEFAULTS_ARRAY[@]}" -eq 5 ] || error "تعذر قراءة افتراضيات release.json."
-WOLFOX_VERSION="${WOLFOX_VERSION:-${RELEASE_DEFAULTS_ARRAY[0]}}"
-WOLFOX_EDITION="${WOLFOX_EDITION:-${RELEASE_DEFAULTS_ARRAY[1]}}"
-WOLFOX_PROFILE="${WOLFOX_PROFILE:-${RELEASE_DEFAULTS_ARRAY[2]}}"
-WOLFOX_INTERFACE_VARIANT="${WOLFOX_INTERFACE_VARIANT:-${RELEASE_DEFAULTS_ARRAY[3]}}"
-TARGET_BUNDLE_IDS="${WOLFOX_TARGET_BUNDLE_IDS:-${RELEASE_DEFAULTS_ARRAY[4]}}"
-WOLFOX_PROJECT_BUNDLE_ID="${WOLFOX_PROJECT_BUNDLE_ID:-${RELEASE_DEFAULTS_ARRAY[4]}}"
+WOLFOX_EDITION="${WOLFOX_EDITION:-Full}"
+WOLFOX_VERSION="${WOLFOX_VERSION:-2.0.0-Full}"
+TARGET_BUNDLE_IDS="${WOLFOX_TARGET_BUNDLE_IDS:-sa.gov.moia.mosques-2}"
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
@@ -143,8 +125,6 @@ WOLFOX_ARCHS=arm64 \
 WOLFOX_EDITION="$WOLFOX_EDITION" \
 WOLFOX_VERSION="$WOLFOX_VERSION" \
 WOLFOX_TARGET_BUNDLE_IDS="$TARGET_BUNDLE_IDS" \
-WOLFOX_PROJECT_BUNDLE_ID="$WOLFOX_PROJECT_BUNDLE_ID" \
-WOLFOX_PROFILE="$WOLFOX_PROFILE" \
 WOLFOX_REQUIRE_SIGNING=1 \
 WOLFOX_HARDENING=1 \
     "$SOURCE_DIR/build_v1_deb.sh"
