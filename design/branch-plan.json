@@ -1,0 +1,23 @@
+{
+  "branch": "Fox3",
+  "display_name": "WolFox",
+  "base_branch": "main",
+  "base_commit": "d5a05771cfe1ac763d8083212cb6e5bda4341232",
+  "reference_image": "design/reference.png",
+  "original_filename": "IMG_2299.png",
+  "reference_git_blob_sha": "a9091d254e22b3f2b3c0b0fe787bc7004fa682f7",
+  "status": "planning_only",
+  "planned_features": [
+    "الخريطة",
+    "البحث",
+    "المفضلة",
+    "اختيار الموقع",
+    "تشغيل الموقع",
+    "إخفاء زر الأداة",
+    "تفعيل زر رفع الصور",
+    "أيقونة رفع عائمة",
+    "تغيير معرّف الجهاز"
+  ],
+  "implementation_complete": false,
+  "device_tested": false
+}
