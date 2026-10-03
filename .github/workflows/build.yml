@@ -94,13 +94,12 @@ jobs:
           bash test_build_compatibility_static.sh
           bash test_ui_edition_consistency_static.sh
 
-      - name: Check branch configuration
-        run: python3 tools/verify_release_config.py
-
       - name: Build and test
         env:
           WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
-        run: bash wolfox_setup_build.sh
+        run: |
+          python3 tools/verify_release_config.py
+          bash wolfox_setup_build.sh
 
       - name: Verify packages and matching source
         run: python3 tools/collect_release.py
