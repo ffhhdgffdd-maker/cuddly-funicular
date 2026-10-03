@@ -1,7 +1,7 @@
 {
   "slug": "universal-full",
   "label": "WolFox Full",
-  "branch": "main",
+  "branch": "build/fun-gps-hok-20261002",
   "version": "3.0.1",
   "edition": "Full",
   "profile": "universal-full",
