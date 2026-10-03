@@ -16,7 +16,6 @@ env:
   WOLFOX_PROJECT_BUNDLE_ID: com.wolfox.gpspro
   WOLFOX_TARGET_BUNDLE_IDS: '@file'
   WOLFOX_INTERFACE_VARIANT: '0'
-  WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
 
 concurrency:
   group: wolfox-release-${{ github.ref }}
@@ -26,14 +25,36 @@ jobs:
   native-tests:
     name: Native tests
     runs-on: macos-14
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - run: bash run_native_tests.sh
       - run: python3 tests/test_full_bluetooth_static.py
 
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+      - name: Check repository and Linux behavior without release credentials
+        run: |
+          bash run_all_linux_tests.sh
+          python3 tests/test_full_bluetooth_static.py
+
   build:
     name: Build ${{ matrix.edition }}
-    needs: native-tests
+    # Pull requests run tests only; release credentials stay out of PR jobs.
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: [native-tests, repository-checks]
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     strategy:
@@ -53,7 +74,9 @@ jobs:
       WOLFOX_PROFILE: ${{ matrix.profile }}
       WOLFOX_RELEASE_CONFIG: ${{ matrix.config }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Select release configuration
         run: cp "$WOLFOX_RELEASE_CONFIG" release.json
@@ -74,13 +97,15 @@ jobs:
         run: python3 tools/verify_release_config.py
 
       - name: Build and test
+        env:
+          WOLFOX_PROJECT_KEY: ${{ secrets.WOLFOX_PROJECT_KEY_MOSQUES || secrets.WOLFOX_PROJECT_KEY }}
         run: bash wolfox_setup_build.sh
 
       - name: Verify packages and matching source
         run: python3 tools/collect_release.py
 
       - name: Upload ${{ matrix.edition }} artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: WolFox-${{ matrix.edition }}-${{ github.run_number }}-${{ github.run_attempt }}
           path: release/
@@ -95,10 +120,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Download Full and Lite artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: WolFox-*-*
           path: dist
