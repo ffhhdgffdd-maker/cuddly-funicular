@@ -1,0 +1,21 @@
+{
+  "branch": "Fox1",
+  "display_name": "WolFox",
+  "base_branch": "main",
+  "base_commit": "d5a05771cfe1ac763d8083212cb6e5bda4341232",
+  "reference_image": "design/reference.png",
+  "original_filename": "IMG_1878.png",
+  "reference_git_blob_sha": "4a9ef40f1cfaa9a539488798535d24f55af414bc",
+  "status": "planning_only",
+  "planned_features": [
+    "الخريطة",
+    "البحث",
+    "المفضلة",
+    "اختيار الموقع",
+    "تشغيل الموقع",
+    "تشغيل الحركة",
+    "إخفاء زر الأداة"
+  ],
+  "implementation_complete": false,
+  "device_tested": false
+}
