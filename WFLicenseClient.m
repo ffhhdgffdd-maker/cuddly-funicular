@@ -1,5 +1,6 @@
 #import "WFRedactedLogger.h"
 #import "WFLicenseClient.h"
+#import "WFLicenseDates.h"
 #import "WFLicenseConfig.h"
 #import <Security/Security.h>
 #import <CommonCrypto/CommonDigest.h>
@@ -635,21 +636,7 @@ static const NSUInteger kMaximumRequestAttempts = 2;
 }
 
 + (NSDate *)dateFromServerString:(NSString *)value {
-    if (!value.length) return nil;
-    if (@available(iOS 10.0, *)) {
-        NSISO8601DateFormatter *iso = [NSISO8601DateFormatter new];
-        NSDate *date = [iso dateFromString:value];
-        if (date) return date;
-    }
-    NSDateFormatter *formatter = [NSDateFormatter new];
-    formatter.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
-    formatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
-    for (NSString *format in @[@"yyyy-MM-dd HH:mm:ss", @"yyyy-MM-dd'T'HH:mm:ssZ", @"yyyy-MM-dd"]) {
-        formatter.dateFormat = format;
-        NSDate *date = [formatter dateFromString:value];
-        if (date) return date;
-    }
-    return nil;
+    return WFParseLicenseDate(value);
 }
 
 + (void)saveCacheFromResponse:(NSDictionary *)json code:(NSString *)code {

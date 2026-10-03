@@ -3,6 +3,9 @@ from pathlib import Path
 import re
 root = Path(__file__).resolve().parent.parent
 ui = (root / 'WolFoxMaster.mm').read_text()
+assert '@selector(expiryNotificationsChanged:)' in ui
+assert '@selector(expiryNotificationChanged:)' not in ui
+assert '[WFExpiryNotifications shared].presentNotice' in ui
 hooks = (root / 'WolFoxIntegrated.mm').read_text()
 proxy = (root / 'WFBluetoothDelegateProxy.m').read_text()
 camera = (root / 'WFVirtualCameraManager.mm').read_text()

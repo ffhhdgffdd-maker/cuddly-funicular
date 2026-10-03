@@ -40,6 +40,7 @@ FILES=(
   WFVirtualCameraManager.mm
   WolFoxProCellModel.m
   WFSpoofScheduleManager.m
+  WFExpiryNotifications.m
   WFActivationViewController.m
   WolFoxIntegrated.mm
   WolFoxMaster.mm

@@ -9,3 +9,5 @@ clang -fobjc-arc -Wall -Wextra -Werror -I. tests/test_bluetooth_profile.m -frame
 "$work/bluetooth"
 clang -fobjc-arc -Wall -Wextra -I. tests/test_runtime_lifecycle.m WFBluetoothScanSession.m WFBluetoothDelegateProxy.m WFCameraLifecycle.m WolFoxProStore.m WFRedactedLogger.m -framework Foundation -framework CoreBluetooth -framework CoreLocation -lsqlite3 -o "$work/lifecycle"
 "$work/lifecycle"
+clang -fobjc-arc -Wall -Wextra -Werror -I. tests/test_expiry_notifications.m WFExpiryNotifications.m -framework Foundation -framework UserNotifications -o "$work/expiry"
+"$work/expiry"

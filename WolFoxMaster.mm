@@ -9,6 +9,7 @@
 #import <Security/Security.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UserNotifications/UserNotifications.h>
+#import "WFExpiryNotifications.h"
 #import <MapKit/MapKit.h>
 #import <objc/runtime.h>
 #import <AVFoundation/AVFoundation.h>
@@ -106,6 +107,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 @property (nonatomic, assign) NSTimeInterval lastMenuRecoveryActionTime;
 + (instancetype)shared;
 - (void)showUI;
+- (BOOL)presentExpiryNoticeTitle:(NSString *)title body:(NSString *)body;
 - (void)closeMainPanelOnly;
 - (void)dismissUI;
 - (void)toggleUI;
@@ -3540,45 +3542,34 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
     [defaults setBool:sender.on forKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"];
     [defaults synchronize];
     if (!sender.on) {
-        [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[@"wolfox.expiry.reminder"]];
-        [self showToast:@"تم إيقاف تذكير انتهاء الاشتراك"];
+        [self scheduleExpiryReminderIfEnabled:[WFLicenseClient lastLicenseResult]];
+        [self showToast:@"تم إيقاف تنبيهات الاشتراك"];
         return;
     }
     __weak typeof(self) weakSelf = self;
     [[UNUserNotificationCenter currentNotificationCenter] requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound) completionHandler:^(BOOL granted, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-            if (!granted || error) { [defaults setBool:NO forKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"]; [defaults synchronize]; sender.on = NO; [strongSelf showToast:@"لم يتم السماح بالإشعارات من إعدادات النظام"]; return; }
+            if (!strongSelf || ![defaults boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"]) return;
+            if (!granted || error) { [defaults setBool:NO forKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"]; [defaults synchronize]; sender.on = NO; [strongSelf scheduleExpiryReminderIfEnabled:nil]; [strongSelf showToast:@"فعّل إشعارات التطبيق من إعدادات النظام للسماح بتنبيهات الاشتراك"]; return; }
             [strongSelf scheduleExpiryReminderIfEnabled:[WFLicenseClient lastLicenseResult] ?: [WFLicenseClient storedLicenseInfo]];
-            [strongSelf showToast:@"تم تفعيل تذكير انتهاء الاشتراك"];
+            [strongSelf showToast:@"تم تفعيل التنبيه قبل الانتهاء بثلاثة أيام وعند الانتهاء"];
         });
     }];
 }
 
 - (void)scheduleExpiryReminderIfEnabled:(WFLicenseResult *)result {
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"] || !result.expiresAt.length) return;
-    NSDate *expiry = nil;
-    if (@available(iOS 10.0, *)) expiry = [[NSISO8601DateFormatter new] dateFromString:result.expiresAt];
-    if (!expiry) {
-        // أنشئ NSDateFormatter مرة واحدة خارج الـ loop — الإنشاء المتكرر غالي
-        NSDateFormatter *df = [NSDateFormatter new];
-        df.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
-        df.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
-        for (NSString *format in @[@"yyyy-MM-dd HH:mm:ss", @"yyyy-MM-dd'T'HH:mm:ssZ", @"yyyy-MM-dd"]) {
-            df.dateFormat = format;
-            expiry = [df dateFromString:result.expiresAt];
-            if (expiry) break;
-        }
-    }
-    if (!expiry || [expiry timeIntervalSinceNow] <= 0) return;
-    NSDate *fireDate = [expiry dateByAddingTimeInterval:-259200.0];
-    if ([fireDate timeIntervalSinceNow] <= 0) return;
-    [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[@"wolfox.expiry.reminder"]];
-    UNMutableNotificationContent *content = [UNMutableNotificationContent new]; content.title = @"تذكير انتهاء الاشتراك"; content.body = @"تبقى ثلاثة أيام أو أقل على انتهاء كود التفعيل. افتح التطبيق للتحقق والتجديد."; content.sound = [UNNotificationSound defaultSound];
-    NSDateComponents *components = [[NSCalendar currentCalendar] components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute) fromDate:fireDate];
-    UNCalendarNotificationTrigger *trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:components repeats:NO];
-    [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:[UNNotificationRequest requestWithIdentifier:@"wolfox.expiry.reminder" content:content trigger:trigger] withCompletionHandler:nil];
+    WFLicenseResult *stored = [WFLicenseClient storedLicenseInfo];
+    BOOL transient = !result || result.status == WFLicenseStatusNetworkError || result.status == WFLicenseStatusRateLimited || result.status == WFLicenseStatusUnknown;
+    WFLicenseResult *info = transient ? (stored ?: result) : result;
+    WFExpiryState state = WFExpiryStateNone;
+    if (info.success && info.status == WFLicenseStatusValid) state = WFExpiryStateActive;
+    else if (info.status == WFLicenseStatusExpired) state = WFExpiryStateExpired;
+    else if (transient && !stored) state = WFExpiryStateUncertain;
+    NSString *expiry = info.expiresAt;
+    if (state == WFExpiryStateExpired && !expiry.length) expiry = stored.expiresAt;
+    [[WFExpiryNotifications shared] updateEnabled:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"]
+        code:[WFLicenseClient storedCode] expiry:expiry state:state];
 }
 
 - (void)showSubscriptionInfo {
@@ -3629,12 +3620,12 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         copyCode.titleLabel.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightBold];
         [copyCode addTarget:self action:@selector(copyActivationCode) forControlEvents:UIControlEventTouchUpInside];
         [v addSubview:copyCode];
-        UIView *expiryRow = [self royalSwitchInside:v t:@"تنبيه قبل انتهاء الاشتراك" i:@"bell" isOn:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"] y:496 action:nil];
+        UIView *expiryRow = [self royalSwitchInside:v t:@"تنبيه قبل الانتهاء بثلاثة أيام وعند الانتهاء" i:@"bell" isOn:[NSUserDefaults.standardUserDefaults boolForKey:@"WF_EXPIRY_NOTIFICATIONS_ENABLED"] y:496 action:nil];
         [v addSubview:expiryRow];
         for (UIView *view in expiryRow.subviews) if ([view isKindOfClass:UISwitch.class]) {
             UISwitch *toggle = (UISwitch *)view;
             [toggle removeTarget:self action:@selector(handleSwitch:) forControlEvents:UIControlEventValueChanged];
-            [toggle addTarget:self action:@selector(expiryNotificationChanged:) forControlEvents:UIControlEventValueChanged];
+            [toggle addTarget:self action:@selector(expiryNotificationsChanged:) forControlEvents:UIControlEventValueChanged];
         }
         UIButton *activation = [self royalBtnInside:v t:@"إدخال كود تفعيل WolFox" i:@"key.fill" c:[WolFoxProTheme accent] y:572];
         [activation addTarget:self action:@selector(openActivationFromSubscription) forControlEvents:UIControlEventTouchUpInside];
@@ -4326,6 +4317,10 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         }
         [defaults setBool:![defaults boolForKey:WFMenuVisibleOnLaunchKey] forKey:WFUIHiddenOnLaunchKey];
         [self setupUI];
+        __weak typeof(self) weakSelf = self;
+        [WFExpiryNotifications shared].presentNotice = ^BOOL(NSString *title, NSString *body) {
+            return [weakSelf presentExpiryNoticeTitle:title body:body];
+        };
         [self setupVolumeObserver];
         dispatch_async(dispatch_get_main_queue(), ^{ [self prepareMenuRecoveryGesture]; });
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(licenseStateChanged:) name:@"WF_LICENSE_STATE_CHANGED" object:nil];
@@ -4502,12 +4497,12 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (void)licenseStateChanged:(NSNotification *)notification {
     WFLicenseResult *result = [notification.object isKindOfClass:WFLicenseResult.class] ? notification.object : nil;
+    [self.mainVC scheduleExpiryReminderIfEnabled:result];
     __weak typeof(self) weakSelf = self;
     if (result.success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-            [strongSelf.mainVC scheduleExpiryReminderIfEnabled:result];
             [strongSelf.mainVC refreshSpoofHeaderStatus];
             if ([WolFoxProStore shared].spoofActive) {
                 [[WolFoxProHookManager shared] deliverFakeUpdate];
@@ -4543,6 +4538,22 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
         }
         [strongSelf showActivationScreenWithResult:result];
     });
+}
+
+- (BOOL)presentExpiryNoticeTitle:(NSString *)title body:(NSString *)body {
+    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return NO;
+    UIWindow *window = self.overlayWindow.hidden ? ([self hostKeyWindow] ?: self.previousKeyWindow) : self.overlayWindow;
+    if (!window || window.hidden) return NO;
+    UILabel *banner = [[UILabel alloc] initWithFrame:CGRectMake(16, MAX(16, window.safeAreaInsets.top + 12), window.bounds.size.width - 32, 112)];
+    banner.text = [NSString stringWithFormat:@"%@\n%@", title, body];
+    banner.numberOfLines = 0; banner.textAlignment = NSTextAlignmentCenter;
+    banner.font = [WolFoxProTheme fontOfSize:14 weight:UIFontWeightSemibold];
+    banner.textColor = [WolFoxProTheme textPrimary]; banner.backgroundColor = [WolFoxProTheme surfacePrimary];
+    banner.layer.cornerRadius = 14; banner.clipsToBounds = YES; banner.userInteractionEnabled = NO;
+    [window addSubview:banner];
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, banner.text);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [banner removeFromSuperview]; });
+    return YES;
 }
 
 - (void)setupVolumeObserver {
@@ -4633,6 +4644,7 @@ static NSUInteger WFConfiguredMenuTapCount(void) {
 
 - (void)applicationBecameActiveForVolume:(NSNotification *)notification {
     (void)notification;
+    [self.mainVC scheduleExpiryReminderIfEnabled:[WFLicenseClient lastLicenseResult]];
     [self prepareMenuRecoveryGesture];
     if ([[NSUserDefaults standardUserDefaults] boolForKey:WFUIHiddenOnLaunchKey] || self.mainVC.view.hidden) {
         [self prepareHiddenVolumeListening];
